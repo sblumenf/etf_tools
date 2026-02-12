@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!-- This schema was created by staff of the U.S. Securities and Exchange Commission. -->
+<!-- Data and content created by government employees within the scope of their employment -->
+<!-- are not subject to domestic copyright protection. 17 U.S.C. 105. -->
+<xs:schema
+xmlns:link="http://www.xbrl.org/2003/linkbase"
+xmlns:oef-cal="http://xbrl.sec.gov/oef-cal/2025"
+xmlns:xlink="http://www.w3.org/1999/xlink"
+xmlns:xs="http://www.w3.org/2001/XMLSchema"
+targetNamespace="http://xbrl.sec.gov/oef-cal/2025"
+elementFormDefault="qualified">
+<xs:annotation>
+<xs:appinfo>
+<link:linkbase id="lnk">
+<link:roleRef roleURI="http://xbrl.sec.gov/rr/role/OperatingExpensesData" xlink:type="simple" xlink:href="oef-2025.xsd#OperatingExpensesData"/>
+<link:calculationLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/rr/role/OperatingExpensesData">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_NetExpensesOverAssets" xlink:label="NetExpensesOverAssets"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesOverAssets" xlink:label="ExpensesOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="NetExpensesOverAssets" xlink:to="ExpensesOverAssets" use="optional" priority="10" order="1.0" weight="1"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ManagementFeesOverAssets" xlink:label="ManagementFeesOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="ExpensesOverAssets" xlink:to="ManagementFeesOverAssets" use="optional" priority="10" order="1.0" weight="1"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_DistributionAndService12b1FeesOverAssets" xlink:label="DistributionAndService12b1FeesOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="ExpensesOverAssets" xlink:to="DistributionAndService12b1FeesOverAssets" use="optional" priority="10" order="2.0" weight="1"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_DistributionOrSimilarNon12b1FeesOverAssets" xlink:label="DistributionOrSimilarNon12b1FeesOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="ExpensesOverAssets" xlink:to="DistributionOrSimilarNon12b1FeesOverAssets" use="optional" priority="10" order="3.0" weight="1"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherExpensesOverAssets" xlink:label="OtherExpensesOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="ExpensesOverAssets" xlink:to="OtherExpensesOverAssets" use="optional" priority="10" order="4.0" weight="1"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_Component1OtherExpensesOverAssets" xlink:label="Component1OtherExpensesOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="OtherExpensesOverAssets" xlink:to="Component1OtherExpensesOverAssets" use="optional" priority="10" order="1.0" weight="1"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_Component2OtherExpensesOverAssets" xlink:label="Component2OtherExpensesOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="OtherExpensesOverAssets" xlink:to="Component2OtherExpensesOverAssets" use="optional" priority="10" order="2.0" weight="1"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_Component3OtherExpensesOverAssets" xlink:label="Component3OtherExpensesOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="OtherExpensesOverAssets" xlink:to="Component3OtherExpensesOverAssets" use="optional" priority="10" order="3.0" weight="1"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AcquiredFundFeesAndExpensesOverAssets" xlink:label="AcquiredFundFeesAndExpensesOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="ExpensesOverAssets" xlink:to="AcquiredFundFeesAndExpensesOverAssets" use="optional" priority="10" order="5.0" weight="1"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_FeeWaiverOrReimbursementOverAssets" xlink:label="FeeWaiverOrReimbursementOverAssets"/>
+<link:calculationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/summation-item" xlink:from="NetExpensesOverAssets" xlink:to="FeeWaiverOrReimbursementOverAssets" use="optional" priority="10" order="2.0" weight="1"/>
+</link:calculationLink>
+</link:linkbase>
+</xs:appinfo>
+</xs:annotation>
+</xs:schema>

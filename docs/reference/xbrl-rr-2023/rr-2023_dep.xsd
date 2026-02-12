@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This schema was created by staff of the U.S. Securities and Exchange Commission. -->
+<!-- Data and content created by government employees within the scope of their employment -->
+<!-- are not subject to domestic copyright protection. 17 U.S.C. 105. -->
+<xs:schema targetNamespace="http://xbrl.sec.gov/rr-dep/2023" 
+xmlns:rr-dep="http://xbrl.sec.gov/rr-dep/2023"
+xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+xmlns:arcrole-deprecated="http://www.xbrl.org/2009/arcrole/deprecated"
+xmlns:link="http://www.xbrl.org/2003/linkbase"
+xmlns:role-deprecated="http://www.xbrl.org/2009/role/deprecated"
+xmlns:xlink="http://www.w3.org/1999/xlink"
+elementFormDefault="qualified" >
+<xs:import namespace="http://xbrl.sec.gov/rr/2023" schemaLocation="rr-2023.xsd"/>
+<xs:import namespace="http://www.xbrl.org/2003/linkbase" schemaLocation="http://www.xbrl.org/2003/xbrl-linkbase-2003-12-31.xsd"/>
+<xs:import namespace="http://www.xbrl.org/2009/role/deprecated" schemaLocation="http://www.xbrl.org/lrr/role/deprecated-2009-12-16.xsd"/>
+<xs:import namespace="http://www.xbrl.org/2009/arcrole/deprecated" schemaLocation="http://www.xbrl.org/lrr/arcrole/deprecated-2009-12-16.xsd"/>
+<xs:annotation>
+<xs:appinfo>
+<link:linkbase id="lnk">
+<link:roleRef roleURI="http://xbrl.sec.gov/rr/role/Deprecated" xlink:type="simple" xlink:href="rr-2023.xsd#Deprecated"/>
+<link:roleRef roleURI="http://www.xbrl.org/2009/role/deprecatedLabel" xlink:type="simple" xlink:href="http://www.xbrl.org/lrr/role/deprecated-2009-12-16.xsd#deprecatedLabel"/>
+<link:roleRef roleURI="http://www.xbrl.org/2009/role/deprecatedDateLabel" xlink:type="simple" xlink:href="http://www.xbrl.org/lrr/role/deprecated-2009-12-16.xsd#deprecatedDateLabel"/>
+<link:arcroleRef arcroleURI="http://www.xbrl.org/2009/arcrole/dep-aggregateConcept-deprecatedPartConcept" xlink:type="simple" xlink:href="http://www.xbrl.org/lrr/arcrole/deprecated-2009-12-16.xsd#dep-aggregateConcept-deprecatedPartConcept"/>
+<link:arcroleRef arcroleURI="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:type="simple" xlink:href="http://www.xbrl.org/lrr/arcrole/deprecated-2009-12-16.xsd#dep-concept-deprecatedConcept"/>
+<link:arcroleRef arcroleURI="http://www.xbrl.org/2009/arcrole/dep-dimensionallyQualifiedConcept-deprecatedConcept" xlink:type="simple" xlink:href="http://www.xbrl.org/lrr/arcrole/deprecated-2009-12-16.xsd#dep-dimensionallyQualifiedConcept-deprecatedConcept"/>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/rr/role/Deprecated">
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskTextBlock" xlink:label="RiskTextBlock"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskNarrativeTextBlock" xlink:label="RiskNarrativeTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-dimensionallyQualifiedConcept-deprecatedConcept" xlink:from="RiskTextBlock" xlink:to="RiskNarrativeTextBlock" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_Risk" xlink:label="Risk"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="RiskTextBlock" xlink:to="Risk" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskNondiversifiedStatusMember" xlink:label="RiskNondiversifiedStatusMember"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskNondiversifiedStatus" xlink:label="RiskNondiversifiedStatus"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="RiskNondiversifiedStatusMember" xlink:to="RiskNondiversifiedStatus" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskLoseMoneyMember" xlink:label="RiskLoseMoneyMember"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskLoseMoney" xlink:label="RiskLoseMoney"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="RiskLoseMoneyMember" xlink:to="RiskLoseMoney" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskMoneyMarketFundPriceFluctuatesMember" xlink:label="RiskMoneyMarketFundPriceFluctuatesMember"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskMoneyMarketFundPriceFluctuates" xlink:label="RiskMoneyMarketFundPriceFluctuates"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="RiskMoneyMarketFundPriceFluctuatesMember" xlink:to="RiskMoneyMarketFundPriceFluctuates" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskMoneyMarketFundMayImposeFeesOrSuspendSalesMember" xlink:label="RiskMoneyMarketFundMayImposeFeesOrSuspendSalesMember"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskMoneyMarketFundMayImposeFeesOrSuspendSales" xlink:label="RiskMoneyMarketFundMayImposeFeesOrSuspendSales"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="RiskMoneyMarketFundMayImposeFeesOrSuspendSalesMember" xlink:to="RiskMoneyMarketFundMayImposeFeesOrSuspendSales" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskMoneyMarketFundMayNotPreserveDollarMember" xlink:label="RiskMoneyMarketFundMayNotPreserveDollarMember"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskMoneyMarketFundMayNotPreserveDollar" xlink:label="RiskMoneyMarketFundMayNotPreserveDollar"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="RiskMoneyMarketFundMayNotPreserveDollarMember" xlink:to="RiskMoneyMarketFundMayNotPreserveDollar" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskMoneyMarketFundSponsorMayNotProvideSupportMember" xlink:label="RiskMoneyMarketFundSponsorMayNotProvideSupportMember"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskMoneyMarketFundSponsorMayNotProvideSupport" xlink:label="RiskMoneyMarketFundSponsorMayNotProvideSupport"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="RiskMoneyMarketFundSponsorMayNotProvideSupportMember" xlink:to="RiskMoneyMarketFundSponsorMayNotProvideSupport" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskNotInsuredDepositoryInstitutionMember" xlink:label="RiskNotInsuredDepositoryInstitutionMember"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskNotInsuredDepositoryInstitution" xlink:label="RiskNotInsuredDepositoryInstitution"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="RiskNotInsuredDepositoryInstitutionMember" xlink:to="RiskNotInsuredDepositoryInstitution" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskNotInsuredMember" xlink:label="RiskNotInsuredMember"/>
+<link:loc xlink:type="locator" xlink:href="rr-2023.xsd#rr_RiskNotInsured" xlink:label="RiskNotInsured"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="RiskNotInsuredMember" xlink:to="RiskNotInsured" order="1.0"/>
+</link:definitionLink>
+</link:linkbase>
+</xs:appinfo>
+</xs:annotation>
+</xs:schema>

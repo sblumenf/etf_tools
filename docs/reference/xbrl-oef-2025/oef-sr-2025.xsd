@@ -1,0 +1,1228 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!-- This schema was created by staff of the U.S. Securities and Exchange Commission. -->
+<!-- Data and content created by government employees within the scope of their employment -->
+<!-- are not subject to domestic copyright protection. 17 U.S.C. 105. -->
+<xs:schema
+xmlns:link="http://www.xbrl.org/2003/linkbase"
+xmlns:oef-sr="http://xbrl.sec.gov/oef-sr/2025"
+xmlns:xbrldt="http://xbrl.org/2005/xbrldt"
+xmlns:xlink="http://www.w3.org/1999/xlink"
+xmlns:xs="http://www.w3.org/2001/XMLSchema"
+targetNamespace="http://xbrl.sec.gov/oef-sr/2025"
+elementFormDefault="qualified">
+<xs:import namespace="http://xbrl.sec.gov/oef-lab/2025" schemaLocation="oef-2025_lab.xsd"/>
+<xs:annotation>
+<xs:appinfo>
+<link:linkbase id="lnk">
+<link:arcroleRef arcroleURI="http://xbrl.org/int/dim/arcrole/all" xlink:type="simple" xlink:href="http://www.xbrl.org/2005/xbrldt-2005.xsd#all"/>
+<link:arcroleRef arcroleURI="http://xbrl.org/int/dim/arcrole/dimension-default" xlink:type="simple" xlink:href="http://www.xbrl.org/2005/xbrldt-2005.xsd#dimension-default"/>
+<link:arcroleRef arcroleURI="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:type="simple" xlink:href="http://www.xbrl.org/2005/xbrldt-2005.xsd#dimension-domain"/>
+<link:arcroleRef arcroleURI="http://xbrl.org/int/dim/arcrole/domain-member" xlink:type="simple" xlink:href="http://www.xbrl.org/2005/xbrldt-2005.xsd#domain-member"/>
+<link:arcroleRef arcroleURI="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:type="simple" xlink:href="http://www.xbrl.org/2005/xbrldt-2005.xsd#hypercube-dimension"/>
+<link:arcroleRef arcroleURI="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:type="simple" xlink:href="http://www.xbrl.org/lrr/arcrole/deprecated-2009-12-16.xsd#dep-concept-deprecatedConcept"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/ShareholderReport" xlink:type="simple" xlink:href="oef-2025.xsd#ShareholderReport"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/ShareholderReportHoldingsDetails" xlink:type="simple" xlink:href="oef-2025.xsd#ShareholderReportHoldingsDetails"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/ShareholderReportLineGraphDetails" xlink:type="simple" xlink:href="oef-2025.xsd#ShareholderReportLineGraphDetails"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/NcsrCover" xlink:type="simple" xlink:href="oef-2025.xsd#NcsrCover"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/ShareholderReportAverageAnnualReturnDetails" xlink:type="simple" xlink:href="oef-2025.xsd#ShareholderReportAverageAnnualReturnDetails"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/ClassOnly" xlink:type="simple" xlink:href="oef-2025.xsd#ClassOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/LargestHoldings" xlink:type="simple" xlink:href="oef-2025.xsd#LargestHoldings"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/HoldingsByIndustrySector" xlink:type="simple" xlink:href="oef-2025.xsd#HoldingsByIndustrySector"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/HoldingsByGeographicRegion" xlink:type="simple" xlink:href="oef-2025.xsd#HoldingsByGeographicRegion"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/HoldingsByCreditQuality" xlink:type="simple" xlink:href="oef-2025.xsd#HoldingsByCreditQuality"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/HoldingsByMaturity" xlink:type="simple" xlink:href="oef-2025.xsd#HoldingsByMaturity"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/HoldingsByAssetCategory" xlink:type="simple" xlink:href="oef-2025.xsd#HoldingsByAssetCategory"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/HoldingsByOtherCategory" xlink:type="simple" xlink:href="oef-2025.xsd#HoldingsByOtherCategory"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/HoldingsByOtherCategory2" xlink:type="simple" xlink:href="oef-2025.xsd#HoldingsByOtherCategory2"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/SalesLoadOnly" xlink:type="simple" xlink:href="oef-2025.xsd#SalesLoadOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/IndustrySectorOnly" xlink:type="simple" xlink:href="oef-2025.xsd#IndustrySectorOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/GeographicRegionOnly" xlink:type="simple" xlink:href="oef-2025.xsd#GeographicRegionOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/CreditQualityOnly" xlink:type="simple" xlink:href="oef-2025.xsd#CreditQualityOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/MaturityOnly" xlink:type="simple" xlink:href="oef-2025.xsd#MaturityOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly" xlink:type="simple" xlink:href="oef-2025.xsd#HoldingMeasureOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/LargestHoldingOnly" xlink:type="simple" xlink:href="oef-2025.xsd#LargestHoldingOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/Other1CategoryOnly" xlink:type="simple" xlink:href="oef-2025.xsd#Other1CategoryOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/Other2CategoryOnly" xlink:type="simple" xlink:href="oef-2025.xsd#Other2CategoryOnly"/>
+<link:roleRef roleURI="http://fasb.org/us-gaap/role/eedm/ExtensibleEnumerationLists" xlink:type="simple" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-roles-2025.xsd#eedm"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/ValueMeasureOnly" xlink:type="simple" xlink:href="oef-2025.xsd#ValueMeasureOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/AdditionalIndexOnly" xlink:type="simple" xlink:href="oef-2025.xsd#AdditionalIndexOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/BroadBasedIndexOnly" xlink:type="simple" xlink:href="oef-2025.xsd#BroadBasedIndexOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/PerformanceDataByAdditionalIndex" xlink:type="simple" xlink:href="oef-2025.xsd#PerformanceDataByAdditionalIndex"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/PerformanceDataByBroadBasedIndex" xlink:type="simple" xlink:href="oef-2025.xsd#PerformanceDataByBroadBasedIndex"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/PerformanceDataByClass" xlink:type="simple" xlink:href="oef-2025.xsd#PerformanceDataByClass"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/country/role/document/Country" xlink:type="simple" xlink:href="https://xbrl.sec.gov/country/2025/country-2025.xsd#country"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/Accountants" xlink:type="simple" xlink:href="oef-2025.xsd#Accountants"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/AvailabilityOfAdditionalInformation" xlink:type="simple" xlink:href="oef-2025.xsd#AvailabilityOfAdditionalInformation"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/FundExpenses" xlink:type="simple" xlink:href="oef-2025.xsd#FundExpenses"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/FundStatistics" xlink:type="simple" xlink:href="oef-2025.xsd#FundStatistics"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/Holdings" xlink:type="simple" xlink:href="oef-2025.xsd#Holdings"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/ManagementsDiscussion" xlink:type="simple" xlink:href="oef-2025.xsd#ManagementsDiscussion"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/MaterialFundChanges" xlink:type="simple" xlink:href="oef-2025.xsd#MaterialFundChanges"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/HoldingAssetCategoryOnly" xlink:type="simple" xlink:href="oef-2025.xsd#HoldingAssetCategoryOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/SeriesOnly" xlink:type="simple" xlink:href="oef-2025.xsd#SeriesOnly"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByClass" xlink:type="simple" xlink:href="oef-2025.xsd#AverageAnnualReturnDataByClass"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByAdditionalIndex" xlink:type="simple" xlink:href="oef-2025.xsd#AverageAnnualReturnDataByAdditionalIndex"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByBroadBasedIndex" xlink:type="simple" xlink:href="oef-2025.xsd#AverageAnnualReturnDataByBroadBasedIndex"/>
+<link:roleRef roleURI="http://xbrl.sec.gov/oef/role/Deprecated" xlink:type="simple" xlink:href="oef-2025.xsd#Deprecated"/>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingAssetCategoryOnly">
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_InvestmentTypeAxis" xlink:label="InvestmentTypeAxis"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_InvestmentTypeCategorizationMember" xlink:label="InvestmentTypeCategorizationMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="InvestmentTypeAxis" xlink:to="InvestmentTypeCategorizationMember" order="1.0" xbrldt:targetRole="http://fasb.org/us-gaap/role/eedm/ExtensibleEnumerationLists" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ShareholderReport">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportTable" order="1.0" xbrldt:closed="true" xbrldt:contextElement="segment" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ShareholderReport">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportLineItems" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_FundName" xlink:label="FundName"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="FundName" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassName" xlink:label="ClassName"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ClassName" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_NoTradingSymbolFlag" xlink:label="NoTradingSymbolFlag"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="NoTradingSymbolFlag" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_TradingSymbol" xlink:label="TradingSymbol"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="TradingSymbol" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_SecurityExchangeName" xlink:label="SecurityExchangeName"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="SecurityExchangeName" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAnnualOrSemiAnnual" xlink:label="ShareholderReportAnnualOrSemiAnnual"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ShareholderReportAnnualOrSemiAnnual" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AnnlOrSemiAnnlStatementTextBlock" xlink:label="AnnlOrSemiAnnlStatementTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AnnlOrSemiAnnlStatementTextBlock" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoTextBlock" xlink:label="AddlInfoTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoTextBlock" use="optional" priority="10" order="8.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngNoticeTextBlock" xlink:label="MaterialFundChngNoticeTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngNoticeTextBlock" use="optional" priority="10" order="9.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoPhoneNumber" xlink:label="AddlInfoPhoneNumber"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoPhoneNumber" use="optional" priority="10" order="10.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoEmail" xlink:label="AddlInfoEmail"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoEmail" use="optional" priority="10" order="11.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoWebsite" xlink:label="AddlInfoWebsite"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoWebsite" use="optional" priority="10" order="12.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ShareholderReport">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByIndustrySector">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="HoldingsAbstract" xlink:to="HoldingsTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByIndustrySector">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsAbstract" xlink:to="HoldingsLineItems" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly" xbrldt:usable="false"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByIndustrySector">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_IndustrySectorAxis" xlink:label="IndustrySectorAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="IndustrySectorAxis" use="optional" priority="10" order="3.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/IndustrySectorOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/LargestHoldings">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="HoldingsAbstract" xlink:to="HoldingsTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/LargestHoldings">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsAbstract" xlink:to="HoldingsLineItems" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly" xbrldt:usable="false"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/LargestHoldings">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LargestHoldingAxis" xlink:label="LargestHoldingAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="LargestHoldingAxis" use="optional" priority="10" order="3.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/LargestHoldingOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/SalesLoadOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_SalesLoadAxis" xlink:label="SalesLoadAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_WithSalesLoadMember" xlink:label="WithSalesLoadMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="SalesLoadAxis" xlink:to="WithSalesLoadMember" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/SalesLoadOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_WithSalesLoadMember" xlink:label="WithSalesLoadMember"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_WithoutSalesLoadMember" xlink:label="WithoutSalesLoadMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="WithSalesLoadMember" xlink:to="WithoutSalesLoadMember" use="optional" priority="10" order="1.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/LargestHoldingOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LargestHoldingAxis" xlink:label="LargestHoldingAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LargestHoldingsDomain" xlink:label="LargestHoldingsDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="LargestHoldingAxis" xlink:to="LargestHoldingsDomain" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/IndustrySectorOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_IndustrySectorAxis" xlink:label="IndustrySectorAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_IndustrySectorDomain" xlink:label="IndustrySectorDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="IndustrySectorAxis" xlink:to="IndustrySectorDomain" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/IndustrySectorOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_IndustrySectorDomain" xlink:label="IndustrySectorDomain"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UtilitiesSectorMember" xlink:label="UtilitiesSectorMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="IndustrySectorDomain" xlink:to="UtilitiesSectorMember" use="optional" priority="10" order="8.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialsSectorMember" xlink:label="MaterialsSectorMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="IndustrySectorDomain" xlink:to="MaterialsSectorMember" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_IndustrialSectorMember" xlink:label="IndustrialSectorMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="IndustrySectorDomain" xlink:to="IndustrialSectorMember" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_InformationTechnologySectorMember" xlink:label="InformationTechnologySectorMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="IndustrySectorDomain" xlink:to="InformationTechnologySectorMember" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ConsumerStaplesSectorMember" xlink:label="ConsumerStaplesSectorMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="IndustrySectorDomain" xlink:to="ConsumerStaplesSectorMember" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ConsumerDiscretionarySectorMember" xlink:label="ConsumerDiscretionarySectorMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="IndustrySectorDomain" xlink:to="ConsumerDiscretionarySectorMember" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CommunicationsSectorMember" xlink:label="CommunicationsSectorMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="IndustrySectorDomain" xlink:to="CommunicationsSectorMember" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_EquitySecuritiesIndustryMember" xlink:label="EquitySecuritiesIndustryMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="IndustrySectorDomain" xlink:to="EquitySecuritiesIndustryMember" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://fasb.org/us-gaap/role/eedm/ExtensibleEnumerationLists" xbrldt:usable="false"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UnclassifiedSectorMember" xlink:label="UnclassifiedSectorMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="IndustrySectorDomain" xlink:to="UnclassifiedSectorMember" use="optional" priority="10" order="9.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/GeographicRegionOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_GeographicRegionAxis" xlink:label="GeographicRegionAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_GeographicRegionDomain" xlink:label="GeographicRegionDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="GeographicRegionAxis" xlink:to="GeographicRegionDomain" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/GeographicRegionOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_GeographicRegionDomain" xlink:label="GeographicRegionDomain"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_SegmentGeographicalDomain" xlink:label="SegmentGeographicalDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="GeographicRegionDomain" xlink:to="SegmentGeographicalDomain" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://fasb.org/us-gaap/role/eedm/ExtensibleEnumerationLists" xbrldt:usable="false"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/country/2025/country-2025.xsd#country_AllCountriesDomain" xlink:label="AllCountriesDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="GeographicRegionDomain" xlink:to="AllCountriesDomain" use="optional" priority="10" order="2.0" xbrldt:usable="false" xbrldt:targetRole="http://xbrl.sec.gov/country/role/document/Country"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/CreditQualityOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditQualityAxis" xlink:label="CreditQualityAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditQualityDomain" xlink:label="CreditQualityDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="CreditQualityAxis" xlink:to="CreditQualityDomain" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/CreditQualityOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditQualityDomain" xlink:label="CreditQualityDomain"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_ExternalCreditRatingFitchMember" xlink:label="ExternalCreditRatingFitchMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditQualityDomain" xlink:to="ExternalCreditRatingFitchMember" use="optional" priority="10" order="1.0" xbrldt:usable="false"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchARatingMember" xlink:label="FitchARatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchARatingMember" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchBRatingMember" xlink:label="FitchBRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchBRatingMember" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchBBRatingMember" xlink:label="FitchBBRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchBBRatingMember" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchAMinusRatingMember" xlink:label="FitchAMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchAMinusRatingMember" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchAAARatingMember" xlink:label="FitchAAARatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchAAARatingMember" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchCRatingMember" xlink:label="FitchCRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchCRatingMember" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchCCCRatingMember" xlink:label="FitchCCCRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchCCCRatingMember" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchAAMinusRatingMember" xlink:label="FitchAAMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchAAMinusRatingMember" use="optional" priority="10" order="8.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchCCCMinusRatingMember" xlink:label="FitchCCCMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchCCCMinusRatingMember" use="optional" priority="10" order="9.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchDRatingMember" xlink:label="FitchDRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchDRatingMember" use="optional" priority="10" order="10.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchAARatingMember" xlink:label="FitchAARatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchAARatingMember" use="optional" priority="10" order="11.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchBMinusRatingMember" xlink:label="FitchBMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchBMinusRatingMember" use="optional" priority="10" order="12.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchCCRatingMember" xlink:label="FitchCCRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchCCRatingMember" use="optional" priority="10" order="13.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchBPlusRatingMember" xlink:label="FitchBPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchBPlusRatingMember" use="optional" priority="10" order="14.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchBBBPlusRatingMember" xlink:label="FitchBBBPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchBBBPlusRatingMember" use="optional" priority="10" order="15.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchCCCPlusRatingMember" xlink:label="FitchCCCPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchCCCPlusRatingMember" use="optional" priority="10" order="16.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchAPlusRatingMember" xlink:label="FitchAPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchAPlusRatingMember" use="optional" priority="10" order="17.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchAAPlusRatingMember" xlink:label="FitchAAPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchAAPlusRatingMember" use="optional" priority="10" order="18.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchBBMinusRatingMember" xlink:label="FitchBBMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchBBMinusRatingMember" use="optional" priority="10" order="19.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchBBPlusRatingMember" xlink:label="FitchBBPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchBBPlusRatingMember" use="optional" priority="10" order="20.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchBBBMinusRatingMember" xlink:label="FitchBBBMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchBBBMinusRatingMember" use="optional" priority="10" order="21.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_FitchBBBRatingMember" xlink:label="FitchBBBRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingFitchMember" xlink:to="FitchBBBRatingMember" use="optional" priority="10" order="22.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_ExternalCreditRatingMoodysMember" xlink:label="ExternalCreditRatingMoodysMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditQualityDomain" xlink:to="ExternalCreditRatingMoodysMember" use="optional" priority="10" order="2.0" xbrldt:usable="false"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysAaaRatingMember" xlink:label="MoodysAaaRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysAaaRatingMember" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysAa1RatingMember" xlink:label="MoodysAa1RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysAa1RatingMember" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysAa2RatingMember" xlink:label="MoodysAa2RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysAa2RatingMember" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysAa3RatingMember" xlink:label="MoodysAa3RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysAa3RatingMember" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysA1RatingMember" xlink:label="MoodysA1RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysA1RatingMember" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysA2RatingMember" xlink:label="MoodysA2RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysA2RatingMember" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysA3RatingMember" xlink:label="MoodysA3RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysA3RatingMember" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysBaa1RatingMember" xlink:label="MoodysBaa1RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysBaa1RatingMember" use="optional" priority="10" order="8.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysBaa2RatingMember" xlink:label="MoodysBaa2RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysBaa2RatingMember" use="optional" priority="10" order="9.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysBaa3RatingMember" xlink:label="MoodysBaa3RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysBaa3RatingMember" use="optional" priority="10" order="10.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysBa1RatingMember" xlink:label="MoodysBa1RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysBa1RatingMember" use="optional" priority="10" order="11.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysBa2RatingMember" xlink:label="MoodysBa2RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysBa2RatingMember" use="optional" priority="10" order="12.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysBa3RatingMember" xlink:label="MoodysBa3RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysBa3RatingMember" use="optional" priority="10" order="13.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysB1RatingMember" xlink:label="MoodysB1RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysB1RatingMember" use="optional" priority="10" order="14.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysB2RatingMember" xlink:label="MoodysB2RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysB2RatingMember" use="optional" priority="10" order="15.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysB3RatingMember" xlink:label="MoodysB3RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysB3RatingMember" use="optional" priority="10" order="16.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysCaa1RatingMember" xlink:label="MoodysCaa1RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysCaa1RatingMember" use="optional" priority="10" order="17.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysCaa2RatingMember" xlink:label="MoodysCaa2RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysCaa2RatingMember" use="optional" priority="10" order="18.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysCaa3RatingMember" xlink:label="MoodysCaa3RatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysCaa3RatingMember" use="optional" priority="10" order="19.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysCaRatingMember" xlink:label="MoodysCaRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysCaRatingMember" use="optional" priority="10" order="20.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_MoodysCRatingMember" xlink:label="MoodysCRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingMoodysMember" xlink:to="MoodysCRatingMember" use="optional" priority="10" order="21.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_ExternalCreditRatingStandardPoorsMember" xlink:label="ExternalCreditRatingStandardPoorsMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditQualityDomain" xlink:to="ExternalCreditRatingStandardPoorsMember" use="optional" priority="10" order="3.0" xbrldt:usable="false"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsAAARatingMember" xlink:label="StandardPoorsAAARatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsAAARatingMember" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsAAPlusRatingMember" xlink:label="StandardPoorsAAPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsAAPlusRatingMember" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsAARatingMember" xlink:label="StandardPoorsAARatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsAARatingMember" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsAAMinusRatingMember" xlink:label="StandardPoorsAAMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsAAMinusRatingMember" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsAPlusRatingMember" xlink:label="StandardPoorsAPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsAPlusRatingMember" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsARatingMember" xlink:label="StandardPoorsARatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsARatingMember" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsAMinusRatingMember" xlink:label="StandardPoorsAMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsAMinusRatingMember" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsBBBPlusRatingMember" xlink:label="StandardPoorsBBBPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsBBBPlusRatingMember" use="optional" priority="10" order="8.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsBBBRatingMember" xlink:label="StandardPoorsBBBRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsBBBRatingMember" use="optional" priority="10" order="9.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsBBBMinusRatingMember" xlink:label="StandardPoorsBBBMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsBBBMinusRatingMember" use="optional" priority="10" order="10.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsBBPlusRatingMember" xlink:label="StandardPoorsBBPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsBBPlusRatingMember" use="optional" priority="10" order="11.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsBBRatingMember" xlink:label="StandardPoorsBBRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsBBRatingMember" use="optional" priority="10" order="12.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsBBMinusRatingMember" xlink:label="StandardPoorsBBMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsBBMinusRatingMember" use="optional" priority="10" order="13.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsBPlusRatingMember" xlink:label="StandardPoorsBPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsBPlusRatingMember" use="optional" priority="10" order="14.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsBRatingMember" xlink:label="StandardPoorsBRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsBRatingMember" use="optional" priority="10" order="15.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsBMinusRatingMember" xlink:label="StandardPoorsBMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsBMinusRatingMember" use="optional" priority="10" order="16.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsCCCPlusRatingMember" xlink:label="StandardPoorsCCCPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsCCCPlusRatingMember" use="optional" priority="10" order="17.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsCCCRatingMember" xlink:label="StandardPoorsCCCRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsCCCRatingMember" use="optional" priority="10" order="18.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsCCCMinusRatingMember" xlink:label="StandardPoorsCCCMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsCCCMinusRatingMember" use="optional" priority="10" order="19.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsCCRatingMember" xlink:label="StandardPoorsCCRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsCCRatingMember" use="optional" priority="10" order="20.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsCRatingMember" xlink:label="StandardPoorsCRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsCRatingMember" use="optional" priority="10" order="21.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_StandardPoorsDRatingMember" xlink:label="StandardPoorsDRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ExternalCreditRatingStandardPoorsMember" xlink:to="StandardPoorsDRatingMember" use="optional" priority="10" order="22.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_CreditRatingAMBestDomain" xlink:label="CreditRatingAMBestDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditQualityDomain" xlink:to="CreditRatingAMBestDomain" use="optional" priority="10" order="4.0" xbrldt:usable="false"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestAPlusPlusRatingMember" xlink:label="AMBestAPlusPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestAPlusPlusRatingMember" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestAPlusRatingMember" xlink:label="AMBestAPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestAPlusRatingMember" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestARatingMember" xlink:label="AMBestARatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestARatingMember" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestAMinusRatingMember" xlink:label="AMBestAMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestAMinusRatingMember" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestBPlusPlusRatingMember" xlink:label="AMBestBPlusPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestBPlusPlusRatingMember" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestBPlusRatingMember" xlink:label="AMBestBPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestBPlusRatingMember" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestBRatingMember" xlink:label="AMBestBRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestBRatingMember" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestBMinusRatingMember" xlink:label="AMBestBMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestBMinusRatingMember" use="optional" priority="10" order="8.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestCPlusPlusRatingMember" xlink:label="AMBestCPlusPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestCPlusPlusRatingMember" use="optional" priority="10" order="9.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestCPlusRatingMember" xlink:label="AMBestCPlusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestCPlusRatingMember" use="optional" priority="10" order="10.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestCRatingMember" xlink:label="AMBestCRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestCRatingMember" use="optional" priority="10" order="11.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestCMinusRatingMember" xlink:label="AMBestCMinusRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestCMinusRatingMember" use="optional" priority="10" order="12.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestDRatingMember" xlink:label="AMBestDRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestDRatingMember" use="optional" priority="10" order="13.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestERatingMember" xlink:label="AMBestERatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestERatingMember" use="optional" priority="10" order="14.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestFRatingMember" xlink:label="AMBestFRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestFRatingMember" use="optional" priority="10" order="15.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/srt/2025/elts/srt-2025.xsd#srt_AMBestSRatingMember" xlink:label="AMBestSRatingMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CreditRatingAMBestDomain" xlink:to="AMBestSRatingMember" use="optional" priority="10" order="16.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/MaturityOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaturityAxis" xlink:label="MaturityAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaturityDomain" xlink:label="MaturityDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="MaturityAxis" xlink:to="MaturityDomain" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/Other1CategoryOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory1Axis" xlink:label="OtherCategory1Axis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory1Domain" xlink:label="OtherCategory1Domain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="OtherCategory1Axis" xlink:to="OtherCategory1Domain" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/Other2CategoryOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory2Axis" xlink:label="OtherCategory2Axis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory2Domain" xlink:label="OtherCategory2Domain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="OtherCategory2Axis" xlink:to="OtherCategory2Domain" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByGeographicRegion">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="HoldingsAbstract" xlink:to="HoldingsTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByGeographicRegion">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsAbstract" xlink:to="HoldingsLineItems" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly" xbrldt:usable="true"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByGeographicRegion">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_GeographicRegionAxis" xlink:label="GeographicRegionAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="GeographicRegionAxis" use="optional" priority="10" order="3.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/GeographicRegionOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByCreditQuality">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="HoldingsAbstract" xlink:to="HoldingsTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByCreditQuality">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsAbstract" xlink:to="HoldingsLineItems" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly" xbrldt:usable="false"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByCreditQuality">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditQualityAxis" xlink:label="CreditQualityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="CreditQualityAxis" use="optional" priority="10" order="3.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/CreditQualityOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByMaturity">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="HoldingsAbstract" xlink:to="HoldingsTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByMaturity">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsAbstract" xlink:to="HoldingsLineItems" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly" xbrldt:usable="false"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByMaturity">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaturityAxis" xlink:label="MaturityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="MaturityAxis" use="optional" priority="10" order="3.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/MaturityOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByAssetCategory">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="HoldingsAbstract" xlink:to="HoldingsTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByAssetCategory">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsAbstract" xlink:to="HoldingsLineItems" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly" xbrldt:usable="false"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByAssetCategory">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_InvestmentTypeAxis" xlink:label="InvestmentTypeAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="InvestmentTypeAxis" use="optional" priority="10" order="3.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/HoldingAssetCategoryOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByOtherCategory">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="HoldingsAbstract" xlink:to="HoldingsTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByOtherCategory">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsAbstract" xlink:to="HoldingsLineItems" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly" xbrldt:usable="false"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByOtherCategory">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory1Axis" xlink:label="OtherCategory1Axis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="OtherCategory1Axis" use="optional" priority="10" order="3.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/Other1CategoryOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByOtherCategory2">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="HoldingsAbstract" xlink:to="HoldingsTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByOtherCategory2">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsAbstract" xlink:to="HoldingsLineItems" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly" xbrldt:usable="false"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingsByOtherCategory2">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory2Axis" xlink:label="OtherCategory2Axis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="HoldingsTable" xlink:to="OtherCategory2Axis" use="optional" priority="10" order="3.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/Other2CategoryOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/HoldingMeasureOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsAbstract" xlink:to="HoldingsLineItems" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfTotalInv" xlink:label="PctOfTotalInv"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsLineItems" xlink:to="PctOfTotalInv" order="2.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfTotalLongExposure" xlink:label="PctOfTotalLongExposure"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsLineItems" xlink:to="PctOfTotalLongExposure" order="3.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfTotalShortExposure" xlink:label="PctOfTotalShortExposure"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsLineItems" xlink:to="PctOfTotalShortExposure" order="4.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfNetLongExposure" xlink:label="PctOfNetLongExposure"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsLineItems" xlink:to="PctOfNetLongExposure" order="5.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfNetShortExposure" xlink:label="PctOfNetShortExposure"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsLineItems" xlink:to="PctOfNetShortExposure" order="6.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfNav" xlink:label="PctOfNav"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="HoldingsLineItems" xlink:to="PctOfNav" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ValueMeasureOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTableAbstract" xlink:label="AccountValueTableAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueLineItems" xlink:label="AccountValueLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AccountValueTableAbstract" xlink:to="AccountValueLineItems" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LineGraphAndTableMeasureName" xlink:label="LineGraphAndTableMeasureName"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AccountValueLineItems" xlink:to="LineGraphAndTableMeasureName" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccmVal" xlink:label="AccmVal"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AccountValueLineItems" xlink:to="AccmVal" order="2.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/PerformanceDataByClass">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTableAbstract" xlink:label="AccountValueTableAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueLineItems" xlink:label="AccountValueLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AccountValueTableAbstract" xlink:to="AccountValueLineItems" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ValueMeasureOnly" xbrldt:usable="false" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/PerformanceDataByClass">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTableAbstract" xlink:label="AccountValueTableAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTable" xlink:label="AccountValueTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="AccountValueTableAbstract" xlink:to="AccountValueTable" use="optional" priority="10" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/PerformanceDataByClass">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTable" xlink:label="AccountValueTable"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AccountValueTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AccountValueTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/PerformanceDataByBroadBasedIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTableAbstract" xlink:label="AccountValueTableAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueLineItems" xlink:label="AccountValueLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AccountValueTableAbstract" xlink:to="AccountValueLineItems" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ValueMeasureOnly" xbrldt:usable="false" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/PerformanceDataByBroadBasedIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTableAbstract" xlink:label="AccountValueTableAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTable" xlink:label="AccountValueTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="AccountValueTableAbstract" xlink:to="AccountValueTable" use="optional" priority="10" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/PerformanceDataByBroadBasedIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTable" xlink:label="AccountValueTable"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AccountValueTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_BroadBasedIndexAxis" xlink:label="BroadBasedIndexAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AccountValueTable" xlink:to="BroadBasedIndexAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/BroadBasedIndexOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/PerformanceDataByAdditionalIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTableAbstract" xlink:label="AccountValueTableAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueLineItems" xlink:label="AccountValueLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AccountValueTableAbstract" xlink:to="AccountValueLineItems" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ValueMeasureOnly" xbrldt:usable="false" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/PerformanceDataByAdditionalIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTableAbstract" xlink:label="AccountValueTableAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTable" xlink:label="AccountValueTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="AccountValueTableAbstract" xlink:to="AccountValueTable" use="optional" priority="10" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/PerformanceDataByAdditionalIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTable" xlink:label="AccountValueTable"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AccountValueTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdditionalIndexAxis" xlink:label="AdditionalIndexAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AccountValueTable" xlink:to="AdditionalIndexAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/AdditionalIndexOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/BroadBasedIndexOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_BroadBasedIndexAxis" xlink:label="BroadBasedIndexAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_BroadBasedIndexDomain" xlink:label="BroadBasedIndexDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="BroadBasedIndexAxis" xlink:to="BroadBasedIndexDomain" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/BroadBasedIndexOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_BroadBasedIndexDomain" xlink:label="BroadBasedIndexDomain"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_StandardPoors500IndexMember" xlink:label="StandardPoors500IndexMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="BroadBasedIndexDomain" xlink:to="StandardPoors500IndexMember" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_NasdaqCompositeIndexMember" xlink:label="NasdaqCompositeIndexMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="BroadBasedIndexDomain" xlink:to="NasdaqCompositeIndexMember" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_DowJonesIndustrialAverageMember" xlink:label="DowJonesIndustrialAverageMember"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="BroadBasedIndexDomain" xlink:to="DowJonesIndustrialAverageMember" use="optional" priority="10" order="1.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AdditionalIndexOnly">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdditionalIndexAxis" xlink:label="AdditionalIndexAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdditionalIndexDomain" xlink:label="AdditionalIndexDomain"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/dimension-domain" xlink:from="AdditionalIndexAxis" xlink:to="AdditionalIndexDomain" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/NcsrCover">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="LegalEntityAxis" use="optional" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/NcsrCover">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_DocumentType" xlink:label="DocumentType"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="DocumentType" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_AmendmentFlag" xlink:label="AmendmentFlag"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AmendmentFlag" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_AmendmentDescription" xlink:label="AmendmentDescription"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AmendmentDescription" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityRegistrantName" xlink:label="EntityRegistrantName"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="EntityRegistrantName" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityCentralIndexKey" xlink:label="EntityCentralIndexKey"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="EntityCentralIndexKey" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityInvCompanyType" xlink:label="EntityInvCompanyType"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="EntityInvCompanyType" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_DocumentPeriodEndDate" xlink:label="DocumentPeriodEndDate"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="DocumentPeriodEndDate" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_CoverAbstract" xlink:label="CoverAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems_2"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="CoverAbstract" xlink:to="ShareholderReportLineItems_2" use="optional" priority="10" order="2.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/NcsrCover">
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_CoverAbstract" xlink:label="CoverAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="CoverAbstract" xlink:to="ShareholderReportTable" use="optional" priority="10" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/FundExpenses">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportTable" order="1.0" xbrldt:closed="true" xbrldt:contextElement="segment" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/FundExpenses">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportLineItems" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesTextBlock" xlink:label="ExpensesTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesTextBlock" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesPaidAmt" xlink:label="ExpensesPaidAmt"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesPaidAmt" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpenseRatioPct" xlink:label="ExpenseRatioPct"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ExpenseRatioPct" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesShortPeriodFnTextBlock" xlink:label="ExpensesShortPeriodFnTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesShortPeriodFnTextBlock" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExtraordinaryExpensesFnTextBlock" xlink:label="ExtraordinaryExpensesFnTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ExtraordinaryExpensesFnTextBlock" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesExclExtraordinaryExpensesPct" xlink:label="ExpensesExclExtraordinaryExpensesPct"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesExclExtraordinaryExpensesPct" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesRepresentBothMasterAndFeeder" xlink:label="ExpensesRepresentBothMasterAndFeeder"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesRepresentBothMasterAndFeeder" use="optional" priority="10" order="4.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/FundExpenses">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ManagementsDiscussion">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportTable" order="1.0" xbrldt:closed="true" xbrldt:contextElement="segment" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ManagementsDiscussion">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportLineItems" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_FactorsAffectingPerfTextBlock" xlink:label="FactorsAffectingPerfTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="FactorsAffectingPerfTextBlock" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LineGraphTableTextBlock" xlink:label="LineGraphTableTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="LineGraphTableTextBlock" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LineGraphAndTableMeasureName" xlink:label="LineGraphAndTableMeasureName"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="LineGraphAndTableMeasureName" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AvgAnnlRtrTableTextBlock" xlink:label="AvgAnnlRtrTableTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AvgAnnlRtrTableTextBlock" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PerfInceptionDate" xlink:label="PerfInceptionDate"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="PerfInceptionDate" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_NoDeductionOfTaxesTextBlock" xlink:label="NoDeductionOfTaxesTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="NoDeductionOfTaxesTextBlock" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PerfTableMarketIndexChngdTextBlock" xlink:label="PerfTableMarketIndexChngdTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="PerfTableMarketIndexChngdTextBlock" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PriorMarketIndexComparisonTextBlock" xlink:label="PriorMarketIndexComparisonTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="PriorMarketIndexComparisonTextBlock" use="optional" priority="10" order="8.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PreviousInvestmentAdviserTextBlock" xlink:label="PreviousInvestmentAdviserTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="PreviousInvestmentAdviserTextBlock" use="optional" priority="10" order="9.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialChngDescriptionTextBlock" xlink:label="MaterialChngDescriptionTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialChngDescriptionTextBlock" use="optional" priority="10" order="10.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialChngDate" xlink:label="MaterialChngDate"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialChngDate" use="optional" priority="10" order="11.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UpdPerfInfoLocationTextBlock" xlink:label="UpdPerfInfoLocationTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="UpdPerfInfoLocationTextBlock" use="optional" priority="10" order="12.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_InabilityToMeetDistLevelTextBlock" xlink:label="InabilityToMeetDistLevelTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="InabilityToMeetDistLevelTextBlock" use="optional" priority="10" order="13.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_DistOfCapitalTextBlock" xlink:label="DistOfCapitalTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="DistOfCapitalTextBlock" use="optional" priority="10" order="14.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfPremiumDiscountTextBlock" xlink:label="EtfPremiumDiscountTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="EtfPremiumDiscountTextBlock" use="optional" priority="10" order="15.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfPremiumNumDays" xlink:label="EtfPremiumNumDays"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="EtfPremiumNumDays" use="optional" priority="10" order="16.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfDiscountNumDays" xlink:label="EtfDiscountNumDays"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="EtfDiscountNumDays" use="optional" priority="10" order="17.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfPurchaseExplanationTextBlock" xlink:label="EtfPurchaseExplanationTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="EtfPurchaseExplanationTextBlock" use="optional" priority="10" order="18.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfPastPerfTextBlock" xlink:label="EtfPastPerfTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="EtfPastPerfTextBlock" use="optional" priority="10" order="19.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_AssetsNet" xlink:label="AssetsNet"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AssetsNet" use="optional" priority="10" order="20.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsCount" xlink:label="HoldingsCount"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="HoldingsCount" use="optional" priority="10" order="21.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_InvestmentCompanyPortfolioTurnover" xlink:label="InvestmentCompanyPortfolioTurnover"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="InvestmentCompanyPortfolioTurnover" use="optional" priority="10" order="22.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ManagementsDiscussion">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/FundStatistics">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportTable" order="1.0" xbrldt:closed="true" xbrldt:contextElement="segment" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/FundStatistics">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportLineItems" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_AssetsNet" xlink:label="AssetsNet"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AssetsNet" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsCount" xlink:label="HoldingsCount"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="HoldingsCount" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_InvestmentCompanyPortfolioTurnover" xlink:label="InvestmentCompanyPortfolioTurnover"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="InvestmentCompanyPortfolioTurnover" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdvisoryFeesPaidAmt" xlink:label="AdvisoryFeesPaidAmt"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AdvisoryFeesPaidAmt" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlFundStatisticsTextBlock" xlink:label="AddlFundStatisticsTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlFundStatisticsTextBlock" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlFundStatisticsSignificanceOrLimitsTextBlock" xlink:label="AddlFundStatisticsSignificanceOrLimitsTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlFundStatisticsSignificanceOrLimitsTextBlock" use="optional" priority="10" order="6.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/FundStatistics">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/Holdings">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportTable" order="1.0" xbrldt:closed="true" xbrldt:contextElement="segment" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/Holdings">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportLineItems" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTableTextBlock" xlink:label="HoldingsTableTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="HoldingsTableTextBlock" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExposureBasisExplanationTextBlock" xlink:label="ExposureBasisExplanationTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="ExposureBasisExplanationTextBlock" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditQualityExplanationTextBlock" xlink:label="CreditQualityExplanationTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="CreditQualityExplanationTextBlock" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditRatingsSelectionTextBlock" xlink:label="CreditRatingsSelectionTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="CreditRatingsSelectionTextBlock" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LargestHoldingsTableTextBlock" xlink:label="LargestHoldingsTableTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="LargestHoldingsTableTextBlock" use="optional" priority="10" order="5.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/Holdings">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/MaterialFundChanges">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportTable" order="1.0" xbrldt:closed="true" xbrldt:contextElement="segment" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/MaterialFundChanges">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportLineItems" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngTextBlock" xlink:label="MaterialFundChngTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngTextBlock" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngNameTextBlock" xlink:label="MaterialFundChngNameTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngNameTextBlock" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngObjectivesTextBlock" xlink:label="MaterialFundChngObjectivesTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngObjectivesTextBlock" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngExpensesTextBlock" xlink:label="MaterialFundChngExpensesTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngExpensesTextBlock" use="optional" priority="10" order="4.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngStrategiesTextBlock" xlink:label="MaterialFundChngStrategiesTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngStrategiesTextBlock" use="optional" priority="10" order="5.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngRisksChngTextBlock" xlink:label="MaterialFundChngRisksChngTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngRisksChngTextBlock" use="optional" priority="10" order="6.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngAdviserTextBlock" xlink:label="MaterialFundChngAdviserTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngAdviserTextBlock" use="optional" priority="10" order="7.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_SummaryOfChngLegendTextBlock" xlink:label="SummaryOfChngLegendTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="SummaryOfChngLegendTextBlock" use="optional" priority="10" order="8.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UpdProspectusPhoneNumber" xlink:label="UpdProspectusPhoneNumber"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="UpdProspectusPhoneNumber" use="optional" priority="10" order="9.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UpdProspectusEmailAddress" xlink:label="UpdProspectusEmailAddress"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="UpdProspectusEmailAddress" use="optional" priority="10" order="10.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UpdProspectusWebAddress" xlink:label="UpdProspectusWebAddress"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="UpdProspectusWebAddress" use="optional" priority="10" order="11.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/MaterialFundChanges">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/Accountants">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportTable" order="1.0" xbrldt:closed="true" xbrldt:contextElement="segment" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/Accountants">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportLineItems" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountantChngStatementTextBlock" xlink:label="AccountantChngStatementTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AccountantChngStatementTextBlock" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountantChngDate" xlink:label="AccountantChngDate"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AccountantChngDate" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountantChngDisagreementsTextBlock" xlink:label="AccountantChngDisagreementsTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AccountantChngDisagreementsTextBlock" use="optional" priority="10" order="3.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/Accountants">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="ClassAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AvailabilityOfAdditionalInformation">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportTable" order="1.0" xbrldt:closed="true" xbrldt:contextElement="segment" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AvailabilityOfAdditionalInformation">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportLineItems" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoTextBlock" xlink:label="AddlInfoTextBlock"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoTextBlock" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoPhoneNumber" xlink:label="AddlInfoPhoneNumber"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoPhoneNumber" use="optional" priority="10" order="2.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoEmail" xlink:label="AddlInfoEmail"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoEmail" use="optional" priority="10" order="3.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoWebsite" xlink:label="AddlInfoWebsite"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoWebsite" use="optional" priority="10" order="4.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AvailabilityOfAdditionalInformation">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="ShareholderReportTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByClass">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnAbstract" xlink:label="AverageAnnualReturnAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnTable" xlink:label="AverageAnnualReturnTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="AverageAnnualReturnAbstract" xlink:to="AverageAnnualReturnTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByClass">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnAbstract" xlink:label="AverageAnnualReturnAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnLineItems" xlink:label="AverageAnnualReturnLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AverageAnnualReturnAbstract" xlink:to="AverageAnnualReturnLineItems" use="optional" priority="10" order="2.0" xbrldt:usable="false"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LineGraphAndTableMeasureName" xlink:label="LineGraphAndTableMeasureName"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AverageAnnualReturnLineItems" xlink:to="LineGraphAndTableMeasureName" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AvgAnnlRtrPct" xlink:label="AvgAnnlRtrPct"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AverageAnnualReturnLineItems" xlink:to="AvgAnnlRtrPct" use="optional" priority="10" order="2.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByClass">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnTable" xlink:label="AverageAnnualReturnTable"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AverageAnnualReturnTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AverageAnnualReturnTable" xlink:to="ClassAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/ClassOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_SalesLoadAxis" xlink:label="SalesLoadAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AverageAnnualReturnTable" xlink:to="SalesLoadAxis" use="optional" priority="10" order="3.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SalesLoadOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByBroadBasedIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnAbstract" xlink:label="AverageAnnualReturnAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnTable" xlink:label="AverageAnnualReturnTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="AverageAnnualReturnAbstract" xlink:to="AverageAnnualReturnTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByBroadBasedIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnAbstract" xlink:label="AverageAnnualReturnAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnLineItems" xlink:label="AverageAnnualReturnLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AverageAnnualReturnAbstract" xlink:to="AverageAnnualReturnLineItems" use="optional" priority="10" order="2.0" xbrldt:usable="false"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LineGraphAndTableMeasureName" xlink:label="LineGraphAndTableMeasureName"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AverageAnnualReturnLineItems" xlink:to="LineGraphAndTableMeasureName" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AvgAnnlRtrPct" xlink:label="AvgAnnlRtrPct"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AverageAnnualReturnLineItems" xlink:to="AvgAnnlRtrPct" use="optional" priority="10" order="2.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByBroadBasedIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnTable" xlink:label="AverageAnnualReturnTable"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AverageAnnualReturnTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_BroadBasedIndexAxis" xlink:label="BroadBasedIndexAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AverageAnnualReturnTable" xlink:to="BroadBasedIndexAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/BroadBasedIndexOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByAdditionalIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnAbstract" xlink:label="AverageAnnualReturnAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnTable" xlink:label="AverageAnnualReturnTable"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/all" xlink:from="AverageAnnualReturnAbstract" xlink:to="AverageAnnualReturnTable" order="1.0" xbrldt:contextElement="segment" xbrldt:closed="true" priority="10"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByAdditionalIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnAbstract" xlink:label="AverageAnnualReturnAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnLineItems" xlink:label="AverageAnnualReturnLineItems"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AverageAnnualReturnAbstract" xlink:to="AverageAnnualReturnLineItems" use="optional" priority="10" order="2.0" xbrldt:usable="false"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LineGraphAndTableMeasureName" xlink:label="LineGraphAndTableMeasureName"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AverageAnnualReturnLineItems" xlink:to="LineGraphAndTableMeasureName" use="optional" priority="10" order="1.0"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AvgAnnlRtrPct" xlink:label="AvgAnnlRtrPct"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/domain-member" xlink:from="AverageAnnualReturnLineItems" xlink:to="AvgAnnlRtrPct" use="optional" priority="10" order="2.0"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/AverageAnnualReturnDataByAdditionalIndex">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnTable" xlink:label="AverageAnnualReturnTable"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AverageAnnualReturnTable" xlink:to="LegalEntityAxis" use="optional" priority="10" order="1.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/SeriesOnly"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdditionalIndexAxis" xlink:label="AdditionalIndexAxis"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://xbrl.org/int/dim/arcrole/hypercube-dimension" xlink:from="AverageAnnualReturnTable" xlink:to="AdditionalIndexAxis" use="optional" priority="10" order="2.0" xbrldt:targetRole="http://xbrl.sec.gov/oef/role/AdditionalIndexOnly"/>
+</link:definitionLink>
+<link:definitionLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/Deprecated">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccmVal" xlink:label="AccmVal"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AcctVal" xlink:label="AcctVal"/>
+<link:definitionArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2009/arcrole/dep-concept-deprecatedConcept" xlink:from="AccmVal" xlink:to="AcctVal" order="1.0" priority="10"/>
+</link:definitionLink>
+<link:presentationLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ShareholderReport">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareClassDomain" xlink:label="ShareClassDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ClassAxis" xlink:to="ShareClassDomain" use="optional" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAbstract" xlink:label="ShareholderReportAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportAbstract" xlink:to="ShareholderReportTable" order="1.0" priority="10"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportTable" xlink:to="ClassAxis" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportTable" xlink:to="ShareholderReportLineItems" order="2.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_DocumentType" xlink:label="DocumentType"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="DocumentType" use="optional" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_AmendmentFlag" xlink:label="AmendmentFlag"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AmendmentFlag" use="optional" order="2.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_AmendmentDescription" xlink:label="AmendmentDescription"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AmendmentDescription" use="optional" order="3.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityRegistrantName" xlink:label="EntityRegistrantName"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EntityRegistrantName" use="optional" order="4.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityCentralIndexKey" xlink:label="EntityCentralIndexKey"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EntityCentralIndexKey" use="optional" order="5.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityInvCompanyType" xlink:label="EntityInvCompanyType"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EntityInvCompanyType" order="6.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_DocumentPeriodEndDate" xlink:label="DocumentPeriodEndDate"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="DocumentPeriodEndDate" use="optional" order="7.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_FundName" xlink:label="FundName"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="FundName" order="8.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassName" xlink:label="ClassName"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ClassName" order="9.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_NoTradingSymbolFlag" xlink:label="NoTradingSymbolFlag"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="NoTradingSymbolFlag" order="10.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_TradingSymbol" xlink:label="TradingSymbol"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="TradingSymbol" order="11.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_SecurityExchangeName" xlink:label="SecurityExchangeName"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="SecurityExchangeName" order="12.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportAnnualOrSemiAnnual" xlink:label="ShareholderReportAnnualOrSemiAnnual"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ShareholderReportAnnualOrSemiAnnual" order="14.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AnnlOrSemiAnnlStatementTextBlock" xlink:label="AnnlOrSemiAnnlStatementTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AnnlOrSemiAnnlStatementTextBlock" order="13.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoTextBlock" xlink:label="AddlInfoTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoTextBlock" order="15.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngNoticeTextBlock" xlink:label="MaterialFundChngNoticeTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngNoticeTextBlock" order="16.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoPhoneNumber" xlink:label="AddlInfoPhoneNumber"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoPhoneNumber" order="17.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoEmail" xlink:label="AddlInfoEmail"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoEmail" order="18.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlInfoWebsite" xlink:label="AddlInfoWebsite"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AddlInfoWebsite" order="19.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesTextBlock" xlink:label="ExpensesTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesTextBlock" order="20.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesPaidAmt" xlink:label="ExpensesPaidAmt"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesPaidAmt" order="21.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpenseRatioPct" xlink:label="ExpenseRatioPct"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ExpenseRatioPct" order="22.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesRepresentBothMasterAndFeeder" xlink:label="ExpensesRepresentBothMasterAndFeeder"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesRepresentBothMasterAndFeeder" order="23.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesShortPeriodFnTextBlock" xlink:label="ExpensesShortPeriodFnTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesShortPeriodFnTextBlock" order="24.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExtraordinaryExpensesFnTextBlock" xlink:label="ExtraordinaryExpensesFnTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ExtraordinaryExpensesFnTextBlock" order="25.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExpensesExclExtraordinaryExpensesPct" xlink:label="ExpensesExclExtraordinaryExpensesPct"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ExpensesExclExtraordinaryExpensesPct" order="26.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_FactorsAffectingPerfTextBlock" xlink:label="FactorsAffectingPerfTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="FactorsAffectingPerfTextBlock" order="27.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PerformancePastDoesNotIndicateFuture" xlink:label="PerformancePastDoesNotIndicateFuture"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="PerformancePastDoesNotIndicateFuture" order="28.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LineGraphTableTextBlock" xlink:label="LineGraphTableTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="LineGraphTableTextBlock" order="29.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AvgAnnlRtrTableTextBlock" xlink:label="AvgAnnlRtrTableTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AvgAnnlRtrTableTextBlock" order="30.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PerfInceptionDate" xlink:label="PerfInceptionDate"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="PerfInceptionDate" order="31.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_NoDeductionOfTaxesTextBlock" xlink:label="NoDeductionOfTaxesTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="NoDeductionOfTaxesTextBlock" order="32.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PerfTableMarketIndexChngdTextBlock" xlink:label="PerfTableMarketIndexChngdTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="PerfTableMarketIndexChngdTextBlock" order="33.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PriorMarketIndexComparisonTextBlock" xlink:label="PriorMarketIndexComparisonTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="PriorMarketIndexComparisonTextBlock" order="34.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PreviousInvestmentAdviserTextBlock" xlink:label="PreviousInvestmentAdviserTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="PreviousInvestmentAdviserTextBlock" order="35.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialChngDescriptionTextBlock" xlink:label="MaterialChngDescriptionTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialChngDescriptionTextBlock" order="36.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialChngDate" xlink:label="MaterialChngDate"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialChngDate" order="37.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UpdPerfInfoLocationTextBlock" xlink:label="UpdPerfInfoLocationTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="UpdPerfInfoLocationTextBlock" order="38.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_InabilityToMeetDistLevelTextBlock" xlink:label="InabilityToMeetDistLevelTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="InabilityToMeetDistLevelTextBlock" order="39.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_DistOfCapitalTextBlock" xlink:label="DistOfCapitalTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="DistOfCapitalTextBlock" order="40.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfPremiumDiscountTextBlock" xlink:label="EtfPremiumDiscountTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EtfPremiumDiscountTextBlock" order="41.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfPremiumNumDays" xlink:label="EtfPremiumNumDays"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EtfPremiumNumDays" order="42.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfDiscountNumDays" xlink:label="EtfDiscountNumDays"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EtfDiscountNumDays" order="43.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfPurchaseExplanationTextBlock" xlink:label="EtfPurchaseExplanationTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EtfPurchaseExplanationTextBlock" order="44.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_EtfPastPerfTextBlock" xlink:label="EtfPastPerfTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EtfPastPerfTextBlock" order="45.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_AssetsNet" xlink:label="AssetsNet"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AssetsNet" order="46.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsCount" xlink:label="HoldingsCount"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="HoldingsCount" order="47.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_InvestmentCompanyPortfolioTurnover" xlink:label="InvestmentCompanyPortfolioTurnover"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="InvestmentCompanyPortfolioTurnover" order="49.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdvisoryFeesPaidAmt" xlink:label="AdvisoryFeesPaidAmt"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AdvisoryFeesPaidAmt" order="48.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlFundStatisticsTextBlock" xlink:label="AddlFundStatisticsTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AddlFundStatisticsTextBlock" order="50.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AddlFundStatisticsSignificanceOrLimitsTextBlock" xlink:label="AddlFundStatisticsSignificanceOrLimitsTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AddlFundStatisticsSignificanceOrLimitsTextBlock" order="51.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTableTextBlock" xlink:label="HoldingsTableTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="HoldingsTableTextBlock" order="52.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ExposureBasisExplanationTextBlock" xlink:label="ExposureBasisExplanationTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="ExposureBasisExplanationTextBlock" order="53.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditQualityExplanationTextBlock" xlink:label="CreditQualityExplanationTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="CreditQualityExplanationTextBlock" order="54.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditRatingsSelectionTextBlock" xlink:label="CreditRatingsSelectionTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="CreditRatingsSelectionTextBlock" order="55.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LargestHoldingsTableTextBlock" xlink:label="LargestHoldingsTableTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="LargestHoldingsTableTextBlock" order="56.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngTextBlock" xlink:label="MaterialFundChngTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngTextBlock" order="57.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngNameTextBlock" xlink:label="MaterialFundChngNameTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngNameTextBlock" order="58.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngObjectivesTextBlock" xlink:label="MaterialFundChngObjectivesTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngObjectivesTextBlock" order="59.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngExpensesTextBlock" xlink:label="MaterialFundChngExpensesTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngExpensesTextBlock" order="60.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngStrategiesTextBlock" xlink:label="MaterialFundChngStrategiesTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngStrategiesTextBlock" order="61.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngRisksChngTextBlock" xlink:label="MaterialFundChngRisksChngTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngRisksChngTextBlock" order="62.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaterialFundChngAdviserTextBlock" xlink:label="MaterialFundChngAdviserTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="MaterialFundChngAdviserTextBlock" order="63.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_SummaryOfChngLegendTextBlock" xlink:label="SummaryOfChngLegendTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="SummaryOfChngLegendTextBlock" order="64.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UpdProspectusPhoneNumber" xlink:label="UpdProspectusPhoneNumber"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="UpdProspectusPhoneNumber" order="65.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UpdProspectusEmailAddress" xlink:label="UpdProspectusEmailAddress"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="UpdProspectusEmailAddress" order="66.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_UpdProspectusWebAddress" xlink:label="UpdProspectusWebAddress"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="UpdProspectusWebAddress" order="67.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountantChngStatementTextBlock" xlink:label="AccountantChngStatementTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AccountantChngStatementTextBlock" order="68.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountantChngDate" xlink:label="AccountantChngDate"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AccountantChngDate" order="69.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountantChngDisagreementsTextBlock" xlink:label="AccountantChngDisagreementsTextBlock"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AccountantChngDisagreementsTextBlock" order="70.0" priority="10"/>
+</link:presentationLink>
+<link:presentationLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ShareholderReportLineGraphDetails">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareClassDomain" xlink:label="ShareClassDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ClassAxis" xlink:to="ShareClassDomain" use="optional" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdditionalIndexAxis" xlink:label="AdditionalIndexAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdditionalIndexDomain" xlink:label="AdditionalIndexDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AdditionalIndexAxis" xlink:to="AdditionalIndexDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_BroadBasedIndexAxis" xlink:label="BroadBasedIndexAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_BroadBasedIndexDomain" xlink:label="BroadBasedIndexDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="BroadBasedIndexAxis" xlink:to="BroadBasedIndexDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTableAbstract" xlink:label="AccountValueTableAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueTable" xlink:label="AccountValueTable"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AccountValueTableAbstract" xlink:to="AccountValueTable" order="1.0" priority="10"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AccountValueTable" xlink:to="AdditionalIndexAxis" order="1.0" priority="10"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AccountValueTable" xlink:to="BroadBasedIndexAxis" order="2.0" priority="10"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AccountValueTable" xlink:to="ClassAxis" order="3.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccountValueLineItems" xlink:label="AccountValueLineItems"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AccountValueTable" xlink:to="AccountValueLineItems" order="4.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LineGraphAndTableMeasureName" xlink:label="LineGraphAndTableMeasureName"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AccountValueLineItems" xlink:to="LineGraphAndTableMeasureName" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AccmVal" xlink:label="AccmVal"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AccountValueLineItems" xlink:to="AccmVal" order="2.0" priority="10"/>
+</link:presentationLink>
+<link:presentationLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ShareholderReportHoldingsDetails">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareClassDomain" xlink:label="ShareClassDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ClassAxis" xlink:to="ShareClassDomain" use="optional" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsAbstract" xlink:label="HoldingsAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsTable" xlink:label="HoldingsTable"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsAbstract" xlink:to="HoldingsTable" order="1.0" priority="10"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="ClassAxis" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_InvestmentTypeAxis" xlink:label="InvestmentTypeAxis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="InvestmentTypeAxis" order="2.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.fasb.org/us-gaap/2025/elts/us-gaap-2025.xsd#us-gaap_InvestmentTypeCategorizationMember" xlink:label="InvestmentTypeCategorizationMember"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="InvestmentTypeAxis" xlink:to="InvestmentTypeCategorizationMember" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_GeographicRegionAxis" xlink:label="GeographicRegionAxis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="GeographicRegionAxis" order="3.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_GeographicRegionDomain" xlink:label="GeographicRegionDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="GeographicRegionAxis" xlink:to="GeographicRegionDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_IndustrySectorAxis" xlink:label="IndustrySectorAxis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="IndustrySectorAxis" order="4.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_IndustrySectorDomain" xlink:label="IndustrySectorDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="IndustrySectorAxis" xlink:to="IndustrySectorDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditQualityAxis" xlink:label="CreditQualityAxis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="CreditQualityAxis" order="5.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_CreditQualityDomain" xlink:label="CreditQualityDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="CreditQualityAxis" xlink:to="CreditQualityDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaturityAxis" xlink:label="MaturityAxis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="MaturityAxis" order="6.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_MaturityDomain" xlink:label="MaturityDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="MaturityAxis" xlink:to="MaturityDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory1Axis" xlink:label="OtherCategory1Axis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="OtherCategory1Axis" order="7.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory1Domain" xlink:label="OtherCategory1Domain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="OtherCategory1Axis" xlink:to="OtherCategory1Domain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory2Axis" xlink:label="OtherCategory2Axis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="OtherCategory2Axis" order="8.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_OtherCategory2Domain" xlink:label="OtherCategory2Domain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="OtherCategory2Axis" xlink:to="OtherCategory2Domain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LargestHoldingAxis" xlink:label="LargestHoldingAxis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="LargestHoldingAxis" order="9.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LargestHoldingsDomain" xlink:label="LargestHoldingsDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="LargestHoldingAxis" xlink:to="LargestHoldingsDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_HoldingsLineItems" xlink:label="HoldingsLineItems"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsTable" xlink:to="HoldingsLineItems" order="10.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfTotalInv" xlink:label="PctOfTotalInv"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsLineItems" xlink:to="PctOfTotalInv" order="2.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfTotalLongExposure" xlink:label="PctOfTotalLongExposure"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsLineItems" xlink:to="PctOfTotalLongExposure" order="3.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfTotalShortExposure" xlink:label="PctOfTotalShortExposure"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsLineItems" xlink:to="PctOfTotalShortExposure" order="4.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfNetLongExposure" xlink:label="PctOfNetLongExposure"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsLineItems" xlink:to="PctOfNetLongExposure" order="5.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfNetShortExposure" xlink:label="PctOfNetShortExposure"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsLineItems" xlink:to="PctOfNetShortExposure" order="6.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_PctOfNav" xlink:label="PctOfNav"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="HoldingsLineItems" xlink:to="PctOfNav" order="1.0" priority="10"/>
+</link:presentationLink>
+<link:presentationLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/NcsrCover">
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportTable" xlink:label="ShareholderReportTable"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareholderReportLineItems" xlink:label="ShareholderReportLineItems"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportTable" xlink:to="ShareholderReportLineItems" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_DocumentType" xlink:label="DocumentType"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="DocumentType" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_AmendmentFlag" xlink:label="AmendmentFlag"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AmendmentFlag" order="2.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_AmendmentDescription" xlink:label="AmendmentDescription"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="AmendmentDescription" order="3.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityRegistrantName" xlink:label="EntityRegistrantName"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EntityRegistrantName" order="4.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityCentralIndexKey" xlink:label="EntityCentralIndexKey"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EntityCentralIndexKey" order="5.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityInvCompanyType" xlink:label="EntityInvCompanyType"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="EntityInvCompanyType" order="6.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_DocumentPeriodEndDate" xlink:label="DocumentPeriodEndDate"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ShareholderReportLineItems" xlink:to="DocumentPeriodEndDate" order="7.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_CoverAbstract" xlink:label="CoverAbstract"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="CoverAbstract" xlink:to="ShareholderReportTable" order="1.0" priority="10"/>
+</link:presentationLink>
+<link:presentationLink xlink:type="extended" xlink:role="http://xbrl.sec.gov/oef/role/ShareholderReportAverageAnnualReturnDetails">
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_LegalEntityAxis" xlink:label="LegalEntityAxis"/>
+<link:loc xlink:type="locator" xlink:href="https://xbrl.sec.gov/dei/2025/dei-2025.xsd#dei_EntityDomain" xlink:label="EntityDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="LegalEntityAxis" xlink:to="EntityDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ClassAxis" xlink:label="ClassAxis"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_ShareClassDomain" xlink:label="ShareClassDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="ClassAxis" xlink:to="ShareClassDomain" use="optional" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnAbstract" xlink:label="AverageAnnualReturnAbstract"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnTable" xlink:label="AverageAnnualReturnTable"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AverageAnnualReturnAbstract" xlink:to="AverageAnnualReturnTable" order="1.0" priority="10"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AverageAnnualReturnTable" xlink:to="LegalEntityAxis" order="5.0" priority="10"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AverageAnnualReturnTable" xlink:to="ClassAxis" order="4.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_SalesLoadAxis" xlink:label="SalesLoadAxis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AverageAnnualReturnTable" xlink:to="SalesLoadAxis" order="3.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_WithSalesLoadMember" xlink:label="WithSalesLoadMember"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="SalesLoadAxis" xlink:to="WithSalesLoadMember" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_WithoutSalesLoadMember" xlink:label="WithoutSalesLoadMember"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="WithSalesLoadMember" xlink:to="WithoutSalesLoadMember" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdditionalIndexAxis" xlink:label="AdditionalIndexAxis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AverageAnnualReturnTable" xlink:to="AdditionalIndexAxis" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AdditionalIndexDomain" xlink:label="AdditionalIndexDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AdditionalIndexAxis" xlink:to="AdditionalIndexDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_BroadBasedIndexAxis" xlink:label="BroadBasedIndexAxis"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AverageAnnualReturnTable" xlink:to="BroadBasedIndexAxis" order="2.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_BroadBasedIndexDomain" xlink:label="BroadBasedIndexDomain"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="BroadBasedIndexAxis" xlink:to="BroadBasedIndexDomain" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AverageAnnualReturnLineItems" xlink:label="AverageAnnualReturnLineItems"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AverageAnnualReturnAbstract" xlink:to="AverageAnnualReturnLineItems" order="2.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_LineGraphAndTableMeasureName" xlink:label="LineGraphAndTableMeasureName"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AverageAnnualReturnLineItems" xlink:to="LineGraphAndTableMeasureName" order="1.0" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="oef-2025.xsd#oef_AvgAnnlRtrPct" xlink:label="AvgAnnlRtrPct"/>
+<link:presentationArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/parent-child" xlink:from="AverageAnnualReturnLineItems" xlink:to="AvgAnnlRtrPct" order="2.0" priority="10"/>
+</link:presentationLink>
+</link:linkbase>
+</xs:appinfo>
+</xs:annotation>
+</xs:schema>

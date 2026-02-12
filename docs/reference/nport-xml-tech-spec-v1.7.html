@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="title" content="EDGAR Form N-PORT XML Technical Specification (Version 1.7)"/>
+  <meta name="creator" content="U.S. Securities and Exchange Commission"/>
+
+  <title>EDGAR Form N-PORT XML Technical Specification (Version 1.7)</title>
+
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+  
+
+<style>
+section.alpha li {
+  margin-top: 9px;
+}
+section.alpha ul ul {
+  margin-top: 9px;
+  margin-bottom: 4px;
+}
+section.alpha .lip {
+  margin-top: 9px;
+  margin-bottom: 4px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="global-wrapper">
+
+<header id="top-wrapper-mobile">
+
+<div id="top-seal">
+    <a href="/" title="SEC Emblem" rel="home">
+      <img src="/images/sec-logo.png" alt="SEC Emblem">
+    </a>
+  </div>
+
+<div id="banner-org-name-mobile">
+      <a href="/" title="U.S. Securities and Exchange Commission" rel="home">U.S. SECURITIES AND EXCHANGE COMMISSION</a>
+  </div>
+
+<div id="hbutton" onclick="menuFunction(this)">
+  <div class="bar1"></div>
+  <div class="bar2"></div>
+  <div class="bar3"></div>
+</div>
+
+</header> <!-- END TOP-WRAPPER-MOBILE -->
+
+<header id="global-header">
+
+<div id="banner-large">
+<img id="banner-seal" src="/images/global-banner-seal.png" width="110" height="110" alt="U.S. Securities and Exchange Commission" usemap="#banner-seal-map">
+<map name="banner-seal-map">
+<area shape="circle" coords="55,55,55" href="/index.htm" alt="U.S. Securities and Exchange Commission">
+</map>
+
+<div id="banner-org-name">
+<a href="/index.htm"><img id="banner-org-name-image" src="/images/global-banner-org-name.png" alt="U.S. Securities and Exchange Commission"></a>
+</div>
+
+</div>
+
+<div id="global-search" class="large">
+<form id="global-search-form" class="clearfix" accept-charset="UTF-8" action="https://search.usa.gov/search" method="get" name="form_iQueryForm">
+<label class="overlabel" for="global-search-box">Search SEC.gov</label>
+<input name="utf8" type="hidden" value="&#x2713;" />
+<input id="affiliate" name="affiliate" type="hidden" value="secsearch" />
+<input autocomplete="off" class="usagov-search-autocomplete" id="global-search-box" name="query" title="Search for" type="text">
+<input id="global-search-button" value="Go" title="Go" type="submit">
+</form>
+<p class="options"><a href="/edgar/searchedgar/companysearch.html">Company Filings</a></p>
+</div> <!-- END GLOBAL-SEARCH large -->
+
+<a id="global-skip-nav" href="#main-content">Skip to Main Content</a>
+
+<nav id="global-nav" class="global-navigation">
+
+<ul class="clearfix">
+<li>
+<a href="/about.shtml">About</a>
+<ul>
+<li><a href="/careers">Careers</a></li>
+<li><a href="/Article/about-commissioners.html">Commissioners</a></li>
+<li><a href="/contact-information/sec-directory">Contact</a></li>
+<li><a href="/reports">Reports and Publications</a></li>
+<li><a href="https://www.investor.gov/introduction-investing/investing-basics/role-sec/laws-govern-securities-industry
+">Securities Laws</a></li>
+<li><a href="/about/mission">Mission</a></li>
+</ul>
+</li>
+<li>
+<a href="/divisions.shtml" id="xoffice">Divisions</a>
+<a href="/divisions.shtml" id="divoffice">Divisions & Offices</a>
+<ul>
+<li><a href="/page/corpfin-section-landing">Corporation Finance</a></li>
+<li><a href="/page/enforcement-section-landing">Enforcement</a></li>
+<li><a href="/investment-management">Investment Management</a></li>
+<li><a href="/dera">Economic and Risk Analysis</a></li>
+<li><a href="/divisions/trading-markets">Trading and Markets</a></li>
+<li><a href="/exams">Division of Examinations</a></li>
+<li><a href="/page/aljsectionlanding">Office of Administrative Law Judges</a></li>
+<li><a href="/page/sec-regional-offices">Regional Offices</a></li>
+<li><a href="/divisions.shtml">All Divisions and Offices</a></li>
+</ul>
+</li>
+<li>
+<a href="/page/litigation">Enforcement</a>
+<ul>
+<li><a href="/litigation/litreleases.htm">Litigation Releases</a></li>
+<li><a href="/litigation/admin.htm">Administrative Proceedings</a></li>
+<li><a href="/litigation/opinions.htm">Opinions and Adjudicatory Orders</a></li>
+<li><a href="/divisions/enforce/friactions.htm">Accounting and Auditing</a></li>
+<li><a href="/litigation/suspensions.htm">Trading Suspensions</a></li>
+<li><a href="/news/newsroom/howinvestigationswork.html">How Investigations Work</a></li>
+<li><a href="/divisions/enforce/receiverships.htm">Receiverships</a></li>
+<li><a href="/divisions/enforce/claims.htm">Information for Harmed Investors</a></li>
+</ul>
+</li>
+<li>
+<a href="/page/regulation">Regulation</a>
+<ul>
+<li><a href="/rules/rulemaking-index.shtml">Rulemaking Index</a></li>
+<li><a href="/rules/proposed.shtml">Proposed Rules</a></li>
+<li><a href="/rules/final.shtml">Final Rules</a></li>
+<li><a href="/rules/interim-final-temp.shtml">Interim Final Rules</a></li>
+<li><a href="/rules/other.htm">Other Orders and Notices</a></li>
+<li><a href="/rules/sro.shtml">Self-Regulatory Organizations</a></li>
+<li><a href="/regulation/staff-interpretations">Staff Interpretations</a></li>
+</ul>
+</li>
+<li>
+<a href="/education">Education</a>
+<ul>
+<li><a href="https://www.investor.gov/">Investor.gov</a></li>
+<li><a href="https://www.investor.gov/research-before-you-invest/research/five-questions-ask-before-you-invest">Five Questions to Ask Before You Invest</a></li>
+<li><a href="https://www.investor.gov/investment-professionals">About Investment Professionals</a></li>
+<li><a href="/check-your-investment-professional">Check Your Investment Professional</a></li>
+<li><a href="https://www.investor.gov/additional-resources/free-financial-planning-tools">Investing Tools and Calculators</a></li>
+<li><a href="https://www.investor.gov/introduction-investing/basics/investment-products">Investment Products</a></li> 
+<li><a href="https://www.investor.gov/research-before-you-invest/research/understanding-fees">Understanding Fees</a></li>
+<li><a href="https://www.investor.gov/additional-resources/news-alerts/alerts-bulletins">Investor Alerts and Bulletins</a></li>
+<li><a href="https://www.investor.gov/additional-resources/general-resources/glossary">Glossary</a></li>
+</ul>
+</li>
+<li>
+<a href="/edgar.shtml">Filings</a>
+<ul>
+<li><a href="/edgar/search-and-access">EDGAR Search & Access</a></li>
+<li><a href="/edgar/searchedgar/companysearch.html">Company Filing Search</a></li>
+<li><a href="/oiea/Article/edgarguide.html">How to Search EDGAR</a></li>
+<li><a href="https://www.investor.gov/introduction-investing/investing-basics/glossary/public-documents">Requesting Public Documents</a></li>
+<li><a href="/forms">Forms List</a></li>
+<li><a href="/edgar/filer-information">Information for Filers</a></li>
+<li><a href="/edgar/about">About EDGAR</a></li>
+</ul>
+</li>
+<li>
+<a href="/news">News</a>
+<ul>
+<li><a href="/news/pressreleases">Press Releases</a></li>
+<li><a href="https://www.sec.gov/news/speeches-statements">Speeches and Statements</a></li>
+<li><a href="/spotlight">Spotlight Topics</a></li>
+<li><a href="/news/upcoming-events">Upcoming Events</a></li>
+<li><a href="/news/sec-webcasts">Webcasts</a></li>
+<li><a href="/spotlight/fireside-chats">SEC in the News</a></li>
+<li><a href="/news/sec-videos">SEC Videos</a></li>
+<li><a href="/news/media-gallery/">Media Gallery</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="global-search-mobile" class="mobile">
+<form id="global-search-form-mobile" class="clearfix" accept-charset="UTF-8" action="https://search.usa.gov/search" method="get" name="form_iQueryForm">
+<label class="overlabel" for="global-search-box-mobile">Search SEC Documents</label>
+<input name="utf8" type="hidden" value="&#x2713;" />
+<input id="affiliate" name="affiliate" type="hidden" value="secsearch" />
+<input autocomplete="off" class="usagov-search-autocomplete" id="global-search-box-mobile" name="query" title="Search for" type="text">
+<input id="global-search-button-mobile" value="Go" title="Go" type="submit">
+</form>
+<p class="options"><a href="/edgar/searchedgar/companysearch.html">Company Filings</a> &#124; <a href="/search/search.htm">More Search Options</a></p>
+
+</div> <!-- END GLOBAL-SEARCH-Mobile -->
+
+</nav>  <!-- END GLOBAL-NAV -->
+
+</header> <!-- END GLOBAL-HEADER -->
+
+<main id="main-content">
+
+<div id="local-nav" class="grid_2 pull_10">
+  <ul>
+	<li class="first-item"><a class="first-link" href="/page/news">Newsroom</a>
+      <ul class="last-menu">
+	<li><a href="/news/pressreleases">Press Releases</a></li>
+	<li><a href="/news/statements">Public Statements</a></li>	
+    <li><a href="/news/speeches">Speeches</a></li>
+	<li><a href="/news/testimony">Testimony</a></li>
+    <li><a href="/spotlight">Spotlight Topics</a></li>
+    <li><a href="/news/media-gallery">Media Gallery</a></li>
+    <li><a href="/news/upcoming-events">Upcoming Events</a></li>
+	<li><a href="/news/webcasts.htm">Webcasts</a></li>
+	<li><a href="/news/whatsnew/wn-today.shtml">What's New</a></li>
+	<li><a href="/news/sec-videos">SEC Videos</a></li>
+	<li><a href="/reports">Reports and Publications</a></li>
+    <li><a href="/about/secrss.shtml">RSS Feeds</a></li>
+	<li><a href="/opa/socialmedia">Social Media</a></li>
+      </ul>
+     </li>
+</ul>
+</div>
+
+<section class="alpha">
+
+<!-- CONTENT GOES HERE -->
+
+<h1>EDGAR Form N-PORT XML Technical Specification (Version 1.7)</h1>
+
+<h2>Implementation Date: June 10, 2019</h2>
+
+<p>The Form N-PORT XML Technical Specification (Version 1.7) document describes the valid structure and content of the Form N-PORT Electronic Data Gathering, Analysis, and Retrieval (EDGAR) Extensible Markup Language (XML) submission types. This specification provides a basis for creating Form N-PORT submissions. The expectation is that software developers, working on behalf of filers, will be able to construct software that will generate a Form N-PORT submission that can be successfully processed by the EDGAR system.</p>
+
+<p>The Form N-PORT submission file must conform to the EDGAR Form N-PORT Submission Taxonomy for the EDGAR system. This taxonomy comprises a collection of XML Schema Definition (.xsd) files that defines the structure of EDGAR Form N-PORT submissions.  The Form N-PORT XML submissions can be transmitted to the SEC via the ‘Transmit’ link on the EDGAR FilerWeb (<a href="https://www.edgarfiling.sec.gov/">https://www.edgarfiling.sec.gov/</a>) or the ‘Transmit XML Submission’ link on the EDGAR OnlineForms Website (<a href="https://www.onlineforms.edgarfiling.sec.gov">https://www.onlineforms.edgarfiling.sec.gov</a>).</p>
+
+<p>EDGAR Release 19.2 will introduce the following change:</p>
+
+<ul>
+	<li>Section 3.4, corrected the documentation of “rtn1”, “rtn2” and “rtn3” to reflect the schema.
+
+<p class="lip">This is only a text change update and no change was made to the schema.</p>
+ </li></ul>
+
+<ul class="bullet-1">
+
+<li><a href="/info/edgar/specifications/form-n-port-xml-tech-specs-1.7.zip">Download the EDGAR Form N-PORT XML Technical Specification (Version 1.7)</a></li>
+
+</ul>
+
+<!-- END CONTENT -->
+
+</section> <!-- END ALPHA -->
+
+    <aside class="omega"> <!-- SIDEBAR -->
+
+      <!-- <ul class="bullet-1">
+        <li></li>
+      </ul> -->
+    </aside> <!-- END SIDEBAR -->
+
+  </main> <!-- Main content close -->
+
+<div id="local-footer" class="grid_(none)">
+<div id="page-variables" class="clearfix">
+<p id="ssi-modified">Modified: June 10, 2019</p>
+</div>
+</div>
+
+<footer id="global-footer">
+<ul class="clearfix"><li><a href="/disability/sec_access.htm">Accessibility</a></li><li><a href="/about/offices/ofm/ofm-documents.htm">Budget&nbsp;&amp;&nbsp;Performance</a></li><li><a href="/careers">Careers</a></li><li><a href="/contact-information/sec-directory">Contact</a></li><li><a href="/page/oacqsectionlanding">Contracts</a></li><li><a href="/sec-data-resources">Data</a></li><li><a href="/page/office-foia-services">FOIA</a></li><li><a href="/oig">Inspector&nbsp;General</a></li><li><a href="https://www.investor.gov/">Investor.gov</a></li><li><a href="/page/eeosectionlanding">No&nbsp;FEAR&nbsp;Act&nbsp;&amp;&nbsp;EEO&nbsp;Data</a></li><li><a href="https://www.sec.gov/ombudsman">Ombuds</a></li><li><a href="/plainwriting.shtml">Plain&nbsp;Writing</a></li><li><a href="/privacy.htm">Privacy & Security</a></li><li><a href="/links">Related&nbsp;Sites</a></li><li><a href="/sitemap.shtml">Site&nbsp;Map</a></li><li><a href="https://www.usa.gov/">USA.gov</a></li><li><a href="/about/commission-votes.shtml">Votes</a></li><li><a href="/whistleblower">Whistleblower&nbsp;Protection</a></li></ul>
+</footer>
+
+</div>  <!-- END GLOBAL WRAPPER -->
+
+<script src="/js/basic-responsive.js"></script>
+
+
+</body>
+</html>

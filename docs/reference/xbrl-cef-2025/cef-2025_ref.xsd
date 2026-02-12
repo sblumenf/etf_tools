@@ -1,0 +1,767 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!-- This schema was created by staff of the U.S. Securities and Exchange Commission. -->
+<!-- Data and content created by government employees within the scope of their employment -->
+<!-- are not subject to domestic copyright protection. 17 U.S.C. 105. -->
+<xs:schema
+xmlns:cef-ref="http://xbrl.sec.gov/cef-ref/2025"
+xmlns:link="http://www.xbrl.org/2003/linkbase"
+xmlns:ref="http://www.xbrl.org/2006/ref"
+xmlns:xlink="http://www.w3.org/1999/xlink"
+xmlns:xs="http://www.w3.org/2001/XMLSchema"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+targetNamespace="http://xbrl.sec.gov/cef-ref/2025"
+elementFormDefault="qualified"
+xsi:schemaLocation="http://www.xbrl.org/2006/ref http://www.xbrl.org/2006/ref-2006-02-27.xsd">
+<xs:annotation>
+<xs:appinfo>
+<link:linkbase id="lnk">
+<link:referenceLink xlink:type="extended" xlink:role="http://www.xbrl.org/2003/role/link">
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_CoregistrantAxis" xlink:label="CoregistrantAxis"/>
+<link:reference xlink:type="resource" xlink:label="reference_CoregistrantAxis" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="CoregistrantAxis" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AllCoregistrantsMember" xlink:label="AllCoregistrantsMember"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AllCoregistrantsMember" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_RiskTextBlock" xlink:label="RiskTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_RiskTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="RiskTextBlock" xlink:to="reference_RiskTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_RiskAxis" xlink:label="RiskAxis"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="RiskAxis" xlink:to="reference_RiskTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AllRisksMember" xlink:label="AllRisksMember"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AllRisksMember" xlink:to="reference_RiskTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ProspectusLineItems" xlink:label="ProspectusLineItems"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ProspectusLineItems" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ProspectusTable" xlink:label="ProspectusTable"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ProspectusTable" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_FeeTableAbstract" xlink:label="FeeTableAbstract"/>
+<link:reference xlink:type="resource" xlink:label="reference_FeeTableAbstract" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="FeeTableAbstract" xlink:to="reference_FeeTableAbstract" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ShareholderTransactionExpensesTableTextBlock" xlink:label="ShareholderTransactionExpensesTableTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ShareholderTransactionExpensesTableTextBlock" xlink:to="reference_FeeTableAbstract" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SalesLoadPercent" xlink:label="SalesLoadPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SalesLoadPercent" xlink:to="reference_FeeTableAbstract" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_UnderwritersCompensationPercent" xlink:label="UnderwritersCompensationPercent"/>
+<link:reference xlink:type="resource" xlink:label="reference_UnderwritersCompensationPercent" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 5</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="UnderwritersCompensationPercent" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AnnualExpensesTableTextBlock" xlink:label="AnnualExpensesTableTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_AnnualExpensesTableTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 6</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AnnualExpensesTableTextBlock" xlink:to="reference_AnnualExpensesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ManagementFeesPercent" xlink:label="ManagementFeesPercent"/>
+<link:reference xlink:type="resource" xlink:label="reference_ManagementFeesPercent" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 7</ref:Paragraph>
+<ref:Subparagraph>a</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ManagementFeesPercent" xlink:to="reference_ManagementFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AcquiredFundFeesAndExpensesPercent" xlink:label="AcquiredFundFeesAndExpensesPercent"/>
+<link:reference xlink:type="resource" xlink:label="reference_AcquiredFundFeesAndExpensesPercent" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 10</ref:Paragraph>
+<ref:Subparagraph>a, g, h</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AcquiredFundFeesAndExpensesPercent" xlink:to="reference_AcquiredFundFeesAndExpensesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_TotalAnnualExpensesPercent" xlink:label="TotalAnnualExpensesPercent"/>
+<link:reference xlink:type="resource" xlink:label="reference_TotalAnnualExpensesPercent" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 8</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="TotalAnnualExpensesPercent" xlink:to="reference_TotalAnnualExpensesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ExpenseExampleTableTextBlock" xlink:label="ExpenseExampleTableTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ExpenseExampleTableTextBlock" xlink:to="reference_FeeTableAbstract" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ExpenseExampleYear01" xlink:label="ExpenseExampleYear01"/>
+<link:reference xlink:type="resource" xlink:label="reference_ExpenseExampleYear01" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 11</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ExpenseExampleYear01" xlink:to="reference_ExpenseExampleYear01" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ExpenseExampleYears1to3" xlink:label="ExpenseExampleYears1to3"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ExpenseExampleYears1to3" xlink:to="reference_ExpenseExampleYear01" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ExpenseExampleYears1to5" xlink:label="ExpenseExampleYears1to5"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ExpenseExampleYears1to5" xlink:to="reference_ExpenseExampleYear01" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ExpenseExampleYears1to10" xlink:label="ExpenseExampleYears1to10"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ExpenseExampleYears1to10" xlink:to="reference_ExpenseExampleYear01" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_PurposeOfFeeTableNoteTextBlock" xlink:label="PurposeOfFeeTableNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_PurposeOfFeeTableNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 1</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="PurposeOfFeeTableNoteTextBlock" xlink:to="reference_PurposeOfFeeTableNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_BasisOfTransactionFeesNoteTextBlock" xlink:label="BasisOfTransactionFeesNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_BasisOfTransactionFeesNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 4</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="BasisOfTransactionFeesNoteTextBlock" xlink:to="reference_BasisOfTransactionFeesNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherTransactionFeesNoteTextBlock" xlink:label="OtherTransactionFeesNoteTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherTransactionFeesNoteTextBlock" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherExpensesNoteTextBlock" xlink:label="OtherExpensesNoteTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherExpensesNoteTextBlock" xlink:to="reference_AnnualExpensesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ManagementFeeNotBasedOnNetAssetsNoteTextBlock" xlink:label="ManagementFeeNotBasedOnNetAssetsNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_ManagementFeeNotBasedOnNetAssetsNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 7</ref:Paragraph>
+<ref:Subparagraph>b</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ManagementFeeNotBasedOnNetAssetsNoteTextBlock" xlink:to="reference_ManagementFeeNotBasedOnNetAssetsNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AcquiredFundFeesAndExpensesNoteTextBlock" xlink:label="AcquiredFundFeesAndExpensesNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_AcquiredFundFeesAndExpensesNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 10</ref:Paragraph>
+<ref:Subparagraph>a</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AcquiredFundFeesAndExpensesNoteTextBlock" xlink:to="reference_AcquiredFundFeesAndExpensesNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AcquiredFundFeesEstimatedNoteTextBlock" xlink:label="AcquiredFundFeesEstimatedNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_AcquiredFundFeesEstimatedNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 10</ref:Paragraph>
+<ref:Subparagraph>f</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AcquiredFundFeesEstimatedNoteTextBlock" xlink:to="reference_AcquiredFundFeesEstimatedNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AcquiredFundIncentiveAllocationNoteTextBlock" xlink:label="AcquiredFundIncentiveAllocationNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_AcquiredFundIncentiveAllocationNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 10</ref:Paragraph>
+<ref:Subparagraph>g</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AcquiredFundIncentiveAllocationNoteTextBlock" xlink:to="reference_AcquiredFundIncentiveAllocationNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_IncentiveAllocationPercent" xlink:label="IncentiveAllocationPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="IncentiveAllocationPercent" xlink:to="reference_AcquiredFundIncentiveAllocationNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AcquiredFundTotalAnnualExpensesNoteTextBlock" xlink:label="AcquiredFundTotalAnnualExpensesNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_AcquiredFundTotalAnnualExpensesNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 10</ref:Paragraph>
+<ref:Subparagraph>i</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AcquiredFundTotalAnnualExpensesNoteTextBlock" xlink:to="reference_AcquiredFundTotalAnnualExpensesNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SeniorSecuritiesTableTextBlock" xlink:label="SeniorSecuritiesTableTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesTableTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesTableTextBlock" xlink:to="reference_SeniorSecuritiesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SeniorSecuritiesAmt" xlink:label="SeniorSecuritiesAmt"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesAmt" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>2</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesAmt" xlink:to="reference_SeniorSecuritiesAmt" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SeniorSecuritiesCvgPerUnit" xlink:label="SeniorSecuritiesCvgPerUnit"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesCvgPerUnit" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>3</ref:Paragraph>
+<ref:Subparagraph>Instruction 2</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesCvgPerUnit" xlink:to="reference_SeniorSecuritiesCvgPerUnit" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SeniorSecuritiesAverageMarketValuePerUnit" xlink:label="SeniorSecuritiesAverageMarketValuePerUnit"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesAverageMarketValuePerUnit" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>5</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesAverageMarketValuePerUnit" xlink:to="reference_SeniorSecuritiesAverageMarketValuePerUnit" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SeniorSecuritiesNoteTextBlock" xlink:label="SeniorSecuritiesNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>Instruction 1</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesNoteTextBlock" xlink:to="reference_SeniorSecuritiesNoteTextBlock" priority="10"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesNoteTextBlock_2" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 2</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesNoteTextBlock" xlink:to="reference_SeniorSecuritiesNoteTextBlock_2" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SeniorSecuritiesHighlightsAnnualizedNoteTextBlock" xlink:label="SeniorSecuritiesHighlightsAnnualizedNoteTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesHighlightsAnnualizedNoteTextBlock" xlink:to="reference_SeniorSecuritiesNoteTextBlock" priority="10"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesHighlightsAnnualizedNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 3</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesHighlightsAnnualizedNoteTextBlock" xlink:to="reference_SeniorSecuritiesHighlightsAnnualizedNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SeniorSecuritiesAveragingMethodNoteTextBlock" xlink:label="SeniorSecuritiesAveragingMethodNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesAveragingMethodNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>Instruction 4</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesAveragingMethodNoteTextBlock" xlink:to="reference_SeniorSecuritiesAveragingMethodNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SeniorSecuritiesHeadingsNoteTextBlock" xlink:label="SeniorSecuritiesHeadingsNoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesHeadingsNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>Instruction 5</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesHeadingsNoteTextBlock" xlink:to="reference_SeniorSecuritiesHeadingsNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_RiskFactorsTableTextBlock" xlink:label="RiskFactorsTableTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="RiskFactorsTableTextBlock" xlink:to="reference_RiskTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_EffectsOfLeverageTextBlock" xlink:label="EffectsOfLeverageTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_EffectsOfLeverageTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="EffectsOfLeverageTextBlock" xlink:to="reference_EffectsOfLeverageTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AnnualDividendPayment" xlink:label="AnnualDividendPayment"/>
+<link:reference xlink:type="resource" xlink:label="reference_AnnualDividendPayment" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>1</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AnnualDividendPayment" xlink:to="reference_AnnualDividendPayment" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AnnualInterestRatePercent" xlink:label="AnnualInterestRatePercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AnnualInterestRatePercent" xlink:to="reference_AnnualDividendPayment" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AnnualInterestRateInitialPercent" xlink:label="AnnualInterestRateInitialPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AnnualInterestRateInitialPercent" xlink:to="reference_AnnualDividendPayment" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AnnualInterestRateCurrentPercent" xlink:label="AnnualInterestRateCurrentPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AnnualInterestRateCurrentPercent" xlink:to="reference_AnnualDividendPayment" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AnnualCoverageReturnRatePercent" xlink:label="AnnualCoverageReturnRatePercent"/>
+<link:reference xlink:type="resource" xlink:label="reference_AnnualCoverageReturnRatePercent" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>2</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AnnualCoverageReturnRatePercent" xlink:to="reference_AnnualCoverageReturnRatePercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_EffectsOfLeverageTableTextBlock" xlink:label="EffectsOfLeverageTableTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_EffectsOfLeverageTableTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>3</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="EffectsOfLeverageTableTextBlock" xlink:to="reference_EffectsOfLeverageTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ReturnAtMinusTenPercent" xlink:label="ReturnAtMinusTenPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ReturnAtMinusTenPercent" xlink:to="reference_EffectsOfLeverageTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ReturnAtMinusFivePercent" xlink:label="ReturnAtMinusFivePercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ReturnAtMinusFivePercent" xlink:to="reference_EffectsOfLeverageTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ReturnAtZeroPercent" xlink:label="ReturnAtZeroPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ReturnAtZeroPercent" xlink:to="reference_EffectsOfLeverageTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ReturnAtPlusFivePercent" xlink:label="ReturnAtPlusFivePercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ReturnAtPlusFivePercent" xlink:to="reference_EffectsOfLeverageTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_ReturnAtPlusTenPercent" xlink:label="ReturnAtPlusTenPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="ReturnAtPlusTenPercent" xlink:to="reference_EffectsOfLeverageTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_EffectsOfLeveragePurposeTextBlock" xlink:label="EffectsOfLeveragePurposeTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="EffectsOfLeveragePurposeTextBlock" xlink:to="reference_EffectsOfLeverageTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SharePriceTableTextBlock" xlink:label="SharePriceTableTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SharePriceTableTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>4</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SharePriceTableTextBlock" xlink:to="reference_SharePriceTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LowestPriceOrBid" xlink:label="LowestPriceOrBid"/>
+<link:reference xlink:type="resource" xlink:label="reference_LowestPriceOrBid" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LowestPriceOrBid" xlink:to="reference_LowestPriceOrBid" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_HighestPriceOrBid" xlink:label="HighestPriceOrBid"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="HighestPriceOrBid" xlink:to="reference_LowestPriceOrBid" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LowestPriceOrBidNav" xlink:label="LowestPriceOrBidNav"/>
+<link:reference xlink:type="resource" xlink:label="reference_LowestPriceOrBidNav" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>Instruction 4</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LowestPriceOrBidNav" xlink:to="reference_LowestPriceOrBidNav" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_HighestPriceOrBidNav" xlink:label="HighestPriceOrBidNav"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="HighestPriceOrBidNav" xlink:to="reference_LowestPriceOrBidNav" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_HighestPriceOrBidPremiumDiscountToNavPercent" xlink:label="HighestPriceOrBidPremiumDiscountToNavPercent"/>
+<link:reference xlink:type="resource" xlink:label="reference_HighestPriceOrBidPremiumDiscountToNavPercent" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>Instructions 4, 5</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="HighestPriceOrBidPremiumDiscountToNavPercent" xlink:to="reference_HighestPriceOrBidPremiumDiscountToNavPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LowestPriceOrBidPremiumDiscountToNavPercent" xlink:label="LowestPriceOrBidPremiumDiscountToNavPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LowestPriceOrBidPremiumDiscountToNavPercent" xlink:to="reference_HighestPriceOrBidPremiumDiscountToNavPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SharePricesNotActualTransactionsTextBlock" xlink:label="SharePricesNotActualTransactionsTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SharePricesNotActualTransactionsTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>Instruction 2</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SharePricesNotActualTransactionsTextBlock" xlink:to="reference_SharePricesNotActualTransactionsTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_NoPublicTradingTextBlock" xlink:label="NoPublicTradingTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_NoPublicTradingTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>Instruction 3</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="NoPublicTradingTextBlock" xlink:to="reference_NoPublicTradingTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_NoTradingHistoryTextBlock" xlink:label="NoTradingHistoryTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_NoTradingHistoryTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>e</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="NoTradingHistoryTextBlock" xlink:to="reference_NoTradingHistoryTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_CapitalStockTableTextBlock" xlink:label="CapitalStockTableTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_CapitalStockTableTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="CapitalStockTableTextBlock" xlink:to="reference_CapitalStockTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SecurityTitleTextBlock" xlink:label="SecurityTitleTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SecurityTitleTextBlock" xlink:to="reference_CapitalStockTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SecurityDividendsTextBlock" xlink:label="SecurityDividendsTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SecurityDividendsTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+<ref:Subparagraph>1</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SecurityDividendsTextBlock" xlink:to="reference_SecurityDividendsTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SecurityVotingRightsTextBlock" xlink:label="SecurityVotingRightsTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SecurityVotingRightsTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+<ref:Subparagraph>2</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SecurityVotingRightsTextBlock" xlink:to="reference_SecurityVotingRightsTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SecurityLiquidationRightsTextBlock" xlink:label="SecurityLiquidationRightsTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SecurityLiquidationRightsTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+<ref:Subparagraph>3</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SecurityLiquidationRightsTextBlock" xlink:to="reference_SecurityLiquidationRightsTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SecurityLiabilitiesTextBlock" xlink:label="SecurityLiabilitiesTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SecurityLiabilitiesTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+<ref:Subparagraph>4</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SecurityLiabilitiesTextBlock" xlink:to="reference_SecurityLiabilitiesTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SecurityPreemptiveAndOtherRightsTextBlock" xlink:label="SecurityPreemptiveAndOtherRightsTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SecurityPreemptiveAndOtherRightsTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+<ref:Subparagraph>5</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SecurityPreemptiveAndOtherRightsTextBlock" xlink:to="reference_SecurityPreemptiveAndOtherRightsTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SecurityObligationsOfOwnershipTextBlock" xlink:label="SecurityObligationsOfOwnershipTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_SecurityObligationsOfOwnershipTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+<ref:Subparagraph>6</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SecurityObligationsOfOwnershipTextBlock" xlink:to="reference_SecurityObligationsOfOwnershipTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_DistributionsMayReducePrincipalTextBlock" xlink:label="DistributionsMayReducePrincipalTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_DistributionsMayReducePrincipalTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+<ref:Subparagraph>Instruction 2</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="DistributionsMayReducePrincipalTextBlock" xlink:to="reference_DistributionsMayReducePrincipalTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_PreferredStockRestrictionsArrearageTextBlock" xlink:label="PreferredStockRestrictionsArrearageTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_PreferredStockRestrictionsArrearageTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>1</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="PreferredStockRestrictionsArrearageTextBlock" xlink:to="reference_PreferredStockRestrictionsArrearageTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_PreferredStockRestrictionsOtherTextBlock" xlink:label="PreferredStockRestrictionsOtherTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_PreferredStockRestrictionsOtherTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+<ref:Subparagraph>2</ref:Subparagraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="PreferredStockRestrictionsOtherTextBlock" xlink:to="reference_PreferredStockRestrictionsOtherTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_RightsSubjectToOtherThanMajorityVoteTextBlock" xlink:label="RightsSubjectToOtherThanMajorityVoteTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_RightsSubjectToOtherThanMajorityVoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>c</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="RightsSubjectToOtherThanMajorityVoteTextBlock" xlink:to="reference_RightsSubjectToOtherThanMajorityVoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_RightsLimitedByOtherSecuritiesTextBlock" xlink:label="RightsLimitedByOtherSecuritiesTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_RightsLimitedByOtherSecuritiesTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>d</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="RightsLimitedByOtherSecuritiesTextBlock" xlink:to="reference_RightsLimitedByOtherSecuritiesTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LongTermDebtTableTextBlock" xlink:label="LongTermDebtTableTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_LongTermDebtTableTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>2</ref:Subsection>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LongTermDebtTableTextBlock" xlink:to="reference_LongTermDebtTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LongTermDebtTitleTextBlock" xlink:label="LongTermDebtTitleTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LongTermDebtTitleTextBlock" xlink:to="reference_LongTermDebtTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LongTermDebtPrincipal" xlink:label="LongTermDebtPrincipal"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LongTermDebtPrincipal" xlink:to="reference_LongTermDebtTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LongTermDebtStructuringTextBlock" xlink:label="LongTermDebtStructuringTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_LongTermDebtStructuringTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>2</ref:Subsection>
+<ref:Paragraph>a</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LongTermDebtStructuringTextBlock" xlink:to="reference_LongTermDebtStructuringTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LongTermDebtDividendsAndCovenantsTextBlock" xlink:label="LongTermDebtDividendsAndCovenantsTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_LongTermDebtDividendsAndCovenantsTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>2</ref:Subsection>
+<ref:Paragraph>b</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LongTermDebtDividendsAndCovenantsTextBlock" xlink:to="reference_LongTermDebtDividendsAndCovenantsTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LongTermDebtIssuanceAndSubstitutionTextBlock" xlink:label="LongTermDebtIssuanceAndSubstitutionTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_LongTermDebtIssuanceAndSubstitutionTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>2</ref:Subsection>
+<ref:Paragraph>c</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LongTermDebtIssuanceAndSubstitutionTextBlock" xlink:to="reference_LongTermDebtIssuanceAndSubstitutionTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LongTermDebtRightsLimitedByOtherSecuritiesTextBlock" xlink:label="LongTermDebtRightsLimitedByOtherSecuritiesTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_LongTermDebtRightsLimitedByOtherSecuritiesTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>2</ref:Subsection>
+<ref:Paragraph>e</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LongTermDebtRightsLimitedByOtherSecuritiesTextBlock" xlink:to="reference_LongTermDebtRightsLimitedByOtherSecuritiesTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherSecuritiesTableTextBlock" xlink:label="OtherSecuritiesTableTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_OtherSecuritiesTableTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>3</ref:Subsection>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherSecuritiesTableTextBlock" xlink:to="reference_OtherSecuritiesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherSecurityTitleTextBlock" xlink:label="OtherSecurityTitleTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherSecurityTitleTextBlock" xlink:to="reference_OtherSecuritiesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherSecurityDescriptionTextBlock" xlink:label="OtherSecurityDescriptionTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherSecurityDescriptionTextBlock" xlink:to="reference_OtherSecuritiesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_WarrantsOrRightsCalledAmount" xlink:label="WarrantsOrRightsCalledAmount"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="WarrantsOrRightsCalledAmount" xlink:to="reference_OtherSecuritiesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_WarrantsOrRightsCalledPeriodDate" xlink:label="WarrantsOrRightsCalledPeriodDate"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="WarrantsOrRightsCalledPeriodDate" xlink:to="reference_OtherSecuritiesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_WarrantsOrRightsExercisePrice" xlink:label="WarrantsOrRightsExercisePrice"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="WarrantsOrRightsExercisePrice" xlink:to="reference_OtherSecuritiesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OutstandingSecuritiesTableTextBlock" xlink:label="OutstandingSecuritiesTableTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_OutstandingSecuritiesTableTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OutstandingSecuritiesTableTextBlock" xlink:to="reference_OutstandingSecuritiesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OutstandingSecurityTitleTextBlock" xlink:label="OutstandingSecurityTitleTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_OutstandingSecurityTitleTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>1</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OutstandingSecurityTitleTextBlock" xlink:to="reference_OutstandingSecurityTitleTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OutstandingSecurityAuthorizedShares" xlink:label="OutstandingSecurityAuthorizedShares"/>
+<link:reference xlink:type="resource" xlink:label="reference_OutstandingSecurityAuthorizedShares" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>2</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OutstandingSecurityAuthorizedShares" xlink:to="reference_OutstandingSecurityAuthorizedShares" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OutstandingSecurityHeldShares" xlink:label="OutstandingSecurityHeldShares"/>
+<link:reference xlink:type="resource" xlink:label="reference_OutstandingSecurityHeldShares" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>3</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OutstandingSecurityHeldShares" xlink:to="reference_OutstandingSecurityHeldShares" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OutstandingSecurityNotHeldShares" xlink:label="OutstandingSecurityNotHeldShares"/>
+<link:reference xlink:type="resource" xlink:label="reference_OutstandingSecurityNotHeldShares" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>4</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OutstandingSecurityNotHeldShares" xlink:to="reference_OutstandingSecurityNotHeldShares" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_DividendReinvestmentAndCashPurchaseFees" xlink:label="DividendReinvestmentAndCashPurchaseFees"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="DividendReinvestmentAndCashPurchaseFees" xlink:to="reference_FeeTableAbstract" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_DistributionServicingFeesPercent" xlink:label="DistributionServicingFeesPercent"/>
+<link:reference xlink:type="resource" xlink:label="reference_DistributionServicingFeesPercent" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 3</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 9</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="DistributionServicingFeesPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_IncentiveFeesPercent" xlink:label="IncentiveFeesPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="IncentiveFeesPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_WaiversAndReimbursementsOfFeesPercent" xlink:label="WaiversAndReimbursementsOfFeesPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="WaiversAndReimbursementsOfFeesPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherTransactionFeesBasisNoteTextBlock" xlink:label="OtherTransactionFeesBasisNoteTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherTransactionFeesBasisNoteTextBlock" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherTransactionFeesBasisMaximum" xlink:label="OtherTransactionFeesBasisMaximum"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherTransactionFeesBasisMaximum" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherTransactionFeesBasisMaximumPercent" xlink:label="OtherTransactionFeesBasisMaximumPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherTransactionFeesBasisMaximumPercent" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_IncentiveAllocationMinimumPercent" xlink:label="IncentiveAllocationMinimumPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="IncentiveAllocationMinimumPercent" xlink:to="reference_AcquiredFundIncentiveAllocationNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_IncentiveAllocationMaximumPercent" xlink:label="IncentiveAllocationMaximumPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="IncentiveAllocationMaximumPercent" xlink:to="reference_AcquiredFundIncentiveAllocationNoteTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_InvestmentObjectivesAndPracticesTextBlock" xlink:label="InvestmentObjectivesAndPracticesTextBlock"/>
+<link:reference xlink:type="resource" xlink:label="reference_InvestmentObjectivesAndPracticesTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>2</ref:Subsection>
+<ref:Paragraph>b, d</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="InvestmentObjectivesAndPracticesTextBlock" xlink:to="reference_InvestmentObjectivesAndPracticesTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AnnualDividendPaymentInitial" xlink:label="AnnualDividendPaymentInitial"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AnnualDividendPaymentInitial" xlink:to="reference_AnnualDividendPayment" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_AnnualDividendPaymentCurrent" xlink:label="AnnualDividendPaymentCurrent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="AnnualDividendPaymentCurrent" xlink:to="reference_AnnualDividendPayment" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LatestPremiumDiscountToNavPercent" xlink:label="LatestPremiumDiscountToNavPercent"/>
+<link:reference xlink:type="resource" xlink:label="reference_LatestPremiumDiscountToNavPercent" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+<ref:Subsection>5</ref:Subsection>
+<ref:Paragraph>c</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LatestPremiumDiscountToNavPercent" xlink:to="reference_LatestPremiumDiscountToNavPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherTransactionExpense1Percent" xlink:label="OtherTransactionExpense1Percent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherTransactionExpense1Percent" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherTransactionExpense2Percent" xlink:label="OtherTransactionExpense2Percent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherTransactionExpense2Percent" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherTransactionExpense3Percent" xlink:label="OtherTransactionExpense3Percent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherTransactionExpense3Percent" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherTransactionExpensesPercent" xlink:label="OtherTransactionExpensesPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherTransactionExpensesPercent" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_DividendAndInterestExpensesOnShortSalesPercent" xlink:label="DividendAndInterestExpensesOnShortSalesPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="DividendAndInterestExpensesOnShortSalesPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_LoanServicingFeesPercent" xlink:label="LoanServicingFeesPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="LoanServicingFeesPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherMasterFundExpensesPercent" xlink:label="OtherMasterFundExpensesPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherMasterFundExpensesPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherFeederFundExpensesPercent" xlink:label="OtherFeederFundExpensesPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherFeederFundExpensesPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_DividendExpenseOnPreferredSharesPercent" xlink:label="DividendExpenseOnPreferredSharesPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="DividendExpenseOnPreferredSharesPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherAnnualExpense1Percent" xlink:label="OtherAnnualExpense1Percent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherAnnualExpense1Percent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherAnnualExpense2Percent" xlink:label="OtherAnnualExpense2Percent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherAnnualExpense2Percent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherAnnualExpense3Percent" xlink:label="OtherAnnualExpense3Percent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherAnnualExpense3Percent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherAnnualExpensesPercent" xlink:label="OtherAnnualExpensesPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherAnnualExpensesPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_NetExpenseOverAssetsPercent" xlink:label="NetExpenseOverAssetsPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="NetExpenseOverAssetsPercent" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_FinancialHighlightsAbstract" xlink:label="FinancialHighlightsAbstract"/>
+<link:reference xlink:type="resource" xlink:label="reference_FinancialHighlightsAbstract" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="FinancialHighlightsAbstract" xlink:to="reference_FinancialHighlightsAbstract" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_GeneralDescriptionOfRegistrantAbstract" xlink:label="GeneralDescriptionOfRegistrantAbstract"/>
+<link:reference xlink:type="resource" xlink:label="reference_GeneralDescriptionOfRegistrantAbstract" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 8</ref:Section>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="GeneralDescriptionOfRegistrantAbstract" xlink:to="reference_GeneralDescriptionOfRegistrantAbstract" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_CapitalStockLongTermDebtAndOtherSecuritiesAbstract" xlink:label="CapitalStockLongTermDebtAndOtherSecuritiesAbstract"/>
+<link:reference xlink:type="resource" xlink:label="reference_CapitalStockLongTermDebtAndOtherSecuritiesAbstract" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 10</ref:Section>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="CapitalStockLongTermDebtAndOtherSecuritiesAbstract" xlink:to="reference_CapitalStockLongTermDebtAndOtherSecuritiesAbstract" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherAnnualExpensesAbstract" xlink:label="OtherAnnualExpensesAbstract"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherAnnualExpensesAbstract" xlink:to="reference_DistributionServicingFeesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_InterestExpensesOnBorrowingsPercent" xlink:label="InterestExpensesOnBorrowingsPercent"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="InterestExpensesOnBorrowingsPercent" xlink:to="reference_TotalAnnualExpensesPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_OtherTransactionExpensesAbstract" xlink:label="OtherTransactionExpensesAbstract"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="OtherTransactionExpensesAbstract" xlink:to="reference_UnderwritersCompensationPercent" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_NewCefOrBdcRegistrantFlag" xlink:label="NewCefOrBdcRegistrantFlag"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="NewCefOrBdcRegistrantFlag" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_PrimaryShelfQualifiedFlag" xlink:label="PrimaryShelfQualifiedFlag"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="PrimaryShelfQualifiedFlag" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_PrimaryShelfFlag" xlink:label="PrimaryShelfFlag"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="PrimaryShelfFlag" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_RegisteredClosedEndFundFlag" xlink:label="RegisteredClosedEndFundFlag"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="RegisteredClosedEndFundFlag" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_BusinessDevelopmentCompanyFlag" xlink:label="BusinessDevelopmentCompanyFlag"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="BusinessDevelopmentCompanyFlag" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_IntervalFundFlag" xlink:label="IntervalFundFlag"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="IntervalFundFlag" xlink:to="reference_CoregistrantAxis" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_WarrantsOrRightsCalledTitleTextBlock" xlink:label="WarrantsOrRightsCalledTitleTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="WarrantsOrRightsCalledTitleTextBlock" xlink:to="reference_OtherSecuritiesTableTextBlock" priority="10"/>
+<link:loc xlink:type="locator" xlink:href="cef-2025.xsd#cef_SeniorSecuritiesHighlightsAuditedNoteTextBlock" xlink:label="SeniorSecuritiesHighlightsAuditedNoteTextBlock"/>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesHighlightsAuditedNoteTextBlock" xlink:to="reference_SeniorSecuritiesNoteTextBlock" priority="10"/>
+<link:reference xlink:type="resource" xlink:label="reference_SeniorSecuritiesHighlightsAuditedNoteTextBlock" xlink:role="http://www.xbrl.org/2003/role/presentationRef">
+<ref:Publisher>SEC</ref:Publisher>
+<ref:Name>Form N-2</ref:Name>
+<ref:Section>Item 4</ref:Section>
+<ref:Subsection>1</ref:Subsection>
+<ref:Paragraph>Instruction 8</ref:Paragraph>
+</link:reference>
+<link:referenceArc xlink:type="arc" xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-reference" xlink:from="SeniorSecuritiesHighlightsAuditedNoteTextBlock" xlink:to="reference_SeniorSecuritiesHighlightsAuditedNoteTextBlock" priority="10"/>
+</link:referenceLink>
+</link:linkbase>
+</xs:appinfo>
+</xs:annotation>
+</xs:schema>
