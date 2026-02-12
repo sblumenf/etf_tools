@@ -17,6 +17,22 @@ def discover():
     click.echo(f"Filtered to {len(etfs)} ETF tickers.")
 
 
+@main.command("load-etfs")
+@click.option("--cik", type=str, help="Process only this CIK")
+@click.option("--limit", type=int, help="Process only the first N CIKs")
+def load_etfs_cmd(cik, limit):
+    """Load ETF tickers from etf_tickers.json into the database."""
+    import logging
+
+    from etf_pipeline.load_etfs import load_etfs
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    load_etfs(cik=cik, limit=limit)
+
+
 @main.command()
 def nport():
     """Parse NPORT-P filings for holdings and derivatives."""

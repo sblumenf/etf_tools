@@ -1,0 +1,85 @@
+{
+  "feature": "NPORT-P Parser",
+  "created": "2026-02-11",
+  "status": "approved",
+  "user_stories": [
+    {
+      "id": "US-1",
+      "title": "Load ETFs to Database",
+      "phase": 1,
+      "files": ["src/etf_pipeline/load_etfs.py", "src/etf_pipeline/cli.py", "tests/test_load_etfs.py"],
+      "acceptance_criteria": [
+        "Running load-etfs with a fresh DB creates ETF rows with ticker, cik, series_id, issuer_name populated",
+        "Running load-etfs again does not duplicate rows; updates changed fields",
+        "--cik 12345 processes only ETFs for CIK 12345",
+        "--limit 5 processes only the first 5 CIKs alphabetically",
+        "CIK-level errors are logged and skipped; command continues"
+      ]
+    },
+    {
+      "id": "US-2",
+      "title": "NPORT-P Holdings Parser",
+      "phase": 2,
+      "files": ["src/etf_pipeline/parsers/__init__.py", "src/etf_pipeline/parsers/nport.py", "src/etf_pipeline/cli.py", "tests/test_nport.py"],
+      "acceptance_criteria": [
+        "Running nport for a CIK with 3 ETFs creates Holding rows for each ETF with NPORT-P filing",
+        "Holdings have correct FK to etf.id",
+        "Re-running for same CIK + report_date does NOT create duplicate holdings",
+        "ETF.last_fetched is updated after successful extraction",
+        "CIKs with no NPORT-P filings are logged as warnings and skipped",
+        "--cik and --limit flags work as described"
+      ]
+    },
+    {
+      "id": "US-3",
+      "title": "NPORT-P Derivatives Parser",
+      "phase": 3,
+      "files": ["src/etf_pipeline/parsers/nport.py", "tests/test_nport.py"],
+      "acceptance_criteria": [
+        "Running nport for a CIK with derivative holdings creates Derivative rows",
+        "Derivatives have correct FK to etf.id",
+        "Re-running skips (same report_date check as holdings)",
+        "ETFs with no derivatives produce zero Derivative rows, no error"
+      ]
+    },
+    {
+      "id": "US-4",
+      "title": "Tests",
+      "phase": "all",
+      "files": ["tests/test_load_etfs.py", "tests/test_nport.py"],
+      "acceptance_criteria": [
+        "load-etfs: fresh load creates ETF rows with correct fields",
+        "load-etfs: re-run upserts changed fields, no duplicates",
+        "load-etfs: --cik filters to one CIK",
+        "load-etfs: CIK lookup failure skipped with warning",
+        "nport: creates Holding rows from mocked FundReport",
+        "nport: creates Derivative rows from mocked FundReport",
+        "nport: skips ETF when holdings exist for report_date",
+        "nport: updates ETF.last_fetched",
+        "nport: handles CIK with no NPORT-P filing",
+        "nport: handles ETF with zero derivatives",
+        "All tests pass: pytest tests/"
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "phase": 1,
+      "name": "load-etfs command + tests",
+      "stories": ["US-1"],
+      "verification": "pytest tests/test_load_etfs.py -v"
+    },
+    {
+      "phase": 2,
+      "name": "NPORT parser (holdings) + tests",
+      "stories": ["US-2"],
+      "verification": "pytest tests/test_nport.py -v"
+    },
+    {
+      "phase": 3,
+      "name": "NPORT parser (derivatives) + tests",
+      "stories": ["US-3"],
+      "verification": "pytest tests/ -v"
+    }
+  ]
+}
