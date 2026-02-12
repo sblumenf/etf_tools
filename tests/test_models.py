@@ -1,0 +1,217 @@
+from datetime import date, datetime
+from decimal import Decimal
+
+import pytest
+from sqlalchemy.exc import IntegrityError
+
+from etf_pipeline.models import (
+    Derivative,
+    ETF,
+    FeeExpense,
+    FlowData,
+    Holding,
+    Performance,
+)
+
+
+def _make_etf(**overrides) -> ETF:
+    defaults = dict(
+        ticker="SPY",
+        cik="0000884394",
+        series_id="S000005325",
+        issuer_name="State Street Global Advisors",
+        is_active=True,
+        incomplete_data=False,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    defaults.update(overrides)
+    return ETF(**defaults)
+
+
+class TestETF:
+    def test_create_etf(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.commit()
+
+        result = session.query(ETF).filter_by(ticker="SPY").one()
+        assert result.cik == "0000884394"
+        assert result.is_active is True
+
+    def test_ticker_unique_constraint(self, session):
+        session.add(_make_etf(ticker="SPY"))
+        session.commit()
+
+        session.add(_make_etf(ticker="SPY", cik="9999999999"))
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+    def test_issuer_name_required(self, session):
+        etf = _make_etf(issuer_name=None)
+        session.add(etf)
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+
+class TestHolding:
+    def test_create_holding(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        holding = Holding(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            name="Apple Inc",
+            cusip="037833100",
+            value_usd=Decimal("150000000.00"),
+            pct_val=Decimal("0.07500"),
+            asset_category="EC",
+            currency="USD",
+        )
+        session.add(holding)
+        session.commit()
+
+        result = session.query(Holding).one()
+        assert result.name == "Apple Inc"
+        assert result.value_usd == Decimal("150000000.00")
+
+    def test_holding_fk_constraint(self, session):
+        holding = Holding(
+            etf_id=9999,
+            report_date=date(2024, 3, 31),
+            name="Orphan",
+        )
+        session.add(holding)
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+    def test_etf_holdings_relationship(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        h1 = Holding(etf_id=etf.id, report_date=date(2024, 3, 31), name="AAPL")
+        h2 = Holding(etf_id=etf.id, report_date=date(2024, 3, 31), name="MSFT")
+        session.add_all([h1, h2])
+        session.commit()
+
+        session.refresh(etf)
+        assert len(etf.holdings) == 2
+
+
+class TestDerivative:
+    def test_create_derivative(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        deriv = Derivative(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            derivative_type="future",
+            underlying_name="S&P 500 Index",
+            notional_value=Decimal("50000000.00"),
+            expiration_date=date(2024, 6, 21),
+        )
+        session.add(deriv)
+        session.commit()
+
+        result = session.query(Derivative).one()
+        assert result.derivative_type == "future"
+
+
+class TestPerformance:
+    def test_create_performance(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        perf = Performance(
+            etf_id=etf.id,
+            fiscal_year_end=date(2024, 1, 31),
+            return_1yr=Decimal("0.12340"),
+            portfolio_turnover=Decimal("0.50000"),
+            expense_ratio_actual=Decimal("0.00090"),
+        )
+        session.add(perf)
+        session.commit()
+
+        result = session.query(Performance).one()
+        assert result.return_1yr == Decimal("0.12340")
+
+    def test_performance_unique_constraint(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        session.add(Performance(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)))
+        session.commit()
+
+        session.add(Performance(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)))
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+
+class TestFeeExpense:
+    def test_create_fee_expense(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        fee = FeeExpense(
+            etf_id=etf.id,
+            effective_date=date(2024, 3, 1),
+            management_fee=Decimal("0.00045"),
+            total_expense_net=Decimal("0.00093"),
+        )
+        session.add(fee)
+        session.commit()
+
+        result = session.query(FeeExpense).one()
+        assert result.management_fee == Decimal("0.00045")
+
+    def test_fee_unique_constraint(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        session.add(FeeExpense(etf_id=etf.id, effective_date=date(2024, 3, 1)))
+        session.commit()
+
+        session.add(FeeExpense(etf_id=etf.id, effective_date=date(2024, 3, 1)))
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+
+class TestFlowData:
+    def test_create_flow_data(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        flow = FlowData(
+            etf_id=etf.id,
+            fiscal_year_end=date(2024, 1, 31),
+            sales_value=Decimal("5000000000.0000"),
+            redemptions_value=Decimal("4500000000.0000"),
+            net_sales=Decimal("500000000.0000"),
+        )
+        session.add(flow)
+        session.commit()
+
+        result = session.query(FlowData).one()
+        assert result.net_sales == Decimal("500000000.0000")
+
+    def test_flow_unique_constraint(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        session.add(FlowData(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)))
+        session.commit()
+
+        session.add(FlowData(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)))
+        with pytest.raises(IntegrityError):
+            session.commit()
