@@ -261,7 +261,7 @@ SEC EDGAR Filing Types ───────────────────
         +---------+ +-----------+ +-----------+ +-------+ +--------+
         | Holding | | Derivative| |Performance| |FeExp. | |FlowData|
         |---------| |-----------| |-----------| |-------| |--------|
-        | FK etf  | | FK etf    | | FK etf    | |FK etf | |IX cik  |
+        | FK etf  | | FK etf    | | FK etf    | |FK etf | |   cik  |
         | IX date | | IX date   | | UK etf+fy | |UK etf | |UK cik  |
         | IX cusip| |           | |           | | +date | | +fy    |
         +---------+ +-----------+ +-----------+ +-------+ +--------+
@@ -287,7 +287,6 @@ SEC EDGAR Filing Types ───────────────────
 | FeeExpense | `fee_expense_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
 | FlowData | `flow_data_cik_fy_uniq` | UNIQUE | `cik, fiscal_year_end` |
 | FlowData | `flow_data_fy_idx` | INDEX | `fiscal_year_end` |
-| FlowData | `flow_data_cik_idx` | INDEX | `cik` |
 
 ---
 

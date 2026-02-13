@@ -162,7 +162,7 @@ class FlowData(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    cik: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
+    cik: Mapped[str] = mapped_column(String(10), nullable=False)
     fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
     sales_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
     redemptions_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
