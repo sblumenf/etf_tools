@@ -355,7 +355,7 @@ company_tickers_mf.json
         |  - parse array-of-arrays using field indices
         |  - apply is_etf_ticker() filter
         v
-  [ {cik, series_id, class_id, ticker}, ... ]     ~5,000 ETF records
+  [ {cik, series_id, ticker}, ... ]     ~5,000 ETF records
         |
         |  group by CIK
         v

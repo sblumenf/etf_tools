@@ -1,18 +1,11 @@
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.config import DATABASE_URL
 
 
 def get_engine(url: str | None = None) -> Engine:
     return create_engine(url or DATABASE_URL)
-
-
-def get_session_factory(engine: Engine | None = None) -> sessionmaker[Session]:
-    if engine is None:
-        engine = get_engine()
-    return sessionmaker(bind=engine)
 
 
 def enable_sqlite_fks(engine: Engine) -> None:

@@ -99,25 +99,22 @@ def mock_edgar_company(mock_fund_report):
     """Mock the edgar Company class to return filings and FundReport."""
     with patch("etf_pipeline.parsers.nport.Company") as mock_class:
 
-        # Track which series to return for each CIK
+        # Map CIK to series IDs
         cik_to_series = {
             "0000036405": ["S000002839", "S000002840"],  # VOO, VTV
             "0001064641": ["S000002753"],  # SPY
         }
-        series_call_tracker = {}
 
         def company_factory(cik):
             company = Mock()
 
-            # Create mock filings based on CIK
+            # Create mock filings with series_id attached
             series_list = cik_to_series.get(cik, [])
-            num_filings = len(series_list)
-
             filings_list = []
-            for _ in range(num_filings):
+            for series_id in series_list:
                 filing = Mock()
                 filing.filing_date = date(2025, 1, 15)
-                filing.cik = cik  # Track which CIK this filing belongs to
+                filing.series_id = series_id
                 filings_list.append(filing)
 
             # Mock filings collection
@@ -133,18 +130,7 @@ def mock_edgar_company(mock_fund_report):
         mock_class.side_effect = company_factory
 
         def fund_report_side_effect(filing):
-            # Get the series list for this CIK
-            cik = filing.cik
-            series_list = cik_to_series.get(cik, [])
-
-            # Track which series we're on for this CIK
-            if cik not in series_call_tracker:
-                series_call_tracker[cik] = 0
-
-            series_id = series_list[series_call_tracker[cik] % len(series_list)]
-            series_call_tracker[cik] += 1
-
-            return mock_fund_report(series_id)
+            return mock_fund_report(filing.series_id)
 
         with patch(
             "etf_pipeline.parsers.nport.FundReport.from_filing",
@@ -153,15 +139,9 @@ def mock_edgar_company(mock_fund_report):
             yield mock_class
 
 
-def test_parse_nport_creates_holdings(session, engine, sample_etfs, mock_edgar_company):
+def test_parse_nport_creates_holdings(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that parse_nport creates holding records from FundReport."""
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            from sqlalchemy.orm import sessionmaker
-
-            mock_factory.return_value = sessionmaker(bind=engine)
-
-            parse_nport(cik="36405")
+    parse_nport(cik="36405")
 
     stmt = select(Holding).order_by(Holding.name)
     holdings = session.execute(stmt).scalars().all()
@@ -180,18 +160,12 @@ def test_parse_nport_creates_holdings(session, engine, sample_etfs, mock_edgar_c
     assert holdings[0].report_date == date(2024, 12, 31)
 
 
-def test_parse_nport_updates_last_fetched(session, engine, sample_etfs, mock_edgar_company):
+def test_parse_nport_updates_last_fetched(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that parse_nport updates ETF.last_fetched timestamp."""
     voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
     assert voo.last_fetched is None
 
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            from sqlalchemy.orm import sessionmaker
-
-            mock_factory.return_value = sessionmaker(bind=engine)
-
-            parse_nport(cik="36405")
+    parse_nport(cik="36405")
 
     session.expire_all()
     voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
@@ -199,7 +173,7 @@ def test_parse_nport_updates_last_fetched(session, engine, sample_etfs, mock_edg
     assert isinstance(voo.last_fetched, datetime)
 
 
-def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_edgar_company, caplog):
+def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, caplog):
     """Test that parse_nport skips ETF when holdings already exist for report_date."""
     import logging
     caplog.set_level(logging.INFO)
@@ -216,13 +190,7 @@ def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_
     session.add(existing_holding)
     session.commit()
 
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            from sqlalchemy.orm import sessionmaker
-
-            mock_factory.return_value = sessionmaker(bind=engine)
-
-            parse_nport(cik="36405")
+    parse_nport(cik="36405")
 
     stmt = select(Holding).where(Holding.etf_id == voo.id)
     holdings = session.execute(stmt).scalars().all()
@@ -232,7 +200,7 @@ def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_
     assert "already exist" in caplog.text
 
 
-def test_parse_nport_no_nport_filing(session, engine, sample_etfs, caplog):
+def test_parse_nport_no_nport_filing(session, engine, sample_etfs, mock_nport_db, caplog):
     """Test that parse_nport handles CIK with no NPORT-P filing."""
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
         company = Mock()
@@ -242,13 +210,7 @@ def test_parse_nport_no_nport_filing(session, engine, sample_etfs, caplog):
         company.get_filings = Mock(return_value=filings)
         mock_company.return_value = company
 
-        with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-            with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-                from sqlalchemy.orm import sessionmaker
-
-                mock_factory.return_value = sessionmaker(bind=engine)
-
-                parse_nport(cik="36405")
+        parse_nport(cik="36405")
 
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
@@ -256,15 +218,9 @@ def test_parse_nport_no_nport_filing(session, engine, sample_etfs, caplog):
     assert "No NPORT-P filings found" in caplog.text
 
 
-def test_parse_nport_with_limit(session, engine, sample_etfs, mock_edgar_company):
+def test_parse_nport_with_limit(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that --limit flag works correctly."""
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            from sqlalchemy.orm import sessionmaker
-
-            mock_factory.return_value = sessionmaker(bind=engine)
-
-            parse_nport(limit=1)
+    parse_nport(limit=1)
 
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
@@ -272,15 +228,9 @@ def test_parse_nport_with_limit(session, engine, sample_etfs, mock_edgar_company
     assert len(holdings) == 6
 
 
-def test_parse_nport_with_cik_filter(session, engine, sample_etfs, mock_edgar_company):
+def test_parse_nport_with_cik_filter(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that --cik flag works correctly."""
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            from sqlalchemy.orm import sessionmaker
-
-            mock_factory.return_value = sessionmaker(bind=engine)
-
-            parse_nport(cik="1064641")
+    parse_nport(cik="1064641")
 
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
@@ -291,15 +241,9 @@ def test_parse_nport_with_cik_filter(session, engine, sample_etfs, mock_edgar_co
     assert all(h.etf_id == spy.id for h in holdings)
 
 
-def test_parse_nport_invalid_cik(session, engine, sample_etfs, mock_edgar_company, capsys):
+def test_parse_nport_invalid_cik(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, capsys):
     """Test behavior when requested CIK is not in database."""
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            from sqlalchemy.orm import sessionmaker
-
-            mock_factory.return_value = sessionmaker(bind=engine)
-
-            parse_nport(cik="99999")
+    parse_nport(cik="99999")
 
     captured = capsys.readouterr()
     assert "not found in database" in captured.out
@@ -309,21 +253,15 @@ def test_parse_nport_invalid_cik(session, engine, sample_etfs, mock_edgar_compan
     assert len(holdings) == 0
 
 
-def test_parse_nport_no_etfs_in_db(session, engine, capsys):
+def test_parse_nport_no_etfs_in_db(session, engine, mock_nport_db, capsys):
     """Test behavior when no ETFs exist in database."""
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            from sqlalchemy.orm import sessionmaker
-
-            mock_factory.return_value = sessionmaker(bind=engine)
-
-            parse_nport()
+    parse_nport()
 
     captured = capsys.readouterr()
     assert "No ETFs found in database" in captured.out
 
 
-def test_parse_nport_handles_na_values(session, engine, sample_etfs):
+def test_parse_nport_handles_na_values(session, engine, sample_etfs, mock_nport_db):
     """Test that N/A values are converted to NULL."""
 
     def create_mock_investment_with_na():
@@ -381,13 +319,7 @@ def test_parse_nport_handles_na_values(session, engine, sample_etfs):
         with patch(
             "etf_pipeline.parsers.nport.FundReport.from_filing", side_effect=fund_report_side_effect
         ):
-            with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-                with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-                    from sqlalchemy.orm import sessionmaker
-
-                    mock_factory.return_value = sessionmaker(bind=engine)
-
-                    parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
@@ -402,7 +334,7 @@ def test_parse_nport_handles_na_values(session, engine, sample_etfs):
     assert holding.is_restricted is False
 
 
-def test_parse_nport_fundreport_parse_error(session, engine, sample_etfs, caplog):
+def test_parse_nport_fundreport_parse_error(session, engine, sample_etfs, mock_nport_db, caplog):
     """Test that parser handles FundReport.from_filing() errors gracefully."""
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
         company = Mock()
@@ -423,13 +355,7 @@ def test_parse_nport_fundreport_parse_error(session, engine, sample_etfs, caplog
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             side_effect=Exception("Parse error"),
         ):
-            with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-                with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-                    from sqlalchemy.orm import sessionmaker
-
-                    mock_factory.return_value = sessionmaker(bind=engine)
-
-                    parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
@@ -437,7 +363,7 @@ def test_parse_nport_fundreport_parse_error(session, engine, sample_etfs, caplog
     assert "Failed to parse filing" in caplog.text
 
 
-def test_parse_nport_creates_derivatives(session, engine, sample_etfs):
+def test_parse_nport_creates_derivatives(session, engine, sample_etfs, mock_nport_db):
     """Test that parse_nport creates derivative records from FundReport."""
 
     def create_mock_derivative(deriv_type, underlying_name, counterparty):
@@ -533,13 +459,7 @@ def test_parse_nport_creates_derivatives(session, engine, sample_etfs):
         with patch(
             "etf_pipeline.parsers.nport.FundReport.from_filing", side_effect=fund_report_side_effect
         ):
-            with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-                with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-                    from sqlalchemy.orm import sessionmaker
-
-                    mock_factory.return_value = sessionmaker(bind=engine)
-
-                    parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative).order_by(Derivative.derivative_type)
     derivatives = session.execute(stmt).scalars().all()
@@ -583,7 +503,7 @@ def test_parse_nport_creates_derivatives(session, engine, sample_etfs):
     assert swp.report_date == date(2024, 12, 31)
 
 
-def test_parse_nport_etf_with_no_derivatives(session, engine, sample_etfs):
+def test_parse_nport_etf_with_no_derivatives(session, engine, sample_etfs, mock_nport_db):
     """Test that parse_nport handles ETF with no derivatives without error."""
     def create_report_with_series(series_id):
         mock_report = Mock()
@@ -620,20 +540,14 @@ def test_parse_nport_etf_with_no_derivatives(session, engine, sample_etfs):
         with patch(
             "etf_pipeline.parsers.nport.FundReport.from_filing", side_effect=fund_report_side_effect
         ):
-            with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-                with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-                    from sqlalchemy.orm import sessionmaker
-
-                    mock_factory.return_value = sessionmaker(bind=engine)
-
-                    parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative)
     derivatives = session.execute(stmt).scalars().all()
     assert len(derivatives) == 0
 
 
-def test_parse_nport_skips_derivatives_when_holdings_exist(session, engine, sample_etfs):
+def test_parse_nport_skips_derivatives_when_holdings_exist(session, engine, sample_etfs, mock_nport_db):
     """Test that parse_nport skips derivatives when holdings already exist for report_date."""
     voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
 
@@ -701,20 +615,14 @@ def test_parse_nport_skips_derivatives_when_holdings_exist(session, engine, samp
         with patch(
             "etf_pipeline.parsers.nport.FundReport.from_filing", side_effect=fund_report_side_effect
         ):
-            with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-                with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-                    from sqlalchemy.orm import sessionmaker
-
-                    mock_factory.return_value = sessionmaker(bind=engine)
-
-                    parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative).where(Derivative.etf_id == voo.id)
     voo_derivatives = session.execute(stmt).scalars().all()
     assert len(voo_derivatives) == 0
 
 
-def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, sample_etfs):
+def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, sample_etfs, mock_nport_db):
     """Test that parse_nport creates forward and swaption derivative records from FundReport."""
 
     def create_mock_derivative(deriv_type, underlying_name, counterparty):
@@ -793,13 +701,7 @@ def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, s
         with patch(
             "etf_pipeline.parsers.nport.FundReport.from_filing", side_effect=fund_report_side_effect
         ):
-            with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-                with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-                    from sqlalchemy.orm import sessionmaker
-
-                    mock_factory.return_value = sessionmaker(bind=engine)
-
-                    parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative).order_by(Derivative.derivative_type)
     derivatives = session.execute(stmt).scalars().all()
@@ -831,45 +733,98 @@ def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, s
     assert swo.report_date == date(2024, 12, 31)
 
 
-def test_parse_nport_clears_cache_when_flag_set(session, engine, sample_etfs, mock_edgar_company):
+def test_parse_nport_option_derivative_index_name_fallback(session, engine, sample_etfs, mock_nport_db):
+    """Test that option derivatives use index_name when reference_entity_name is None."""
+
+    def create_mock_option_with_index():
+        """Create a mock InvestmentOrSecurity with option using index_name."""
+        inv = Mock()
+        inv.name = "Index Option Derivative"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "OPT"
+
+        opt = Mock()
+        opt.counterparty_name = "Morgan Stanley"
+        opt.counterparty_lei = "123456789012345678BB"
+        opt.reference_entity_name = None
+        opt.index_name = "S&P 500 Index"
+        opt.reference_entity_cusip = "87654321X"
+        opt.share_number = Decimal("1000")
+        opt.delta = Decimal("0.5")
+        opt.expiration_date = "2025-03-15"
+        inv.derivative_info.option_derivative = opt
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_option_with_index()]
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Derivative).where(Derivative.derivative_type == "OPT")
+    derivatives = session.execute(stmt).scalars().all()
+
+    assert len(derivatives) == 1
+    opt = derivatives[0]
+    assert opt.underlying_name == "S&P 500 Index"
+    assert opt.underlying_cusip == "87654321X"
+    assert opt.notional_value == Decimal("1000")
+    assert opt.counterparty == "Morgan Stanley"
+    assert opt.delta == Decimal("0.5")
+    assert opt.expiration_date == date(2025, 3, 15)
+
+
+def test_parse_nport_clears_cache_when_flag_set(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that parse_nport calls clear_cache when clear_cache=True."""
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            with patch("etf_pipeline.parsers.nport.edgar_clear_cache") as mock_clear_cache:
-                from sqlalchemy.orm import sessionmaker
+    with patch("etf_pipeline.parsers.nport.edgar_clear_cache") as mock_clear_cache:
+        mock_clear_cache.return_value = {"files_deleted": 10, "bytes_freed": 1024000}
 
-                mock_factory.return_value = sessionmaker(bind=engine)
-                mock_clear_cache.return_value = {"files_deleted": 10, "bytes_freed": 1024000}
+        parse_nport(cik="36405", clear_cache=True)
 
-                parse_nport(cik="36405", clear_cache=True)
-
-                mock_clear_cache.assert_called_once_with(dry_run=False)
+        mock_clear_cache.assert_called_once_with(dry_run=False)
 
 
-def test_parse_nport_does_not_clear_cache_when_flag_disabled(session, engine, sample_etfs, mock_edgar_company):
+def test_parse_nport_does_not_clear_cache_when_flag_disabled(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that parse_nport does not call clear_cache when clear_cache=False."""
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            with patch("etf_pipeline.parsers.nport.edgar_clear_cache") as mock_clear_cache:
-                from sqlalchemy.orm import sessionmaker
+    with patch("etf_pipeline.parsers.nport.edgar_clear_cache") as mock_clear_cache:
+        parse_nport(cik="36405", clear_cache=False)
 
-                mock_factory.return_value = sessionmaker(bind=engine)
-
-                parse_nport(cik="36405", clear_cache=False)
-
-                mock_clear_cache.assert_not_called()
+        mock_clear_cache.assert_not_called()
 
 
-def test_parse_nport_clears_cache_by_default(session, engine, sample_etfs, mock_edgar_company):
+def test_parse_nport_clears_cache_by_default(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that parse_nport clears cache by default (clear_cache defaults to True)."""
-    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-        with patch("etf_pipeline.parsers.nport.get_session_factory") as mock_factory:
-            with patch("etf_pipeline.parsers.nport.edgar_clear_cache") as mock_clear_cache:
-                from sqlalchemy.orm import sessionmaker
+    with patch("etf_pipeline.parsers.nport.edgar_clear_cache") as mock_clear_cache:
+        mock_clear_cache.return_value = {"files_deleted": 10, "bytes_freed": 1024000}
 
-                mock_factory.return_value = sessionmaker(bind=engine)
-                mock_clear_cache.return_value = {"files_deleted": 10, "bytes_freed": 1024000}
+        parse_nport(cik="36405")
 
-                parse_nport(cik="36405")
-
-                mock_clear_cache.assert_called_once_with(dry_run=False)
+        mock_clear_cache.assert_called_once_with(dry_run=False)

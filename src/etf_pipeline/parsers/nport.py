@@ -12,7 +12,7 @@ from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from etf_pipeline.db import get_engine, get_session_factory
+from etf_pipeline.db import get_engine
 from etf_pipeline.models import Derivative, ETF, Holding
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def parse_nport(cik: Optional[str] = None, limit: Optional[int] = None, clear_ca
         clear_cache: Whether to clear edgartools HTTP cache after processing
     """
     engine = get_engine()
-    session_factory = get_session_factory(engine)
+    session_factory = sessionmaker(bind=engine)
 
     with session_factory() as session:
         stmt = select(ETF).order_by(ETF.cik)
@@ -321,7 +321,7 @@ def _map_investment_to_derivative(
         opt = deriv_info.option_derivative
         counterparty = opt.counterparty_name
         counterparty_lei = opt.counterparty_lei
-        underlying_name = opt.reference_entity_name
+        underlying_name = opt.reference_entity_name or opt.index_name
         underlying_cusip = opt.reference_entity_cusip
         if opt.share_number:
             notional_value = opt.share_number
@@ -347,11 +347,11 @@ def _map_investment_to_derivative(
         etf_id=etf.id,
         report_date=report_date,
         derivative_type=derivative_type,
-        underlying_name=underlying_name,
-        underlying_cusip=underlying_cusip,
+        underlying_name=_clean_str(underlying_name),
+        underlying_cusip=_clean_str(underlying_cusip),
         notional_value=notional_value,
-        counterparty=counterparty,
-        counterparty_lei=counterparty_lei,
+        counterparty=_clean_str(counterparty),
+        counterparty_lei=_clean_str(counterparty_lei),
         delta=delta,
         expiration_date=expiration_date,
     )

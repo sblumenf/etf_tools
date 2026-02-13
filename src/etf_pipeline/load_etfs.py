@@ -8,9 +8,9 @@ from typing import Optional
 
 from edgar import Company
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from etf_pipeline.db import get_engine, get_session_factory
+from etf_pipeline.db import get_engine
 from etf_pipeline.models import ETF
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ def load_etfs(cik: Optional[str] = None, limit: Optional[int] = None) -> None:
         logger.info(f"Limiting to first {limit} CIKs")
 
     engine = get_engine()
-    session_factory = get_session_factory(engine)
+    session_factory = sessionmaker(bind=engine)
 
     succeeded = 0
     failed = 0

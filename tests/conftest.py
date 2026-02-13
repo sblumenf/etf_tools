@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
@@ -27,3 +28,21 @@ def session(engine):
     sess = factory()
     yield sess
     sess.close()
+
+
+@pytest.fixture
+def mock_nport_db(engine):
+    """Patch database access for nport parser tests."""
+    with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
+        with patch("etf_pipeline.parsers.nport.sessionmaker") as mock_sm:
+            mock_sm.return_value = sessionmaker(bind=engine)
+            yield
+
+
+@pytest.fixture
+def mock_load_etfs_db(engine):
+    """Patch database access for load_etfs tests."""
+    with patch("etf_pipeline.load_etfs.get_engine", return_value=engine):
+        with patch("etf_pipeline.load_etfs.sessionmaker") as mock_sm:
+            mock_sm.return_value = sessionmaker(bind=engine)
+            yield

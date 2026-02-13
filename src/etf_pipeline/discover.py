@@ -24,10 +24,10 @@ def fetch():
         raw = json.loads(resp.read())
 
     fields = raw["fields"]
-    ci, si, cli, syi = fields.index("cik"), fields.index("seriesId"), fields.index("classId"), fields.index("symbol")
+    ci, si, syi = fields.index("cik"), fields.index("seriesId"), fields.index("symbol")
 
     etfs = [
-        {"ticker": r[syi], "cik": r[ci], "series_id": r[si], "class_id": r[cli]}
+        {"ticker": r[syi], "cik": r[ci], "series_id": r[si]}
         for r in raw["data"]
         if r[syi] and len(r[syi]) in (3, 4)
     ]

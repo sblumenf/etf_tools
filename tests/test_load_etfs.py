@@ -15,10 +15,10 @@ from etf_pipeline.models import ETF
 def sample_tickers_file(tmp_path):
     """Create a sample etf_tickers.json file."""
     data = [
-        {"ticker": "VOO", "cik": 36405, "series_id": "S000002839", "class_id": "C000092055"},
-        {"ticker": "VTV", "cik": 36405, "series_id": "S000002840", "class_id": "C000007778"},
-        {"ticker": "SPY", "cik": 1064641, "series_id": "S000002753", "class_id": "C000007519"},
-        {"ticker": "IVV", "cik": 1100663, "series_id": "S000002824", "class_id": "C000007793"},
+        {"ticker": "VOO", "cik": 36405, "series_id": "S000002839"},
+        {"ticker": "VTV", "cik": 36405, "series_id": "S000002840"},
+        {"ticker": "SPY", "cik": 1064641, "series_id": "S000002753"},
+        {"ticker": "IVV", "cik": 1100663, "series_id": "S000002824"},
     ]
     tickers_file = tmp_path / "etf_tickers.json"
     tickers_file.write_text(json.dumps(data, indent=2))
@@ -45,16 +45,10 @@ def mock_company():
         yield mock
 
 
-def test_load_etfs_all(session, engine, sample_tickers_file, mock_company):
+def test_load_etfs_all(session, engine, sample_tickers_file, mock_company, mock_load_etfs_db):
     """Test loading all ETFs from the file."""
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", sample_tickers_file):
-        with patch("etf_pipeline.load_etfs.get_engine", return_value=engine):
-            with patch("etf_pipeline.load_etfs.get_session_factory") as mock_factory:
-                from sqlalchemy.orm import sessionmaker
-
-                mock_factory.return_value = sessionmaker(bind=engine)
-
-                load_etfs()
+        load_etfs()
 
     stmt = select(ETF).order_by(ETF.ticker)
     etfs = session.execute(stmt).scalars().all()
@@ -76,16 +70,10 @@ def test_load_etfs_all(session, engine, sample_tickers_file, mock_company):
     assert etfs[3].fund_name == "Vanguard Group Inc"
 
 
-def test_load_etfs_with_limit(session, engine, sample_tickers_file, mock_company):
+def test_load_etfs_with_limit(session, engine, sample_tickers_file, mock_company, mock_load_etfs_db):
     """Test loading only the first N CIKs."""
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", sample_tickers_file):
-        with patch("etf_pipeline.load_etfs.get_engine", return_value=engine):
-            with patch("etf_pipeline.load_etfs.get_session_factory") as mock_factory:
-                from sqlalchemy.orm import sessionmaker
-
-                mock_factory.return_value = sessionmaker(bind=engine)
-
-                load_etfs(limit=2)
+        load_etfs(limit=2)
 
     stmt = select(ETF).order_by(ETF.ticker)
     etfs = session.execute(stmt).scalars().all()
@@ -94,16 +82,10 @@ def test_load_etfs_with_limit(session, engine, sample_tickers_file, mock_company
     assert {e.ticker for e in etfs} == {"VOO", "VTV", "SPY"}
 
 
-def test_load_etfs_with_cik_filter(session, engine, sample_tickers_file, mock_company):
+def test_load_etfs_with_cik_filter(session, engine, sample_tickers_file, mock_company, mock_load_etfs_db):
     """Test loading only a specific CIK."""
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", sample_tickers_file):
-        with patch("etf_pipeline.load_etfs.get_engine", return_value=engine):
-            with patch("etf_pipeline.load_etfs.get_session_factory") as mock_factory:
-                from sqlalchemy.orm import sessionmaker
-
-                mock_factory.return_value = sessionmaker(bind=engine)
-
-                load_etfs(cik="36405")
+        load_etfs(cik="36405")
 
     stmt = select(ETF).order_by(ETF.ticker)
     etfs = session.execute(stmt).scalars().all()
@@ -114,7 +96,7 @@ def test_load_etfs_with_cik_filter(session, engine, sample_tickers_file, mock_co
     assert all(e.cik == "0000036405" for e in etfs)
 
 
-def test_load_etfs_upsert_existing(session, engine, sample_tickers_file, mock_company):
+def test_load_etfs_upsert_existing(session, engine, sample_tickers_file, mock_company, mock_load_etfs_db):
     """Test that existing ETFs are updated, not duplicated."""
     existing = ETF(
         ticker="VOO",
@@ -126,13 +108,7 @@ def test_load_etfs_upsert_existing(session, engine, sample_tickers_file, mock_co
     session.commit()
 
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", sample_tickers_file):
-        with patch("etf_pipeline.load_etfs.get_engine", return_value=engine):
-            with patch("etf_pipeline.load_etfs.get_session_factory") as mock_factory:
-                from sqlalchemy.orm import sessionmaker
-
-                mock_factory.return_value = sessionmaker(bind=engine)
-
-                load_etfs(cik="36405")
+        load_etfs(cik="36405")
 
     stmt = select(ETF).where(ETF.ticker == "VOO")
     voo = session.execute(stmt).scalar_one()
@@ -147,33 +123,21 @@ def test_load_etfs_upsert_existing(session, engine, sample_tickers_file, mock_co
     assert len(all_etfs) == 2
 
 
-def test_load_etfs_file_not_found(session, engine, tmp_path, mock_company, capsys):
+def test_load_etfs_file_not_found(session, engine, tmp_path, mock_company, mock_load_etfs_db, capsys):
     """Test behavior when etf_tickers.json does not exist."""
     nonexistent_file = tmp_path / "nonexistent.json"
 
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", nonexistent_file):
-        with patch("etf_pipeline.load_etfs.get_engine", return_value=engine):
-            with patch("etf_pipeline.load_etfs.get_session_factory") as mock_factory:
-                from sqlalchemy.orm import sessionmaker
-
-                mock_factory.return_value = sessionmaker(bind=engine)
-
-                load_etfs()
+        load_etfs()
 
     captured = capsys.readouterr()
     assert "does not exist" in captured.out
 
 
-def test_load_etfs_invalid_cik(session, engine, sample_tickers_file, mock_company, capsys):
+def test_load_etfs_invalid_cik(session, engine, sample_tickers_file, mock_company, mock_load_etfs_db, capsys):
     """Test behavior when requested CIK is not in the file."""
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", sample_tickers_file):
-        with patch("etf_pipeline.load_etfs.get_engine", return_value=engine):
-            with patch("etf_pipeline.load_etfs.get_session_factory") as mock_factory:
-                from sqlalchemy.orm import sessionmaker
-
-                mock_factory.return_value = sessionmaker(bind=engine)
-
-                load_etfs(cik="99999")
+        load_etfs(cik="99999")
 
     captured = capsys.readouterr()
     assert "not found" in captured.out
@@ -183,19 +147,13 @@ def test_load_etfs_invalid_cik(session, engine, sample_tickers_file, mock_compan
     assert len(etfs) == 0
 
 
-def test_load_etfs_company_error(session, engine, sample_tickers_file, capsys):
+def test_load_etfs_company_error(session, engine, sample_tickers_file, mock_load_etfs_db, capsys):
     """Test that CIK-level errors are caught and logged."""
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", sample_tickers_file):
-        with patch("etf_pipeline.load_etfs.get_engine", return_value=engine):
-            with patch("etf_pipeline.load_etfs.get_session_factory") as mock_factory:
-                from sqlalchemy.orm import sessionmaker
+        with patch("etf_pipeline.load_etfs.Company") as mock_company:
+            mock_company.side_effect = Exception("API error")
 
-                mock_factory.return_value = sessionmaker(bind=engine)
-
-                with patch("etf_pipeline.load_etfs.Company") as mock_company:
-                    mock_company.side_effect = Exception("API error")
-
-                    load_etfs()
+            load_etfs()
 
     captured = capsys.readouterr()
     assert "failed" in captured.out.lower()
