@@ -1,5 +1,10 @@
 Phase 1: NPORT consistency fix [COMPLETE]
-Phase 2: Add class_id to ETF table [PENDING]
+Phase 2: Add class_id to ETF table [COMPLETE]
+  ✓ Added class_id column to ETF model (String(20), nullable, indexed)
+  ✓ Updated discover.py to extract classId from SEC API
+  ✓ Updated load_etfs.py to pass class_id to upsert
+  ✓ Updated SCHEMA.md documentation
+  ✓ Updated test fixtures and verified all tests pass (57/57)
 Phase 3: Core N-CSR parser [PENDING]
 Phase 4: Benchmark extraction [PENDING]
 Phase 5: CLI integration [PENDING]
