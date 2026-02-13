@@ -63,9 +63,20 @@ def prospectus():
 
 
 @main.command()
-def flows():
+@click.option("--cik", type=str, help="Process only this CIK")
+@click.option("--limit", type=int, help="Process only the first N CIKs")
+@click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
+def flows(cik, limit, keep_cache):
     """Parse 24F-2NT filings for fund flow data."""
-    click.echo("flows: not yet implemented")
+    import logging
+
+    from etf_pipeline.parsers.flows import parse_flows
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    parse_flows(cik=cik, limit=limit, clear_cache=not keep_cache)
 
 
 @main.command()

@@ -46,3 +46,12 @@ def mock_load_etfs_db(engine):
         with patch("etf_pipeline.load_etfs.sessionmaker") as mock_sm:
             mock_sm.return_value = sessionmaker(bind=engine)
             yield
+
+
+@pytest.fixture
+def mock_flows_db(engine):
+    """Patch database access for flows parser tests."""
+    with patch("etf_pipeline.parsers.flows.get_engine", return_value=engine):
+        with patch("etf_pipeline.parsers.flows.sessionmaker") as mock_sm:
+            mock_sm.return_value = sessionmaker(bind=engine)
+            yield
