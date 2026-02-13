@@ -51,6 +51,15 @@ class ETF(Base):
     derivatives: Mapped[list["Derivative"]] = relationship(back_populates="etf")
     performances: Mapped[list["Performance"]] = relationship(back_populates="etf")
     fee_expenses: Mapped[list["FeeExpense"]] = relationship(back_populates="etf")
+    per_share_operating: Mapped[list["PerShareOperating"]] = relationship(
+        back_populates="etf"
+    )
+    per_share_distributions: Mapped[list["PerShareDistribution"]] = relationship(
+        back_populates="etf"
+    )
+    per_share_ratios: Mapped[list["PerShareRatios"]] = relationship(
+        back_populates="etf"
+    )
 
 
 class Holding(Base):
@@ -162,3 +171,67 @@ class FlowData(Base):
     sales_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
     redemptions_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
     net_sales: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+
+
+class PerShareOperating(Base):
+    __tablename__ = "per_share_operating"
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_id", "fiscal_year_end", name="per_share_operating_etf_fy_uniq"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
+    fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
+    nav_beginning: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    net_investment_income: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    net_realized_unrealized_gain: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(10, 4)
+    )
+    total_from_operations: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    equalization: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    nav_end: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    total_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
+    math_validated: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+    etf: Mapped["ETF"] = relationship(back_populates="per_share_operating")
+
+
+class PerShareDistribution(Base):
+    __tablename__ = "per_share_distribution"
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_id", "fiscal_year_end", name="per_share_distribution_etf_fy_uniq"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
+    fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
+    dist_net_investment_income: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(10, 4)
+    )
+    dist_realized_gains: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    dist_return_of_capital: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    dist_total: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    etf: Mapped["ETF"] = relationship(back_populates="per_share_distributions")
+
+
+class PerShareRatios(Base):
+    __tablename__ = "per_share_ratios"
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_id", "fiscal_year_end", name="per_share_ratios_etf_fy_uniq"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
+    fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
+    expense_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
+    portfolio_turnover: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
+    net_assets_end: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+
+    etf: Mapped["ETF"] = relationship(back_populates="per_share_ratios")

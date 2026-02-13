@@ -112,6 +112,51 @@ Dollar-value fund flows from 24F-2NT filings. One row per CIK per fiscal year.
 
 ---
 
+### PerShareOperating
+Per-share operating data from Financial Highlights tables in N-CSR filings. One row per ETF per fiscal year.
+
+| Field | Description |
+|-------|-------------|
+| **etf** | FK to ETF |
+| **fiscal_year_end** | End date of the reporting period |
+| **nav_beginning** | Net asset value per share at beginning of period |
+| **net_investment_income** | Per-share net investment income/loss |
+| **net_realized_unrealized_gain** | Per-share net realized and unrealized gains/losses |
+| **total_from_operations** | Sum of investment income + gains |
+| **equalization** | Net equalization credits/charges (some issuers only) |
+| **nav_end** | Net asset value per share at end of period |
+| **total_return** | Total return for the period as decimal (0.1234 = 12.34%) |
+| **math_validated** | True if NAV_begin + operations - distributions (+/- equalization) = NAV_end within $0.01 |
+
+---
+
+### PerShareDistribution
+Per-share distribution amounts from Financial Highlights tables in N-CSR filings. One row per ETF per fiscal year.
+
+| Field | Description |
+|-------|-------------|
+| **etf** | FK to ETF |
+| **fiscal_year_end** | End date of the reporting period |
+| **dist_net_investment_income** | Dividends from net investment income (reported as negative) |
+| **dist_realized_gains** | Distributions from realized capital gains |
+| **dist_return_of_capital** | Return of capital distributions |
+| **dist_total** | Total distributions |
+
+---
+
+### PerShareRatios
+Fund-level ratios and supplemental data from Financial Highlights tables in N-CSR filings. One row per ETF per fiscal year.
+
+| Field | Description |
+|-------|-------------|
+| **etf** | FK to ETF |
+| **fiscal_year_end** | End date of the reporting period |
+| **expense_ratio** | Total expense ratio as decimal (0.00450 = 0.45%) |
+| **portfolio_turnover** | Portfolio turnover rate as decimal (0.50000 = 50%) |
+| **net_assets_end** | Total net assets at end of period in USD |
+
+---
+
 ## Entity Relationship Diagram
 
 ```mermaid
@@ -120,6 +165,9 @@ erDiagram
     ETF ||--o{ Derivative : "has many"
     ETF ||--o{ Performance : "has many"
     ETF ||--o{ FeeExpense : "has many"
+    ETF ||--o{ PerShareOperating : "has many"
+    ETF ||--o{ PerShareDistribution : "has many"
+    ETF ||--o{ PerShareRatios : "has many"
 
     ETF {
         int id PK
@@ -210,6 +258,39 @@ erDiagram
         decimal redemptions_value "20,4 nullable"
         decimal net_sales "20,4 nullable"
     }
+
+    PerShareOperating {
+        int id PK
+        int etf_id FK
+        date fiscal_year_end "UK(etf,fiscal_year_end)"
+        decimal nav_beginning "10,4 nullable"
+        decimal net_investment_income "10,4 nullable"
+        decimal net_realized_unrealized_gain "10,4 nullable"
+        decimal total_from_operations "10,4 nullable"
+        decimal equalization "10,4 nullable"
+        decimal nav_end "10,4 nullable"
+        decimal total_return "8,5 nullable"
+        bool math_validated
+    }
+
+    PerShareDistribution {
+        int id PK
+        int etf_id FK
+        date fiscal_year_end "UK(etf,fiscal_year_end)"
+        decimal dist_net_investment_income "10,4 nullable"
+        decimal dist_realized_gains "10,4 nullable"
+        decimal dist_return_of_capital "10,4 nullable"
+        decimal dist_total "10,4 nullable"
+    }
+
+    PerShareRatios {
+        int id PK
+        int etf_id FK
+        date fiscal_year_end "UK(etf,fiscal_year_end)"
+        decimal expense_ratio "6,5 nullable"
+        decimal portfolio_turnover "8,5 nullable"
+        decimal net_assets_end "20,2 nullable"
+    }
 ```
 
 ---
@@ -226,6 +307,9 @@ SEC EDGAR Filing Types ───────────────────
                                             │── Derivative
                                             │
   N-CSR / N-CSRS (annual/semi-annual) ─────┤── Performance
+                                            │── PerShareOperating
+                                            │── PerShareDistribution
+                                            │── PerShareRatios
                                             │
   485BPOS (prospectus fee tables) ──────────┤── FeeExpense
                                             │
@@ -277,6 +361,9 @@ SEC EDGAR Filing Types ───────────────────
 | FeeExpense | `fee_expense_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
 | FlowData | `flow_data_cik_fy_uniq` | UNIQUE | `cik, fiscal_year_end` |
 | FlowData | `flow_data_fy_idx` | INDEX | `fiscal_year_end` |
+| PerShareOperating | `per_share_operating_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
+| PerShareDistribution | `per_share_distribution_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
+| PerShareRatios | `per_share_ratios_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
 
 ---
 

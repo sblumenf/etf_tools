@@ -11,6 +11,9 @@ from etf_pipeline.models import (
     FlowData,
     Holding,
     Performance,
+    PerShareDistribution,
+    PerShareOperating,
+    PerShareRatios,
 )
 
 
@@ -208,3 +211,174 @@ class TestFlowData:
         session.add(FlowData(cik="0001100663", fiscal_year_end=date(2024, 1, 31)))
         with pytest.raises(IntegrityError):
             session.commit()
+
+
+class TestPerShareOperating:
+    def test_create_per_share_operating(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        pso = PerShareOperating(
+            etf_id=etf.id,
+            fiscal_year_end=date(2024, 1, 31),
+            nav_beginning=Decimal("100.0000"),
+            net_investment_income=Decimal("2.5000"),
+            net_realized_unrealized_gain=Decimal("12.0000"),
+            total_from_operations=Decimal("14.5000"),
+            nav_end=Decimal("112.0000"),
+            total_return=Decimal("0.12340"),
+            math_validated=True,
+        )
+        session.add(pso)
+        session.commit()
+
+        result = session.query(PerShareOperating).one()
+        assert result.nav_beginning == Decimal("100.0000")
+        assert result.total_return == Decimal("0.12340")
+        assert result.math_validated is True
+
+    def test_per_share_operating_unique_constraint(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        session.add(
+            PerShareOperating(
+                etf_id=etf.id,
+                fiscal_year_end=date(2024, 1, 31),
+                math_validated=True,
+            )
+        )
+        session.commit()
+
+        session.add(
+            PerShareOperating(
+                etf_id=etf.id,
+                fiscal_year_end=date(2024, 1, 31),
+                math_validated=False,
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+    def test_etf_per_share_operating_relationship(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        pso = PerShareOperating(
+            etf_id=etf.id,
+            fiscal_year_end=date(2024, 1, 31),
+            math_validated=True,
+        )
+        session.add(pso)
+        session.commit()
+
+        session.refresh(etf)
+        assert len(etf.per_share_operating) == 1
+
+
+class TestPerShareDistribution:
+    def test_create_per_share_distribution(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        psd = PerShareDistribution(
+            etf_id=etf.id,
+            fiscal_year_end=date(2024, 1, 31),
+            dist_net_investment_income=Decimal("-2.5000"),
+            dist_realized_gains=Decimal("-0.5000"),
+            dist_return_of_capital=Decimal("-0.1000"),
+            dist_total=Decimal("-3.1000"),
+        )
+        session.add(psd)
+        session.commit()
+
+        result = session.query(PerShareDistribution).one()
+        assert result.dist_net_investment_income == Decimal("-2.5000")
+        assert result.dist_total == Decimal("-3.1000")
+
+    def test_per_share_distribution_unique_constraint(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        session.add(
+            PerShareDistribution(
+                etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)
+            )
+        )
+        session.commit()
+
+        session.add(
+            PerShareDistribution(
+                etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+    def test_etf_per_share_distributions_relationship(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        psd = PerShareDistribution(
+            etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)
+        )
+        session.add(psd)
+        session.commit()
+
+        session.refresh(etf)
+        assert len(etf.per_share_distributions) == 1
+
+
+class TestPerShareRatios:
+    def test_create_per_share_ratios(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        psr = PerShareRatios(
+            etf_id=etf.id,
+            fiscal_year_end=date(2024, 1, 31),
+            expense_ratio=Decimal("0.00090"),
+            portfolio_turnover=Decimal("0.50000"),
+            net_assets_end=Decimal("1000000000.00"),
+        )
+        session.add(psr)
+        session.commit()
+
+        result = session.query(PerShareRatios).one()
+        assert result.expense_ratio == Decimal("0.00090")
+        assert result.net_assets_end == Decimal("1000000000.00")
+
+    def test_per_share_ratios_unique_constraint(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        session.add(
+            PerShareRatios(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31))
+        )
+        session.commit()
+
+        session.add(
+            PerShareRatios(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31))
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+    def test_etf_per_share_ratios_relationship(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        psr = PerShareRatios(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31))
+        session.add(psr)
+        session.commit()
+
+        session.refresh(etf)
+        assert len(etf.per_share_ratios) == 1

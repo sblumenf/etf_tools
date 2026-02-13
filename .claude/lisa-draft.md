@@ -1,52 +1,69 @@
-# Specification Draft: ncsr parser
+# Specification Draft: Financial Highlights Parser
 
 *Interview in progress - Started: 2026-02-13*
 
 ## Overview
-Parse N-CSR/N-CSRS filings to populate the Performance table with per-ETF returns, expense ratio, and portfolio turnover.
+Parse the Financial Highlights HTML tables from N-CSR filings to extract per-share operating data and per-share distribution data for ETFs.
 
-## Data Source Analysis
+## Problem Statement
+N-CSR filings contain Financial Highlights tables with per-share distribution data (dividends from net investment income, distributions from capital gains, return of capital) that is NOT available in XBRL. The SEC explicitly excluded Financial Highlights from iXBRL tagging requirements. The data must be extracted via HTML table parsing using a positional approach, validated with the mathematical identity: NAV_begin + operations - distributions = NAV_end.
 
-### Company Facts API — Available Fields
-The SEC EDGAR XBRL company facts API (`/api/xbrl/companyfacts/CIK{cik}.json`) provides per-series data via `dei:LegalEntityAxis` context dimensions.
+## Key Decisions Made
+- **Scope**: Extract ALL Financial Highlights per-share fields (not just distributions)
+- **Data model**: Two new tables (`per_share_operating` + `per_share_distribution`)
+- **History depth**: Most recent year only per filing
+- **Validation**: Insert data but flag when math doesn't balance (`math_validated` boolean)
+- **Filing discovery**: Reuse the multi-filing-per-CIK approach from N-CSR XBRL parser
+- **Fund matching**: Document structure (series_id/class_id from SGML/iXBRL) with fallback to fuzzy string matching
 
-| Performance Field | XBRL Element | In API? | Notes |
-|---|---|---|---|
-| return_1yr | `oef:AvgAnnlRtrPct` | YES | Single element, period encoded in XBRL context |
-| return_5yr | `oef:AvgAnnlRtrPct` | YES | Same element, different context period |
-| return_10yr | `oef:AvgAnnlRtrPct` | YES | Same element, different context period |
-| return_since_inception | `oef:AvgAnnlRtrPct` + `oef:PerfInceptionDate` | YES | Needs inception date for identification |
-| portfolio_turnover | `oef:PortfolioTurnoverRate` or `us-gaap:InvestmentCompanyPortfolioTurnover` | YES | pureItemType (decimal) |
-| expense_ratio_actual | `oef:ExpenseRatioPct` | YES | Percent |
+## Data Model
 
-### NOT in Company Facts API
-| Performance Field | Why Not | Alternative |
-|---|---|---|
-| benchmark_name | Encoded as `BroadBasedIndexAxis` dimension members, not a text field | Parse context dimensions |
-| benchmark_return_1yr/5yr/10yr | Uses same `AvgAnnlRtrPct` with `BroadBasedIndexAxis` dimension | Parse context dimensions |
+### Table: `per_share_operating`
+FK to ETF, UK on (etf_id, fiscal_year_end)
 
-### Key Technical Detail
-Returns use ONE element (`AvgAnnlRtrPct`) with different XBRL contexts encoding the time period (1yr, 5yr, 10yr, inception). Benchmark returns use the SAME element but with a `BroadBasedIndexAxis` dimension. Must parse context dimensions to distinguish.
+| Column | Type | Description |
+|--------|------|-------------|
+| id | int PK | Auto-increment |
+| etf_id | int FK | References ETF |
+| fiscal_year_end | date | End of reporting period |
+| nav_beginning | Numeric(10,4) | Net asset value per share, beginning of period |
+| net_investment_income | Numeric(10,4) | Per-share net investment income/loss |
+| net_realized_unrealized_gain | Numeric(10,4) | Per-share net realized and unrealized gains/losses |
+| total_from_operations | Numeric(10,4) | Sum of investment income + gains |
+| nav_end | Numeric(10,4) | Net asset value per share, end of period |
+| total_return | Numeric(8,5) | Total return for the period as decimal |
+| math_validated | bool | True if NAV_begin + operations - distributions = NAV_end |
 
-## Scope Decision
-- **User chose:** TBD (awaiting answer on MVP scope given actual data availability)
+### Table: `per_share_distribution`
+FK to ETF, UK on (etf_id, fiscal_year_end)
 
-## Technical Approach
-- **User chose:** TBD (company facts API confirmed to have per-series data via LegalEntityAxis)
+| Column | Type | Description |
+|--------|------|-------------|
+| id | int PK | Auto-increment |
+| etf_id | int FK | References ETF |
+| fiscal_year_end | date | End of reporting period |
+| dist_net_investment_income | Numeric(10,4) | Dividends from net investment income (negative = distribution paid) |
+| dist_realized_gains | Numeric(10,4) | Distributions from realized capital gains |
+| dist_return_of_capital | Numeric(10,4) nullable | Return of capital distributions |
+| dist_total | Numeric(10,4) | Total distributions |
 
-## Implementation Pattern
-Follow existing parser patterns (flows.py, nport.py):
-- Entry point: `parse_ncsr(cik=None, limit=None, clear_cache=True)`
-- Per-ETF processing (not per-CIK like flows — Performance has etf_id FK)
-- Upsert logic: unique on (etf_id, fiscal_year_end)
-- CLI: `etf-pipeline ncsr [--cik CIK] [--limit N] [--keep-cache]`
+## Parsing Strategy
+1. Find "Financial Highlights" headings in N-CSR HTML
+2. Parse the next `<table>` after each heading
+3. Use POSITIONAL extraction (not label matching):
+   - Row 1: NAV beginning
+   - Rows 2-N: Investment operations section
+   - Row after "total from operations": start of distributions
+   - Rows until next NAV row: distribution items
+   - NAV end row
+4. Validate: NAV_begin + total_operations - total_distributions = NAV_end (within tolerance)
+5. Match each Financial Highlights section to ETF via series_id/class_id from document structure, fallback to fuzzy fund name matching
 
 ## Open Questions
-- MVP scope: which fields to include?
-- Should benchmark data (via context dimensions) be in scope?
-- Distribution fields: defer entirely or attempt?
+- How to handle the ratios/supplemental section (expense ratio, turnover, net assets) — duplicate of XBRL data?
+- Tolerance for math validation (rounding differences)?
+- CLI command name?
 
 ---
-*Interview notes will be accumulated below as the interview progresses*
+*Interview notes accumulated during session*
 ---
-
