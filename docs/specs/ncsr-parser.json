@@ -1,0 +1,72 @@
+{
+  "feature": "ncsr-parser",
+  "slug": "ncsr-parser",
+  "created": "2026-02-13",
+  "status": "approved",
+  "spec_file": "docs/specs/ncsr-parser.md",
+  "progress_file": "docs/specs/ncsr-parser-progress.txt",
+  "phases": [
+    {
+      "id": 1,
+      "name": "NPORT consistency fix",
+      "description": "Add ciks parameter to parse_nport() for interface consistency with flows parser",
+      "verification": "python -m pytest tests/test_nport.py -v",
+      "stories": ["US-1"]
+    },
+    {
+      "id": 2,
+      "name": "Core N-CSR parser",
+      "description": "Create ncsr.py with company facts API integration, LegalEntityAxis dimension parsing, period-based return mapping, and upsert logic",
+      "verification": "python -m pytest tests/test_ncsr.py -v",
+      "stories": ["US-2"]
+    },
+    {
+      "id": 3,
+      "name": "Benchmark extraction",
+      "description": "Add BroadBasedIndexAxis dimension parsing for benchmark names and returns",
+      "verification": "python -m pytest tests/test_ncsr.py -v",
+      "stories": ["US-3"]
+    },
+    {
+      "id": 4,
+      "name": "CLI integration",
+      "description": "Wire parse_ncsr() into cli.py ncsr command replacing stub",
+      "verification": "python -m pytest tests/ -v",
+      "stories": ["US-4"]
+    }
+  ],
+  "user_stories": [
+    {
+      "id": "US-1",
+      "title": "Add ciks parameter to parse_nport()",
+      "phase": 1
+    },
+    {
+      "id": "US-2",
+      "title": "Core N-CSR parser — returns, expense ratio, portfolio turnover",
+      "phase": 2
+    },
+    {
+      "id": "US-3",
+      "title": "Benchmark data extraction",
+      "phase": 3
+    },
+    {
+      "id": "US-4",
+      "title": "CLI integration",
+      "phase": 4
+    }
+  ],
+  "decisions": {
+    "data_source": "Company facts API via edgartools Company.get_facts().to_pandas()",
+    "scope": "Core metrics (returns, expense, turnover) + benchmarks. Distribution fields out of scope.",
+    "history_depth": "Latest fiscal year only",
+    "series_mapping": "LegalEntityAxis dimension -> series_id -> ETF lookup",
+    "benchmark_names": "Raw XBRL member names stored as-is",
+    "period_mapping": "Year-difference with +/- 30 day tolerance",
+    "unmatched_series": "Warn and skip",
+    "interface_consistency": "All parsers use (cik, ciks, limit, clear_cache) signature",
+    "test_fixtures": "Saved JSON snapshot in tests/fixtures/",
+    "exploration": "One live API call allowed during implementation"
+  }
+}

@@ -1,143 +1,56 @@
-# Specification Draft: Implement 24F-2NT parser
+# Specification Draft: ncsr parser
 
 *Interview in progress - Started: 2026-02-13*
 
 ## Overview
-[To be filled during interview]
+Parse N-CSR/N-CSRS filings to populate the Performance table with per-ETF returns, expense ratio, and portfolio turnover.
 
-## Problem Statement
-[To be filled during interview]
+## Data Source Analysis
 
-## Scope
+### Company Facts API — Available Fields
+The SEC EDGAR XBRL company facts API (`/api/xbrl/companyfacts/CIK{cik}.json`) provides per-series data via `dei:LegalEntityAxis` context dimensions.
 
-### In Scope
-<!-- Explicit list of what IS included in this implementation -->
-- [To be filled during interview]
+| Performance Field | XBRL Element | In API? | Notes |
+|---|---|---|---|
+| return_1yr | `oef:AvgAnnlRtrPct` | YES | Single element, period encoded in XBRL context |
+| return_5yr | `oef:AvgAnnlRtrPct` | YES | Same element, different context period |
+| return_10yr | `oef:AvgAnnlRtrPct` | YES | Same element, different context period |
+| return_since_inception | `oef:AvgAnnlRtrPct` + `oef:PerfInceptionDate` | YES | Needs inception date for identification |
+| portfolio_turnover | `oef:PortfolioTurnoverRate` or `us-gaap:InvestmentCompanyPortfolioTurnover` | YES | pureItemType (decimal) |
+| expense_ratio_actual | `oef:ExpenseRatioPct` | YES | Percent |
 
-### Out of Scope
-<!-- Explicit list of what is NOT included - future work, won't fix, etc. -->
-- [To be filled during interview]
+### NOT in Company Facts API
+| Performance Field | Why Not | Alternative |
+|---|---|---|
+| benchmark_name | Encoded as `BroadBasedIndexAxis` dimension members, not a text field | Parse context dimensions |
+| benchmark_return_1yr/5yr/10yr | Uses same `AvgAnnlRtrPct` with `BroadBasedIndexAxis` dimension | Parse context dimensions |
+| distribution_total | Not in OEF taxonomy (only narrative `DistOfCapitalTextBlock`) | iXBRL HTML parsing |
+| dist_ordinary_income | Not in OEF taxonomy | iXBRL HTML parsing |
+| dist_qualified_dividend | Not in OEF taxonomy | iXBRL HTML parsing |
+| dist_ltcg | Not in OEF taxonomy | iXBRL HTML parsing |
+| dist_stcg | Not in OEF taxonomy | iXBRL HTML parsing |
+| dist_return_of_capital | Not in OEF taxonomy | iXBRL HTML parsing |
 
-## User Stories
+### Key Technical Detail
+Returns use ONE element (`AvgAnnlRtrPct`) with different XBRL contexts encoding the time period (1yr, 5yr, 10yr, inception). Benchmark returns use the SAME element but with a `BroadBasedIndexAxis` dimension. Must parse context dimensions to distinguish.
 
-<!--
-IMPORTANT: Each story must be small enough to complete in ONE focused coding session.
-If a story is too large, break it into smaller stories.
+## Scope Decision
+- **User chose:** TBD (awaiting answer on MVP scope given actual data availability)
 
-Format each story with VERIFIABLE acceptance criteria:
+## Technical Approach
+- **User chose:** TBD (company facts API confirmed to have per-series data via LegalEntityAxis)
 
-### US-1: [Story Title]
-**Description:** As a [user type], I want [action] so that [benefit].
-
-**Acceptance Criteria:**
-- [ ] [Specific, verifiable criterion - e.g., "API returns 200 for valid input"]
-- [ ] [Another verifiable criterion - e.g., "Error message displayed for invalid email"]
-- [ ] Typecheck/lint passes
-- [ ] [If UI] Verify in browser
-
-BAD criteria (too vague): "Works correctly", "Is fast", "Handles errors"
-GOOD criteria: "Response time < 200ms", "Returns 404 for missing resource", "Form shows inline validation"
--->
-
-[To be filled during interview]
-
-## Technical Design
-
-### Data Model
-[To be filled during interview]
-
-### API Endpoints
-[To be filled during interview]
-
-### Integration Points
-[To be filled during interview]
-
-## User Experience
-
-### User Flows
-[To be filled during interview]
-
-### Edge Cases
-[To be filled during interview]
-
-## Requirements
-
-### Functional Requirements
-<!--
-Use FR-IDs for each requirement:
-- FR-1: [Requirement description]
-- FR-2: [Requirement description]
--->
-[To be filled during interview]
-
-### Non-Functional Requirements
-<!--
-Performance, security, scalability requirements:
-- NFR-1: [Requirement - e.g., "Response time < 500ms for 95th percentile"]
-- NFR-2: [Requirement - e.g., "Support 100 concurrent users"]
--->
-[To be filled during interview]
-
-## Implementation Phases
-
-<!-- Break work into 2-4 incremental milestones Ralph can complete one at a time -->
-
-### Phase 1: [Foundation/Setup]
-- [ ] [Task 1]
-- [ ] [Task 2]
-- **Verification:** `[command to verify phase 1]`
-
-### Phase 2: [Core Implementation]
-- [ ] [Task 1]
-- [ ] [Task 2]
-- **Verification:** `[command to verify phase 2]`
-
-### Phase 3: [Integration/Polish]
-- [ ] [Task 1]
-- [ ] [Task 2]
-- **Verification:** `[command to verify phase 3]`
-
-<!-- Add Phase 4 if needed for complex features -->
-
-## Definition of Done
-
-This feature is complete when:
-- [ ] All acceptance criteria in user stories pass
-- [ ] All implementation phases verified
-- [ ] Tests pass: `[verification command]`
-- [ ] Types/lint check: `[verification command]`
-- [ ] Build succeeds: `[verification command]`
-
-## Ralph Loop Command
-
-<!-- Generated at finalization with phases and escape hatch -->
-
-```bash
-/ralph-loop "Implement Implement 24F-2NT parser per spec at docs/specs/implement-24f-2nt-parser.md
-
-PHASES:
-1. [Phase 1 name]: [tasks] - verify with [command]
-2. [Phase 2 name]: [tasks] - verify with [command]
-3. [Phase 3 name]: [tasks] - verify with [command]
-
-VERIFICATION (run after each phase):
-- [test command]
-- [lint/typecheck command]
-- [build command]
-
-ESCAPE HATCH: After 20 iterations without progress:
-- Document what's blocking in the spec file under 'Implementation Notes'
-- List approaches attempted
-- Stop and ask for human guidance
-
-Output <promise>COMPLETE</promise> when all phases pass verification." --max-iterations 30 --completion-promise "COMPLETE"
-```
+## Implementation Pattern
+Follow existing parser patterns (flows.py, nport.py):
+- Entry point: `parse_ncsr(cik=None, limit=None, clear_cache=True)`
+- Per-ETF processing (not per-CIK like flows — Performance has etf_id FK)
+- Upsert logic: unique on (etf_id, fiscal_year_end)
+- CLI: `etf-pipeline ncsr [--cik CIK] [--limit N] [--keep-cache]`
 
 ## Open Questions
-[To be filled during interview]
-
-## Implementation Notes
-[To be filled during interview]
+- MVP scope: which fields to include?
+- Should benchmark data (via context dimensions) be in scope?
+- Distribution fields: defer entirely or attempt?
 
 ---
 *Interview notes will be accumulated below as the interview progresses*

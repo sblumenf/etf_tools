@@ -828,3 +828,44 @@ def test_parse_nport_clears_cache_by_default(session, engine, sample_etfs, mock_
         parse_nport(cik="36405")
 
         mock_clear_cache.assert_called_once_with(dry_run=False)
+
+
+def test_parse_nport_with_ciks_parameter(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
+    """Test that --ciks parameter overrides cik and processes multiple CIKs."""
+    parse_nport(ciks=["36405", "1064641"])
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+
+    # Should have holdings from both CIKs: VOO (3) + VTV (3) + SPY (3) = 9 total
+    assert len(holdings) == 9
+
+    # Verify both CIKs were processed
+    etf_ids = set(h.etf_id for h in holdings)
+    assert len(etf_ids) == 3  # VOO, VTV, SPY
+
+
+def test_parse_nport_ciks_overrides_cik(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
+    """Test that ciks parameter takes precedence over cik parameter."""
+    parse_nport(cik="36405", ciks=["1064641"])
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+
+    # Should only process SPY (CIK 1064641), not VOO/VTV (CIK 36405)
+    assert len(holdings) == 3
+
+    spy = session.execute(select(ETF).where(ETF.ticker == "SPY")).scalar_one()
+    assert all(h.etf_id == spy.id for h in holdings)
+
+
+def test_parse_nport_ciks_invalid_ciks(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, capsys):
+    """Test behavior when all provided CIKs are invalid."""
+    parse_nport(ciks=["99999", "88888"])
+
+    captured = capsys.readouterr()
+    assert "None of the provided CIKs found in database" in captured.out
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 0

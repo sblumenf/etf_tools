@@ -25,11 +25,17 @@ def _clean_str(val):
     return str(val).strip() if val else None
 
 
-def parse_nport(cik: Optional[str] = None, limit: Optional[int] = None, clear_cache: bool = True) -> None:
+def parse_nport(
+    cik: Optional[str] = None,
+    ciks: Optional[list[str]] = None,
+    limit: Optional[int] = None,
+    clear_cache: bool = True,
+) -> None:
     """Parse NPORT-P filings for all ETFs and extract holdings and derivatives.
 
     Args:
         cik: Optional CIK to process (all others will be skipped)
+        ciks: Optional list of CIKs to process (overrides cik parameter)
         limit: Optional limit on number of CIKs to process (alphabetical order)
         clear_cache: Whether to clear edgartools HTTP cache after processing
     """
@@ -49,26 +55,36 @@ def parse_nport(cik: Optional[str] = None, limit: Optional[int] = None, clear_ca
         for etf in etfs:
             by_cik[etf.cik].append(etf)
 
-        ciks = sorted(by_cik.keys())
+        ciks_to_process = sorted(by_cik.keys())
 
-        if cik is not None:
+        # ciks parameter takes precedence over cik
+        if ciks is not None:
+            ciks_padded = [f"{int(c):010d}" for c in ciks]
+            valid_ciks = [c for c in ciks_padded if c in ciks_to_process]
+            if not valid_ciks:
+                logger.warning(f"None of the provided CIKs found in database: {ciks}")
+                print(f"None of the provided CIKs found in database: {ciks}")
+                return
+            ciks_to_process = valid_ciks
+            logger.info(f"Processing {len(valid_ciks)} CIK(s) from ciks parameter")
+        elif cik is not None:
             cik_padded = f"{int(cik):010d}"
-            if cik_padded in ciks:
-                ciks = [cik_padded]
+            if cik_padded in ciks_to_process:
+                ciks_to_process = [cik_padded]
                 logger.info(f"Processing single CIK: {cik}")
             else:
                 logger.warning(f"CIK {cik} not found in database")
                 print(f"CIK {cik} not found in database")
                 return
 
-        if limit is not None:
-            ciks = ciks[:limit]
+        if limit is not None and ciks is None:
+            ciks_to_process = ciks_to_process[:limit]
             logger.info(f"Limiting to first {limit} CIKs")
 
     succeeded = 0
     failed = 0
 
-    for cik_str in ciks:
+    for cik_str in ciks_to_process:
         try:
             _process_cik(session_factory, cik_str, len(by_cik[cik_str]))
             succeeded += 1
