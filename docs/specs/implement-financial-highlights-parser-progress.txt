@@ -1,6 +1,0 @@
-Feature: Financial Highlights Parser
-Spec: docs/specs/implement-financial-highlights-parser.md
-
-Phase 1: Data Model + Dependencies [PENDING]
-Phase 2: HTML Table Parser [PENDING]
-Phase 3: Filing Orchestration + CLI [PENDING]
