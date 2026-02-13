@@ -34,9 +34,20 @@ def load_etfs_cmd(cik, limit):
 
 
 @main.command()
-def nport():
+@click.option("--cik", type=str, help="Process only this CIK")
+@click.option("--limit", type=int, help="Process only the first N CIKs")
+@click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
+def nport(cik, limit, keep_cache):
     """Parse NPORT-P filings for holdings and derivatives."""
-    click.echo("nport: not yet implemented")
+    import logging
+
+    from etf_pipeline.parsers.nport import parse_nport
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    parse_nport(cik=cik, limit=limit, clear_cache=not keep_cache)
 
 
 @main.command()

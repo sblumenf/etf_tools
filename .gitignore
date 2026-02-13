@@ -23,3 +23,12 @@ data/
 .pytest_cache/
 .coverage
 htmlcov/
+test_etf.db
+test_etf.db-journal
+
+# Scratch / logs
+ralph-*.txt
+ralph-*.md
+inspect_*.py
+*.log.txt
+docs/specs/completed/

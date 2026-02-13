@@ -63,13 +63,17 @@ def test_load_etfs_all(session, engine, sample_tickers_file, mock_company):
     assert etfs[0].ticker == "IVV"
     assert etfs[0].cik == "0001100663"
     assert etfs[0].issuer_name == "iShares Trust"
+    assert etfs[0].fund_name == "iShares Trust"
     assert etfs[1].ticker == "SPY"
     assert etfs[1].cik == "0001064641"
+    assert etfs[1].fund_name == "SPDR S&P 500 ETF Trust"
     assert etfs[2].ticker == "VOO"
     assert etfs[2].cik == "0000036405"
     assert etfs[2].issuer_name == "Vanguard Group Inc"
+    assert etfs[2].fund_name == "Vanguard Group Inc"
     assert etfs[3].ticker == "VTV"
     assert etfs[3].cik == "0000036405"
+    assert etfs[3].fund_name == "Vanguard Group Inc"
 
 
 def test_load_etfs_with_limit(session, engine, sample_tickers_file, mock_company):
@@ -136,6 +140,7 @@ def test_load_etfs_upsert_existing(session, engine, sample_tickers_file, mock_co
     assert voo.cik == "0000036405"
     assert voo.series_id == "S000002839"
     assert voo.issuer_name == "Vanguard Group Inc"
+    assert voo.fund_name == "Vanguard Group Inc"
 
     stmt_all = select(ETF)
     all_etfs = session.execute(stmt_all).scalars().all()
