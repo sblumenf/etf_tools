@@ -76,12 +76,6 @@ Returns, distributions, and operating metrics from annual/semi-annual N-CSR fili
 | **return_since_inception** | Annualized return since fund inception |
 | **benchmark_name** | Name of the benchmark index |
 | **benchmark_return_1yr/5yr/10yr** | Corresponding benchmark returns |
-| **distribution_total** | Total per-share distribution for the period |
-| **dist_ordinary_income** | Ordinary income portion of distributions |
-| **dist_qualified_dividend** | Qualified dividend portion |
-| **dist_ltcg** | Long-term capital gains distribution |
-| **dist_stcg** | Short-term capital gains distribution |
-| **dist_return_of_capital** | Return of capital (non-taxable) portion |
 | **portfolio_turnover** | Portfolio turnover rate as decimal (0.50000 = 50%) |
 | **expense_ratio_actual** | Actual expense ratio from operations |
 
@@ -192,12 +186,6 @@ erDiagram
         decimal benchmark_return_1yr "8,5 nullable"
         decimal benchmark_return_5yr "8,5 nullable"
         decimal benchmark_return_10yr "8,5 nullable"
-        decimal distribution_total "12,6 nullable"
-        decimal dist_ordinary_income "12,6 nullable"
-        decimal dist_qualified_dividend "12,6 nullable"
-        decimal dist_ltcg "12,6 nullable"
-        decimal dist_stcg "12,6 nullable"
-        decimal dist_return_of_capital "12,6 nullable"
         decimal portfolio_turnover "8,5 nullable"
         decimal expense_ratio_actual "6,5 nullable"
     }

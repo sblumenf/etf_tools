@@ -122,12 +122,6 @@ class Performance(Base):
     benchmark_return_1yr: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
     benchmark_return_5yr: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
     benchmark_return_10yr: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
-    distribution_total: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6))
-    dist_ordinary_income: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6))
-    dist_qualified_dividend: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6))
-    dist_ltcg: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6))
-    dist_stcg: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6))
-    dist_return_of_capital: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6))
     portfolio_turnover: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
     expense_ratio_actual: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
 

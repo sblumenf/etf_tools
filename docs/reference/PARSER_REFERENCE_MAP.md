@@ -63,7 +63,6 @@ Query `/dgunning/edgartools` for: `Filing`, `html()`, `xbrl()`, XBRL data extrac
 ### Field Mapping Notes
 - `return_1yr`, `return_5yr`, `return_10yr`, `return_since_inception` — look for OEF taxonomy tags related to average annual returns
 - `benchmark_name`, `benchmark_return_*` — look for index/benchmark-related tags in OEF taxonomy
-- `distribution_total` and sub-components — may require summing tagged distribution line items
 - `portfolio_turnover` — tagged in OEF taxonomy
 - `expense_ratio_actual` — tagged in OEF taxonomy
 

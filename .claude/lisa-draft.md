@@ -24,12 +24,6 @@ The SEC EDGAR XBRL company facts API (`/api/xbrl/companyfacts/CIK{cik}.json`) pr
 |---|---|---|
 | benchmark_name | Encoded as `BroadBasedIndexAxis` dimension members, not a text field | Parse context dimensions |
 | benchmark_return_1yr/5yr/10yr | Uses same `AvgAnnlRtrPct` with `BroadBasedIndexAxis` dimension | Parse context dimensions |
-| distribution_total | Not in OEF taxonomy (only narrative `DistOfCapitalTextBlock`) | iXBRL HTML parsing |
-| dist_ordinary_income | Not in OEF taxonomy | iXBRL HTML parsing |
-| dist_qualified_dividend | Not in OEF taxonomy | iXBRL HTML parsing |
-| dist_ltcg | Not in OEF taxonomy | iXBRL HTML parsing |
-| dist_stcg | Not in OEF taxonomy | iXBRL HTML parsing |
-| dist_return_of_capital | Not in OEF taxonomy | iXBRL HTML parsing |
 
 ### Key Technical Detail
 Returns use ONE element (`AvgAnnlRtrPct`) with different XBRL contexts encoding the time period (1yr, 5yr, 10yr, inception). Benchmark returns use the SAME element but with a `BroadBasedIndexAxis` dimension. Must parse context dimensions to distinguish.
