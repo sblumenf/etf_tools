@@ -556,3 +556,189 @@ class TestNCSRParser:
         assert perf.benchmark_return_1yr is None
         assert perf.benchmark_return_5yr is None
         assert perf.benchmark_return_10yr is None
+
+    def test_parse_ncsr_multiple_filings_different_class_ids(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """Test that parser iterates multiple filings to find different class_ids.
+
+        Simulates Vanguard-style filing where each N-CSR covers a different
+        fund series (class_id) under the same CIK.
+        """
+        # Filing 1: contains data for C000131291 (IVV)
+        df_filing1 = pd.DataFrame({
+            'concept': ['oef:AvgAnnlRtrPct', 'oef:ExpenseRatioPct'],
+            'numeric_value': [Decimal('0.1234'), Decimal('0.0003')],
+            'period_start': [date(2023, 10, 31), None],
+            'period_end': [date(2024, 10, 31), date(2024, 10, 31)],
+            'dim_oef_ClassAxis': [
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+            ],
+            'dim_oef_BroadBasedIndexAxis': [None, None],
+        })
+
+        # Filing 2: contains data for C000131292 (IJH)
+        df_filing2 = pd.DataFrame({
+            'concept': ['oef:AvgAnnlRtrPct', 'oef:ExpenseRatioPct'],
+            'numeric_value': [Decimal('0.0950'), Decimal('0.0005')],
+            'period_start': [date(2023, 10, 31), None],
+            'period_end': [date(2024, 10, 31), date(2024, 10, 31)],
+            'dim_oef_ClassAxis': [
+                'ist:C000131292Member',
+                'ist:C000131292Member',
+            ],
+            'dim_oef_BroadBasedIndexAxis': [None, None],
+        })
+
+        def _make_mock_filing(df):
+            mock_filing = Mock()
+            mock_filing.is_inline_xbrl = True
+            mock_xbrl = Mock()
+            mock_facts = Mock()
+            mock_facts.to_dataframe.return_value = df
+            mock_xbrl.facts = mock_facts
+            mock_filing.xbrl.return_value = mock_xbrl
+            return mock_filing
+
+        filing1 = _make_mock_filing(df_filing1)
+        filing2 = _make_mock_filing(df_filing2)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+
+            mock_filings = Mock()
+            all_filings = [filing1, filing2]
+            mock_filings.__getitem__ = Mock(side_effect=lambda i: all_filings[i])
+            mock_filings.__len__ = Mock(return_value=2)
+            mock_filings.__bool__ = Mock(return_value=True)
+            mock_filings.empty = False
+            mock_instance.get_filings.return_value = mock_filings
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        # Verify IVV got performance from filing 1
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf_ivv = session.execute(stmt).scalar_one_or_none()
+        assert perf_ivv is not None
+        assert perf_ivv.return_1yr == Decimal('0.1234')
+        assert perf_ivv.expense_ratio_actual == Decimal('0.0003')
+
+        # Verify IJH got performance from filing 2
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[1].id
+        )
+        perf_ijh = session.execute(stmt).scalar_one_or_none()
+        assert perf_ijh is not None
+        assert perf_ijh.return_1yr == Decimal('0.0950')
+        assert perf_ijh.expense_ratio_actual == Decimal('0.0005')
+
+    def test_parse_ncsr_first_match_wins(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """Test that the first filing's data wins for the same class_id + fiscal_year_end."""
+        # Filing 1: C000131291 with return 0.1234
+        df_filing1 = pd.DataFrame({
+            'concept': ['oef:AvgAnnlRtrPct'],
+            'numeric_value': [Decimal('0.1234')],
+            'period_start': [date(2023, 10, 31)],
+            'period_end': [date(2024, 10, 31)],
+            'dim_oef_ClassAxis': ['ist:C000131291Member'],
+            'dim_oef_BroadBasedIndexAxis': [None],
+        })
+
+        # Filing 2: same C000131291 with different return 0.9999
+        df_filing2 = pd.DataFrame({
+            'concept': ['oef:AvgAnnlRtrPct'],
+            'numeric_value': [Decimal('0.9999')],
+            'period_start': [date(2023, 10, 31)],
+            'period_end': [date(2024, 10, 31)],
+            'dim_oef_ClassAxis': ['ist:C000131291Member'],
+            'dim_oef_BroadBasedIndexAxis': [None],
+        })
+
+        def _make_mock_filing(df):
+            mock_filing = Mock()
+            mock_filing.is_inline_xbrl = True
+            mock_xbrl = Mock()
+            mock_facts = Mock()
+            mock_facts.to_dataframe.return_value = df
+            mock_xbrl.facts = mock_facts
+            mock_filing.xbrl.return_value = mock_xbrl
+            return mock_filing
+
+        filing1 = _make_mock_filing(df_filing1)
+        filing2 = _make_mock_filing(df_filing2)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+
+            mock_filings = Mock()
+            all_filings = [filing1, filing2]
+            mock_filings.__getitem__ = Mock(side_effect=lambda i: all_filings[i])
+            mock_filings.__len__ = Mock(return_value=2)
+            mock_filings.__bool__ = Mock(return_value=True)
+            mock_filings.empty = False
+            mock_instance.get_filings.return_value = mock_filings
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        # First filing's value should win
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+        assert perf is not None
+        assert perf.return_1yr == Decimal('0.1234')  # First filing wins, not 0.9999
+
+    def test_parse_ncsr_skips_failed_xbrl_continues(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """Test that a filing with failed XBRL is skipped and the next filing is tried."""
+        # Filing 1: XBRL fails
+        mock_filing1 = Mock()
+        mock_filing1.is_inline_xbrl = True
+        mock_filing1.xbrl.side_effect = Exception("XBRL parse error")
+
+        # Filing 2: succeeds with C000131291 data
+        df_filing2 = pd.DataFrame({
+            'concept': ['oef:AvgAnnlRtrPct'],
+            'numeric_value': [Decimal('0.0777')],
+            'period_start': [date(2023, 10, 31)],
+            'period_end': [date(2024, 10, 31)],
+            'dim_oef_ClassAxis': ['ist:C000131291Member'],
+            'dim_oef_BroadBasedIndexAxis': [None],
+        })
+        mock_filing2 = Mock()
+        mock_filing2.is_inline_xbrl = True
+        mock_xbrl2 = Mock()
+        mock_facts2 = Mock()
+        mock_facts2.to_dataframe.return_value = df_filing2
+        mock_xbrl2.facts = mock_facts2
+        mock_filing2.xbrl.return_value = mock_xbrl2
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+
+            mock_filings = Mock()
+            all_filings = [mock_filing1, mock_filing2]
+            mock_filings.__getitem__ = Mock(side_effect=lambda i: all_filings[i])
+            mock_filings.__len__ = Mock(return_value=2)
+            mock_filings.__bool__ = Mock(return_value=True)
+            mock_filings.empty = False
+            mock_instance.get_filings.return_value = mock_filings
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        # Data from filing 2 should be present
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+        assert perf is not None
+        assert perf.return_1yr == Decimal('0.0777')
