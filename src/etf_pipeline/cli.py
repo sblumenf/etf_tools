@@ -51,9 +51,20 @@ def nport(cik, limit, keep_cache):
 
 
 @main.command()
-def ncsr():
+@click.option("--cik", type=str, help="Process only this CIK")
+@click.option("--limit", type=int, help="Process only the first N CIKs")
+@click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
+def ncsr(cik, limit, keep_cache):
     """Parse N-CSR filings for performance data."""
-    click.echo("ncsr: not yet implemented")
+    import logging
+
+    from etf_pipeline.parsers.ncsr import parse_ncsr
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    parse_ncsr(cik=cik, limit=limit, clear_cache=not keep_cache)
 
 
 @main.command()
