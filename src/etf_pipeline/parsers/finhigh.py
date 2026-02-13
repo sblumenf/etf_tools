@@ -159,8 +159,166 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
         "math_validated": False,
     }
 
-    # TODO: Implement positional extraction
-    # This is a placeholder - needs to be implemented with real logic
+    # Helper to extract first data value from a row (typically column 1, most recent year)
+    def get_value(row_idx: int, col_idx: int = 1) -> Optional[str]:
+        """Get cell value from row at specified column index."""
+        if row_idx >= len(rows):
+            return None
+        row = rows[row_idx]
+        cells = row.find_all(['td', 'th'])
+        if col_idx >= len(cells):
+            return None
+        return cells[col_idx].get_text().strip()
+
+    def get_row_label(row_idx: int) -> str:
+        """Get the label (first cell) of a row."""
+        if row_idx >= len(rows):
+            return ""
+        row = rows[row_idx]
+        cells = row.find_all(['td', 'th'])
+        if not cells:
+            return ""
+        return cells[0].get_text().strip().lower()
+
+    # Extract fiscal_year_end from column headers
+    # Look for "Year Ended XX/XX/XXXX" or similar patterns in first few rows
+    fiscal_year_end = None
+    for i in range(min(5, len(rows))):
+        row_text = rows[i].get_text()
+        # Match patterns like "Year Ended December 31," or dates
+        date_match = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', row_text)
+        if date_match:
+            fiscal_year_end = _parse_date(date_match.group(1))
+            break
+        # Try parsing month/year from column headers
+        if 'year ended' in row_text.lower():
+            # Extract date if present in same row
+            if 'december 31' in row_text.lower() or 'dec 31' in row_text.lower() or 'dec. 31' in row_text.lower():
+                # Look for year in next row (typical format)
+                if i + 1 < len(rows):
+                    next_row = rows[i + 1]
+                    next_cells = next_row.find_all(['td', 'th'])
+                    # Try cells starting from index 0 (years may be in first cell if header has colspan)
+                    for cell_idx in range(len(next_cells)):
+                        year_text = next_cells[cell_idx].get_text().strip()
+                        year_match = re.search(r'\d{4}', year_text)
+                        if year_match:
+                            year = year_match.group(0)
+                            fiscal_year_end = _parse_date(f"12/31/{year}")
+                            break
+                    if fiscal_year_end:
+                        break
+            # Otherwise look for year in same row
+            cells = rows[i].find_all(['td', 'th'])
+            if len(cells) > 1:
+                # Most recent year is typically in first data column
+                year_text = cells[1].get_text().strip() if len(cells) > 1 else cells[0].get_text().strip()
+                # Try to find year in header row or next row
+                if re.search(r'\d{4}', year_text):
+                    year_match = re.search(r'\d{4}', year_text)
+                    year = year_match.group(0)
+                    # Look for "December 31," or similar in previous cells
+                    month_day = "12/31"  # Default to Dec 31 for fiscal year end
+                    fiscal_year_end = _parse_date(f"{month_day}/{year}")
+                    break
+
+    # Find key rows by looking for distinctive text patterns
+    # Strategy: scan through rows and identify sections
+    row_map = {}
+    for i, row in enumerate(rows):
+        label = get_row_label(i)
+
+        # NAV rows (must check 'end' before general NAV to avoid overwriting)
+        if 'net asset value' in label and 'end' in label:
+            row_map['nav_end'] = i
+        elif 'net asset value' in label and 'beginning' in label:
+            row_map['nav_beginning'] = i
+
+        # Investment operations (exclude ratio rows)
+        elif 'net investment income' in label and 'ratio' not in label and 'average' not in label and 'dividend' not in label:
+            row_map['net_investment_income'] = i
+        elif 'realized' in label and 'unrealized' in label and 'gain' in label:
+            row_map['net_realized_unrealized_gain'] = i
+        elif 'total from investment' in label or ('total' in label and 'investment operations' in label):
+            row_map['total_from_operations'] = i
+
+        # Equalization (optional)
+        elif 'equalization' in label and 'net' not in label:
+            row_map['equalization'] = i
+
+        # Distributions (must check specific patterns first)
+        elif ('dividend' in label or 'distribution' in label) and 'net investment income' in label:
+            row_map['dist_net_investment_income'] = i
+        elif 'distribution' in label and 'realized' in label and ('capital gain' in label or 'capital gains' in label):
+            row_map['dist_realized_gains'] = i
+        elif 'return of capital' in label:
+            row_map['dist_return_of_capital'] = i
+        elif 'total distribution' in label:
+            row_map['dist_total'] = i
+
+        # Total return (but not if it's in a ratio row)
+        elif 'total return' in label and 'ratio' not in label:
+            row_map['total_return'] = i
+
+        # Ratios (be specific to avoid matching other rows)
+        elif 'net assets' in label and 'end' in label and 'million' in label:
+            row_map['net_assets_end'] = i
+        elif 'ratio' in label and 'expense' in label:
+            row_map['expense_ratio'] = i
+        elif 'portfolio turnover' in label:
+            row_map['portfolio_turnover'] = i
+
+    # Extract values using mapped rows
+    result['operating']['nav_beginning'] = _parse_decimal(get_value(row_map.get('nav_beginning'))) if 'nav_beginning' in row_map else None
+    result['operating']['net_investment_income'] = _parse_decimal(get_value(row_map.get('net_investment_income'))) if 'net_investment_income' in row_map else None
+    result['operating']['net_realized_unrealized_gain'] = _parse_decimal(get_value(row_map.get('net_realized_unrealized_gain'))) if 'net_realized_unrealized_gain' in row_map else None
+    result['operating']['total_from_operations'] = _parse_decimal(get_value(row_map.get('total_from_operations'))) if 'total_from_operations' in row_map else None
+    result['operating']['equalization'] = _parse_decimal(get_value(row_map.get('equalization'))) if 'equalization' in row_map else None
+    result['operating']['nav_end'] = _parse_decimal(get_value(row_map.get('nav_end'))) if 'nav_end' in row_map else None
+    result['operating']['total_return'] = _parse_decimal(get_value(row_map.get('total_return'))) if 'total_return' in row_map else None
+
+    result['distribution']['dist_net_investment_income'] = _parse_decimal(get_value(row_map.get('dist_net_investment_income'))) if 'dist_net_investment_income' in row_map else None
+    result['distribution']['dist_realized_gains'] = _parse_decimal(get_value(row_map.get('dist_realized_gains'))) if 'dist_realized_gains' in row_map else None
+    result['distribution']['dist_return_of_capital'] = _parse_decimal(get_value(row_map.get('dist_return_of_capital'))) if 'dist_return_of_capital' in row_map else None
+    result['distribution']['dist_total'] = _parse_decimal(get_value(row_map.get('dist_total'))) if 'dist_total' in row_map else None
+
+    result['ratios']['expense_ratio'] = _parse_decimal(get_value(row_map.get('expense_ratio'))) if 'expense_ratio' in row_map else None
+    result['ratios']['portfolio_turnover'] = _parse_decimal(get_value(row_map.get('portfolio_turnover'))) if 'portfolio_turnover' in row_map else None
+
+    # Net assets may be in millions, need to convert
+    net_assets_text = get_value(row_map.get('net_assets_end')) if 'net_assets_end' in row_map else None
+    if net_assets_text:
+        net_assets_value = _parse_decimal(net_assets_text)
+        if net_assets_value and 'million' in get_row_label(row_map.get('net_assets_end', 0)).lower():
+            net_assets_value = net_assets_value * 1_000_000
+        result['ratios']['net_assets_end'] = net_assets_value
+    else:
+        result['ratios']['net_assets_end'] = None
+
+    result['fiscal_year_end'] = fiscal_year_end
+
+    # Math validation
+    # Formula: NAV_end = NAV_beginning + total_from_operations - abs(dist_total) + equalization
+    nav_beg = result['operating']['nav_beginning']
+    total_ops = result['operating']['total_from_operations']
+    dist_total = result['distribution']['dist_total']
+    nav_end = result['operating']['nav_end']
+    equalization = result['operating']['equalization'] or Decimal('0')
+
+    if all(v is not None for v in [nav_beg, total_ops, dist_total, nav_end]):
+        # Distribution total is typically reported as negative, so we use it directly
+        expected_nav_end = nav_beg + total_ops + dist_total + equalization
+        discrepancy = abs(expected_nav_end - nav_end)
+        result['math_validated'] = discrepancy <= Decimal('0.01')
+
+        if not result['math_validated']:
+            logger.warning(
+                f"Math validation failed: expected NAV end {expected_nav_end}, "
+                f"got {nav_end}, discrepancy {discrepancy}"
+            )
+    else:
+        result['math_validated'] = False
+        logger.debug("Math validation skipped: missing required values")
 
     return result
 
@@ -233,13 +391,155 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                 )
                 continue
 
-            # TODO: Parse HTML to find Financial Highlights sections
-            # TODO: Match sections to ETFs via fund name or class_id
-            # TODO: Extract data and upsert to database
+            # Parse HTML to find Financial Highlights tables
+            soup = BeautifulSoup(html, 'lxml')
 
-            logger.debug(
-                f"CIK {cik}: Filing {filing_idx} - HTML parsing not yet implemented"
-            )
+            # Strategy: Find tables that contain Financial Highlights data
+            # by looking for characteristic row patterns (Net Asset Value, etc.)
+            tables = soup.find_all('table')
+
+            for table in tables:
+                try:
+                    # Check if this table looks like a Financial Highlights table
+                    # by scanning for characteristic text patterns
+                    table_text = table.get_text().lower()
+
+                    if 'net asset value' not in table_text or 'investment operations' not in table_text:
+                        continue
+
+                    # Try to find fund name context from preceding headings
+                    fund_name_context = ""
+
+                    # Look backward from table to find headings
+                    prev_sibling = table.find_previous(['h1', 'h2', 'h3', 'h4', 'p', 'div'])
+                    search_depth = 0
+                    while prev_sibling and search_depth < 20:
+                        prev_text = prev_sibling.get_text().strip()
+
+                        # Look for "Financial Highlights" heading or fund name
+                        if prev_text and len(prev_text) < 500:  # Ignore very long sections
+                            fund_name_context = prev_text + " " + fund_name_context
+
+                            # Stop if we hit a "Financial Highlights" heading
+                            if 'financial highlights' in prev_text.lower():
+                                break
+
+                        prev_sibling = prev_sibling.find_previous(['h1', 'h2', 'h3', 'h4', 'p', 'div'])
+                        search_depth += 1
+
+                    # Also check table caption or first row for fund name
+                    caption = table.find('caption')
+                    if caption:
+                        fund_name_context = caption.get_text().strip() + " " + fund_name_context
+
+                    # Try to match to an ETF
+                    matched_etf = None
+                    for etf in class_id_to_etf.values():
+                        if etf.fund_name and etf.fund_name.lower() in fund_name_context.lower():
+                            matched_etf = etf
+                            break
+
+                    # If no match by fund_name, try matching by ticker (less reliable)
+                    if not matched_etf:
+                        for etf in class_id_to_etf.values():
+                            if etf.ticker and etf.ticker.lower() in fund_name_context.lower():
+                                matched_etf = etf
+                                break
+
+                    if not matched_etf:
+                        logger.debug(
+                            f"CIK {cik}: Could not match table to ETF, context: {fund_name_context[:100]}"
+                        )
+                        continue
+
+                    # Parse the table
+                    table_data = parse_financial_highlights_table(str(table))
+
+                    if not table_data.get('fiscal_year_end'):
+                        logger.warning(
+                            f"CIK {cik}: Could not extract fiscal_year_end from table for {matched_etf.ticker}"
+                        )
+                        skipped_etfs += 1
+                        continue
+
+                    # Check if already processed
+                    if (matched_etf.class_id, table_data['fiscal_year_end']) in satisfied:
+                        logger.debug(
+                            f"CIK {cik}: Already processed {matched_etf.ticker} FY {table_data['fiscal_year_end']}"
+                        )
+                        continue
+
+                    # Upsert PerShareOperating
+                    # Query for existing record
+                    existing_operating = session.query(PerShareOperating).filter_by(
+                        etf_id=matched_etf.id,
+                        fiscal_year_end=table_data['fiscal_year_end']
+                    ).first()
+
+                    if existing_operating:
+                        # Update existing record
+                        for key, value in table_data['operating'].items():
+                            setattr(existing_operating, key, value)
+                        existing_operating.math_validated = table_data.get('math_validated', False)
+                    else:
+                        # Insert new record
+                        operating = PerShareOperating(
+                            etf_id=matched_etf.id,
+                            fiscal_year_end=table_data['fiscal_year_end'],
+                            math_validated=table_data.get('math_validated', False),
+                            **table_data['operating']
+                        )
+                        session.add(operating)
+
+                    # Upsert PerShareDistribution
+                    existing_distribution = session.query(PerShareDistribution).filter_by(
+                        etf_id=matched_etf.id,
+                        fiscal_year_end=table_data['fiscal_year_end']
+                    ).first()
+
+                    if existing_distribution:
+                        for key, value in table_data['distribution'].items():
+                            setattr(existing_distribution, key, value)
+                    else:
+                        distribution = PerShareDistribution(
+                            etf_id=matched_etf.id,
+                            fiscal_year_end=table_data['fiscal_year_end'],
+                            **table_data['distribution']
+                        )
+                        session.add(distribution)
+
+                    # Upsert PerShareRatios
+                    existing_ratios = session.query(PerShareRatios).filter_by(
+                        etf_id=matched_etf.id,
+                        fiscal_year_end=table_data['fiscal_year_end']
+                    ).first()
+
+                    if existing_ratios:
+                        for key, value in table_data['ratios'].items():
+                            setattr(existing_ratios, key, value)
+                    else:
+                        ratios = PerShareRatios(
+                            etf_id=matched_etf.id,
+                            fiscal_year_end=table_data['fiscal_year_end'],
+                            **table_data['ratios']
+                        )
+                        session.add(ratios)
+
+                    session.flush()
+
+                    # Track as satisfied
+                    satisfied.add((matched_etf.class_id, table_data['fiscal_year_end']))
+                    processed_etfs += 1
+
+                    logger.info(
+                        f"CIK {cik}: Processed {matched_etf.ticker} FY {table_data['fiscal_year_end']}, "
+                        f"math_validated={table_data['math_validated']}"
+                    )
+
+                except Exception as e:
+                    logger.warning(f"CIK {cik}: Failed to parse table: {e}")
+                    skipped_etfs += 1
+                    continue
 
         session.commit()
         logger.info(f"CIK {cik}: Processed {processed_etfs} ETF(s), skipped {skipped_etfs}")
