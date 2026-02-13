@@ -50,7 +50,6 @@ class ETF(Base):
     derivatives: Mapped[list["Derivative"]] = relationship(back_populates="etf")
     performances: Mapped[list["Performance"]] = relationship(back_populates="etf")
     fee_expenses: Mapped[list["FeeExpense"]] = relationship(back_populates="etf")
-    flow_data: Mapped[list["FlowData"]] = relationship(back_populates="etf")
 
 
 class Holding(Base):
@@ -158,17 +157,13 @@ class FeeExpense(Base):
 class FlowData(Base):
     __tablename__ = "flow_data"
     __table_args__ = (
-        UniqueConstraint(
-            "etf_id", "fiscal_year_end", name="flow_data_etf_fy_uniq"
-        ),
+        UniqueConstraint("cik", "fiscal_year_end", name="flow_data_cik_fy_uniq"),
         Index("flow_data_fy_idx", "fiscal_year_end"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
+    cik: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
     fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
     sales_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
     redemptions_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
     net_sales: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
-
-    etf: Mapped["ETF"] = relationship(back_populates="flow_data")

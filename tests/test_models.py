@@ -187,12 +187,8 @@ class TestFeeExpense:
 
 class TestFlowData:
     def test_create_flow_data(self, session):
-        etf = _make_etf()
-        session.add(etf)
-        session.flush()
-
         flow = FlowData(
-            etf_id=etf.id,
+            cik="0001100663",
             fiscal_year_end=date(2024, 1, 31),
             sales_value=Decimal("5000000000.0000"),
             redemptions_value=Decimal("4500000000.0000"),
@@ -203,15 +199,12 @@ class TestFlowData:
 
         result = session.query(FlowData).one()
         assert result.net_sales == Decimal("500000000.0000")
+        assert result.cik == "0001100663"
 
     def test_flow_unique_constraint(self, session):
-        etf = _make_etf()
-        session.add(etf)
-        session.flush()
-
-        session.add(FlowData(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)))
+        session.add(FlowData(cik="0001100663", fiscal_year_end=date(2024, 1, 31)))
         session.commit()
 
-        session.add(FlowData(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)))
+        session.add(FlowData(cik="0001100663", fiscal_year_end=date(2024, 1, 31)))
         with pytest.raises(IntegrityError):
             session.commit()

@@ -103,14 +103,16 @@ Fee schedules from 485BPOS prospectus filings. One row per ETF per effective dat
 ---
 
 ### FlowData
-Dollar-value fund flows from 24F-2 filings. One row per ETF per fiscal year.
+Dollar-value fund flows from 24F-2NT filings. One row per CIK per fiscal year.
+
+**Important**: 24F-2NT filings report aggregate flow data at the trust (CIK) level, NOT per individual fund/series.
 
 | Field | Description |
 |-------|-------------|
-| **etf** | FK to ETF |
+| **cik** | SEC Central Index Key — identifies the issuer/trust. Indexed for lookups |
 | **fiscal_year_end** | End of the fiscal year covered by the filing |
-| **sales_value** | Total dollar value of shares sold (creations) during the year |
-| **redemptions_value** | Total dollar value of shares redeemed during the year |
+| **sales_value** | Total dollar value of shares sold (creations) during the year across all series in the trust |
+| **redemptions_value** | Total dollar value of shares redeemed during the year across all series in the trust |
 | **net_sales** | Net flows: sales minus redemptions. Positive = net inflows |
 
 ---
@@ -123,7 +125,6 @@ erDiagram
     ETF ||--o{ Derivative : "has many"
     ETF ||--o{ Performance : "has many"
     ETF ||--o{ FeeExpense : "has many"
-    ETF ||--o{ FlowData : "has many"
 
     ETF {
         int id PK
@@ -213,8 +214,8 @@ erDiagram
 
     FlowData {
         int id PK
-        int etf_id FK
-        date fiscal_year_end "UK(etf,fiscal_year_end)"
+        varchar cik IX "10 chars"
+        date fiscal_year_end "UK(cik,fiscal_year_end)"
         decimal sales_value "20,4 nullable"
         decimal redemptions_value "20,4 nullable"
         decimal net_sales "20,4 nullable"
@@ -260,11 +261,11 @@ SEC EDGAR Filing Types ───────────────────
         +---------+ +-----------+ +-----------+ +-------+ +--------+
         | Holding | | Derivative| |Performance| |FeExp. | |FlowData|
         |---------| |-----------| |-----------| |-------| |--------|
-        | FK etf  | | FK etf    | | FK etf    | |FK etf | |FK etf  |
-        | IX date | | IX date   | | UK etf+fy | |UK etf | |UK etf  |
+        | FK etf  | | FK etf    | | FK etf    | |FK etf | |IX cik  |
+        | IX date | | IX date   | | UK etf+fy | |UK etf | |UK cik  |
         | IX cusip| |           | |           | | +date | | +fy    |
         +---------+ +-----------+ +-----------+ +-------+ +--------+
-         1 ETF:N     1 ETF:N       1 ETF:N      1 ETF:N    1 ETF:N
+         1 ETF:N     1 ETF:N       1 ETF:N      1 ETF:N    Per CIK
        (per qtr)   (per qtr)    (per fiscal yr)  (per eff  (per fis
                                                    date)    cal yr)
 ```
@@ -284,8 +285,9 @@ SEC EDGAR Filing Types ───────────────────
 | Derivative | `derivative_report_date_idx` | INDEX | `report_date` |
 | Performance | `performance_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
 | FeeExpense | `fee_expense_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
-| FlowData | `flow_data_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
+| FlowData | `flow_data_cik_fy_uniq` | UNIQUE | `cik, fiscal_year_end` |
 | FlowData | `flow_data_fy_idx` | INDEX | `fiscal_year_end` |
+| FlowData | `flow_data_cik_idx` | INDEX | `cik` |
 
 ---
 
