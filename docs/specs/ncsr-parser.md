@@ -231,4 +231,84 @@ Output <promise>COMPLETE</promise> when all phases pass verification." --max-ite
 *None — all decisions made during interview.*
 
 ## Implementation Notes
-*To be filled during implementation.*
+
+### ❌ CRITICAL: Data Source Assumption is Invalid (2026-02-13)
+
+**Discovery**: The specification's core assumption is incorrect. The SEC Company Facts API does **NOT** contain OEF taxonomy data needed for N-CSR parsing.
+
+**Evidence**:
+- Tested multiple ETF trusts (SPY/CIK 0000884394, IVV/CIK 0001100663, VTI/CIK 0000102909, AGG/CIK 0001393818)
+- API endpoint tested: `https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json`
+- Result: All responses contain ONLY `dei` (Document & Entity Information) and `us-gaap` (US GAAP) taxonomies
+- **Missing**: All OEF taxonomy concepts including `AvgAnnlRtrPct`, `PortfolioTurnoverRate`, `ExpenseRatioPct`
+
+**Root Cause**:
+- The Company Facts API aggregates XBRL facts from **financial statement filings** (10-K, 10-Q, 8-K) which use US-GAAP taxonomy
+- N-CSR filings use the **OEF (Open-End Fund) taxonomy** for performance data
+- OEF XBRL data is embedded as **iXBRL tags within HTML documents**, not extracted to the structured Company Facts JSON API
+- The SEC does not pre-extract OEF taxonomy facts into a structured API endpoint
+
+**Specification Error**: Line 9 states "The EDGAR XBRL company facts API pre-extracts these tagged values into structured JSON" — this statement is factually incorrect.
+
+### Alternative Implementation Approaches
+
+Implementation is **BLOCKED** pending decision on alternative approach:
+
+#### Option 1: iXBRL HTML Parsing (Recommended)
+**Approach**:
+1. Fetch N-CSR filings: `Company(cik).get_filings(form="N-CSR").latest()`
+2. Extract HTML content: `filing.html()`
+3. Parse iXBRL tags from HTML to extract OEF concepts with dimensional contexts
+4. Extract `LegalEntityAxis` and `BroadBasedIndexAxis` dimensions from inline XBRL context attributes
+5. Map period durations to return types (1yr/5yr/10yr/inception)
+
+**Pros**:
+- Matches actual data structure
+- All OEF data is available in iXBRL HTML
+- Dimensional contexts are preserved
+
+**Cons**:
+- Requires HTML/XML parsing (BeautifulSoup or lxml)
+- More complex than DataFrame API
+- Need to handle iXBRL namespace resolution
+
+**Reference**: `docs/reference/edgar-xbrl-guide.pdf` for iXBRL structure
+
+#### Option 2: XBRL Instance Document Parsing
+**Approach**:
+1. Check if N-CSR filing has separate XBRL instance XML file
+2. Parse XML directly for OEF concepts and contexts
+3. Extract dimensional data from XBRL context definitions
+
+**Pros**:
+- Cleaner XML structure than HTML parsing
+- Standard XBRL parsing libraries available
+
+**Cons**:
+- Not all N-CSR filings have separate instance documents (many use inline XBRL only)
+- Would need fallback to Option 1
+
+#### Option 3: Research Alternative Data Sources
+**Approach**:
+- Research if SEC provides fund-specific structured data API
+- Check if edgartools has higher-level N-CSR parsing capabilities not yet discovered
+- Investigate if other vendors provide structured N-CSR data
+
+**Pros**:
+- Might find easier data source
+
+**Cons**:
+- No evidence such API exists
+- Time investment with uncertain outcome
+
+### Recommendation
+
+**Human decision required** before proceeding:
+1. Choose implementation approach (Option 1 recommended)
+2. Update specification with correct data source and parsing methodology
+3. Adjust implementation phases to reflect HTML/XML parsing requirements
+
+### Next Steps (After Decision)
+1. Update spec Overview and Technical Design sections
+2. Revise Phase 2 implementation checklist
+3. Proceed with chosen approach
