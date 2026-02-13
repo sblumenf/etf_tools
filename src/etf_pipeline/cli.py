@@ -91,6 +91,23 @@ def flows(cik, limit, keep_cache):
 
 
 @main.command()
+@click.option("--cik", type=str, help="Process only this CIK")
+@click.option("--limit", type=int, help="Process only the first N CIKs")
+@click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
+def finhigh(cik, limit, keep_cache):
+    """Parse N-CSR filings for Financial Highlights data (per-share operating, distributions, ratios)."""
+    import logging
+
+    from etf_pipeline.parsers.finhigh import parse_finhigh
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    parse_finhigh(cik=cik, limit=limit, clear_cache=not keep_cache)
+
+
+@main.command()
 def run_all():
     """Run the full pipeline: discover + all parsers."""
     click.echo("run-all: not yet implemented")
