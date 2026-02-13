@@ -8,6 +8,7 @@ The central table. One row per exchange-traded fund, discovered from SEC's `comp
 | **ticker** | Trading symbol (e.g., SPY, QQQ). Unique identifier for deduplication |
 | **cik** | SEC Central Index Key — identifies the issuer/trust. Multiple ETFs can share one CIK |
 | **series_id** | SEC Series ID — distinguishes individual funds within a trust |
+| **class_id** | SEC Class ID — identifies the share class within a fund. Used by N-CSR XBRL data for fund identification |
 | **fund_name** | Full name (e.g., "SPDR S&P 500 ETF Trust"). Backfilled from Yahoo Finance |
 | **issuer_name** | Trust or issuer name (e.g., "State Street Global Advisors"). From SEC submissions |
 | **strategy_text** | Investment strategy/objective extracted from the 485BPOS prospectus narrative |
@@ -131,6 +132,7 @@ erDiagram
         varchar ticker UK "e.g. SPY"
         varchar cik IX "SEC Central Index Key"
         varchar series_id "nullable"
+        varchar class_id IX "nullable, SEC Class ID"
         varchar fund_name "nullable"
         varchar issuer_name
         text strategy_text "nullable"
@@ -318,7 +320,7 @@ The file uses a compact array-of-arrays format (not objects) with a separate `fi
 |-------|------|-------------|
 | `cik` | integer | SEC Central Index Key. Identifies the issuer/trust. Multiple funds share one CIK |
 | `seriesId` | string | SEC Series ID (e.g., `S000047440`). Identifies a specific fund within a trust |
-| `classId` | string | SEC Class ID (e.g., `C000148278`). Identifies a share class within a fund |
+| `classId` | string | SEC Class ID (e.g., `C000148278`). Identifies a share class within a fund. Maps to `class_id` in ETF table |
 | `symbol` | string | Trading ticker symbol. Used as the unique key in the ETF table |
 
 ### ETF vs Mutual Fund Filtering
@@ -388,7 +390,7 @@ company_tickers_mf.json
 |------------|------------|-------|
 | `cik` | `cik` | Cast from int to string, zero-padded to 10 digits for API calls |
 | `seriesId` | `series_id` | Used to match tickers to prospectus sections |
-| `classId` | — | Used during processing but not stored in the ETF table |
+| `classId` | `class_id` | Stored in ETF table for N-CSR XBRL data mapping (identifies fund in iXBRL via ClassAxis dimension) |
 | `symbol` | `ticker` | Unique key for deduplication |
 | — | `fund_name` | Parsed from 485BPOS prospectus, or backfilled from Yahoo Finance |
 | — | `issuer_name` | Parsed from SEC submissions JSON |

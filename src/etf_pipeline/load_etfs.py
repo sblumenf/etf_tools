@@ -104,6 +104,7 @@ def _upsert_etf(
     if existing:
         existing.cik = cik_padded
         existing.series_id = entry["series_id"]
+        existing.class_id = entry["class_id"]
         existing.issuer_name = issuer_name
         existing.fund_name = fund_name
         logger.info(f"Updated ETF: {ticker}")
@@ -112,6 +113,7 @@ def _upsert_etf(
             ticker=ticker,
             cik=cik_padded,
             series_id=entry["series_id"],
+            class_id=entry["class_id"],
             issuer_name=issuer_name,
             fund_name=fund_name,
         )

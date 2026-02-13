@@ -15,10 +15,10 @@ from etf_pipeline.models import ETF
 def sample_tickers_file(tmp_path):
     """Create a sample etf_tickers.json file."""
     data = [
-        {"ticker": "VOO", "cik": 36405, "series_id": "S000002839"},
-        {"ticker": "VTV", "cik": 36405, "series_id": "S000002840"},
-        {"ticker": "SPY", "cik": 1064641, "series_id": "S000002753"},
-        {"ticker": "IVV", "cik": 1100663, "series_id": "S000002824"},
+        {"ticker": "VOO", "cik": 36405, "series_id": "S000002839", "class_id": "C000007800"},
+        {"ticker": "VTV", "cik": 36405, "series_id": "S000002840", "class_id": "C000007801"},
+        {"ticker": "SPY", "cik": 1064641, "series_id": "S000002753", "class_id": "C000007739"},
+        {"ticker": "IVV", "cik": 1100663, "series_id": "S000002824", "class_id": "C000007785"},
     ]
     tickers_file = tmp_path / "etf_tickers.json"
     tickers_file.write_text(json.dumps(data, indent=2))

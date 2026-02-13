@@ -29,6 +29,7 @@ class ETF(Base):
     ticker: Mapped[str] = mapped_column(String(10), unique=True, nullable=False)
     cik: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
     series_id: Mapped[Optional[str]] = mapped_column(String(20))
+    class_id: Mapped[Optional[str]] = mapped_column(String(20), index=True)
     fund_name: Mapped[Optional[str]] = mapped_column(String(500))
     issuer_name: Mapped[str] = mapped_column(String(500), nullable=False)
     strategy_text: Mapped[Optional[str]] = mapped_column(Text)
