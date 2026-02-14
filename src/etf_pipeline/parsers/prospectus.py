@@ -647,6 +647,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
 
 def parse_prospectus(
     cik: Optional[str] = None,
+    ciks: Optional[list[str]] = None,
     limit: Optional[int] = None,
     clear_cache: bool = True,
 ) -> None:
@@ -654,6 +655,7 @@ def parse_prospectus(
 
     Args:
         cik: Optional CIK to process (all others will be skipped)
+        ciks: Optional list of CIKs to process (overrides cik param)
         limit: Optional limit on number of CIKs to process
         clear_cache: Whether to clear edgartools HTTP cache after processing
     """
@@ -668,7 +670,11 @@ def parse_prospectus(
 
     # Determine which CIKs to process
     with session_factory() as session:
-        if cik is not None:
+        if ciks is not None:
+            # List of CIKs provided
+            cik_list = [f"{int(c):010d}" for c in ciks]
+            logger.info(f"Processing {len(cik_list)} CIK(s) from ciks parameter")
+        elif cik is not None:
             # Single CIK provided
             cik_padded = f"{int(cik):010d}"
             cik_list = [cik_padded]
@@ -683,7 +689,7 @@ def parse_prospectus(
                 print("No CIKs found in ETF table. Run 'load-etfs' first.")
                 return
 
-        if limit is not None:
+        if limit is not None and ciks is None:
             cik_list = cik_list[:limit]
             logger.info(f"Limiting to first {limit} CIKs")
 
