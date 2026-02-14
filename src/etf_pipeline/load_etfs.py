@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
 from etf_pipeline.models import ETF
+from etf_pipeline.sgml import parse_series_class_info
 
 logger = logging.getLogger(__name__)
 
@@ -73,19 +74,37 @@ def load_etfs(cik: Optional[str] = None, limit: Optional[int] = None) -> None:
 
 
 def _process_cik(session_factory, cik_int: int, entries: list[dict]) -> None:
-    """Process a single CIK: fetch issuer name and upsert all ETFs."""
+    """Process a single CIK: fetch issuer name, extract series names, and upsert all ETFs."""
     cik_padded = f"{cik_int:010d}"
 
     logger.info(f"Processing CIK {cik_padded}: {len(entries)} ETF(s)")
 
     company = Company(cik_padded)
     issuer_name = company.name
-    fund_name = company.name
 
-    logger.info(f"CIK {cik_padded}: issuer_name = {issuer_name}, fund_name = {fund_name}")
+    # Extract series_id -> series_name mapping from a recent filing
+    series_mapping = {}
+    try:
+        filings = company.get_filings(form=["NPORT-P", "N-CSR", "485BPOS", "24F-2NT"])
+        if filings and len(filings) > 0:
+            filing = filings[0]
+            if hasattr(filing, 'header') and hasattr(filing.header, 'text'):
+                header_text = filing.header.text
+                series_mapping = parse_series_class_info(header_text)['series']
+                logger.info(f"CIK {cik_padded}: Extracted {len(series_mapping)} series names from filing")
+    except Exception as e:
+        logger.warning(f"CIK {cik_padded}: Failed to extract series mapping: {e}")
+
+    logger.info(f"CIK {cik_padded}: issuer_name = {issuer_name}")
 
     with session_factory() as session:
         for entry in entries:
+            # Look up fund_name by series_id, fall back to issuer_name
+            series_id = entry.get("series_id")
+            fund_name = series_mapping.get(series_id, issuer_name) if series_id else issuer_name
+
+            logger.debug(f"CIK {cik_padded}, {entry['ticker']}: series_id={series_id}, fund_name={fund_name}")
+
             _upsert_etf(session, entry, cik_padded, issuer_name, fund_name)
         session.commit()
 

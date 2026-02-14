@@ -33,12 +33,44 @@ def mock_company():
             company = Mock()
             if cik == "0000036405":
                 company.name = "Vanguard Group Inc"
+                # Mock filings with SGML header
+                filing = Mock()
+                filing.header.text = """
+<SERIES>
+<SERIES-ID>S000002839
+<SERIES-NAME>Vanguard 500 Index Fund
+</SERIES>
+<SERIES>
+<SERIES-ID>S000002840
+<SERIES-NAME>Vanguard Value Index Fund
+</SERIES>
+"""
+                company.get_filings.return_value = [filing]
             elif cik == "0001064641":
                 company.name = "SPDR S&P 500 ETF Trust"
+                # Mock filings with SGML header
+                filing = Mock()
+                filing.header.text = """
+<SERIES>
+<SERIES-ID>S000002753
+<SERIES-NAME>SPDR S&P 500 ETF Trust
+</SERIES>
+"""
+                company.get_filings.return_value = [filing]
             elif cik == "0001100663":
                 company.name = "iShares Trust"
+                # Mock filings with SGML header
+                filing = Mock()
+                filing.header.text = """
+<SERIES>
+<SERIES-ID>S000002824
+<SERIES-NAME>iShares Core S&P 500 ETF
+</SERIES>
+"""
+                company.get_filings.return_value = [filing]
             else:
                 company.name = f"Unknown Company {cik}"
+                company.get_filings.return_value = []
             return company
 
         mock.side_effect = company_factory
@@ -57,17 +89,17 @@ def test_load_etfs_all(session, engine, sample_tickers_file, mock_company, mock_
     assert etfs[0].ticker == "IVV"
     assert etfs[0].cik == "0001100663"
     assert etfs[0].issuer_name == "iShares Trust"
-    assert etfs[0].fund_name == "iShares Trust"
+    assert etfs[0].fund_name == "iShares Core S&P 500 ETF"
     assert etfs[1].ticker == "SPY"
     assert etfs[1].cik == "0001064641"
     assert etfs[1].fund_name == "SPDR S&P 500 ETF Trust"
     assert etfs[2].ticker == "VOO"
     assert etfs[2].cik == "0000036405"
     assert etfs[2].issuer_name == "Vanguard Group Inc"
-    assert etfs[2].fund_name == "Vanguard Group Inc"
+    assert etfs[2].fund_name == "Vanguard 500 Index Fund"
     assert etfs[3].ticker == "VTV"
     assert etfs[3].cik == "0000036405"
-    assert etfs[3].fund_name == "Vanguard Group Inc"
+    assert etfs[3].fund_name == "Vanguard Value Index Fund"
 
 
 def test_load_etfs_with_limit(session, engine, sample_tickers_file, mock_company, mock_load_etfs_db):
@@ -116,7 +148,7 @@ def test_load_etfs_upsert_existing(session, engine, sample_tickers_file, mock_co
     assert voo.cik == "0000036405"
     assert voo.series_id == "S000002839"
     assert voo.issuer_name == "Vanguard Group Inc"
-    assert voo.fund_name == "Vanguard Group Inc"
+    assert voo.fund_name == "Vanguard 500 Index Fund"
 
     stmt_all = select(ETF)
     all_etfs = session.execute(stmt_all).scalars().all()
