@@ -1,533 +1,292 @@
-## Database Schema Reference
+# Database Schema
 
-### ETF
-The central table. One row per exchange-traded fund, discovered from SEC's `company_tickers_mf.json` and enriched from 485BPOS prospectus filings.
-
-| Field | Description |
-|-------|-------------|
-| **ticker** | Trading symbol (e.g., SPY, QQQ). Unique identifier for deduplication |
-| **cik** | SEC Central Index Key — identifies the issuer/trust. Multiple ETFs can share one CIK |
-| **series_id** | SEC Series ID — distinguishes individual funds within a trust |
-| **class_id** | SEC Class ID — identifies the share class within a fund. Used by N-CSR XBRL data for fund identification |
-| **fund_name** | Full name (e.g., "SPDR S&P 500 ETF Trust"). Backfilled from Yahoo Finance |
-| **issuer_name** | Trust or issuer name (e.g., "State Street Global Advisors"). From SEC submissions |
-| **objective_text** | Investment objective text extracted from the 485BPOS prospectus (`rr:ObjectivePrimaryTextBlock`), HTML stripped to plain text |
-| **strategy_text** | Investment strategy/objective extracted from the 485BPOS prospectus narrative (`rr:StrategyNarrativeTextBlock`), HTML stripped to plain text |
-| **filing_url** | URL to the source 485BPOS filing on EDGAR |
-| **category** | ETF classification — reserved for future use, not yet populated |
-| **is_active** | Soft delete flag. Set to False if the ticker disappears from SEC data |
-| **last_fetched** | When the pipeline last processed this ETF |
-| **incomplete_data** | True if any parser failed during the last pipeline run |
+SQLite database managed by SQLAlchemy 2.0. All models defined in `src/etf_pipeline/models.py`.
 
 ---
 
-### Holding
-Individual security positions from quarterly N-PORT filings. One row per security per report date.
+## Entity-Relationship Overview
 
-| Field | Description |
-|-------|-------------|
-| **etf** | FK to ETF |
-| **report_date** | Quarter-end reporting date of the N-PORT filing |
-| **name** | Security name (e.g., "Apple Inc") |
-| **cusip** | 9-character CUSIP identifier |
-| **isin** | 12-character ISIN identifier |
-| **ticker** | Ticker of the held security (not the ETF) |
-| **lei** | Legal Entity Identifier of the issuer |
-| **balance** | Number of shares, par value, or contracts held |
-| **units** | What balance measures: "shares", "principal", "contracts" |
-| **value_usd** | Market value in USD |
-| **pct_val** | Percentage of the ETF's net asset value (0.05000 = 5%) |
-| **asset_category** | SEC asset class code: EC (equity), DBT (debt), etc. |
-| **issuer_category** | Issuer type: corporate, government, municipal, etc. |
-| **country** | 3-letter country code of the issuer |
-| **currency** | 3-letter currency code of the holding |
-| **fair_value_level** | GAAP fair value hierarchy: 1 (quoted prices), 2 (observable inputs), 3 (unobservable) |
-| **is_restricted** | Whether the security has resale restrictions |
+```
+ETF (1) ──< Holding
+ETF (1) ──< Derivative
+ETF (1) ──< Performance
+ETF (1) ──< FeeExpense
+ETF (1) ──< ShareholderFee
+ETF (1) ──< ExpenseExample
+ETF (1) ──< PerShareOperating
+ETF (1) ──< PerShareDistribution
+ETF (1) ──< PerShareRatios
 
----
-
-### Derivative
-Derivative positions (futures, options, swaps, forwards) from N-PORT filings.
-
-| Field | Description |
-|-------|-------------|
-| **etf** | FK to ETF |
-| **report_date** | Quarter-end reporting date |
-| **derivative_type** | Instrument type: "future", "option", "swap", "forward" |
-| **underlying_name** | Name of the underlying asset or index |
-| **underlying_cusip** | CUSIP of the underlying security, if applicable |
-| **notional_value** | Notional/face value of the position in USD |
-| **counterparty** | Name of the counterparty (for OTC derivatives) |
-| **counterparty_lei** | LEI of the counterparty |
-| **delta** | Option delta — sensitivity of price to underlying (0 to 1 for calls, -1 to 0 for puts) |
-| **expiration_date** | When the contract expires |
-
----
-
-### Performance
-Returns, distributions, and operating metrics from annual/semi-annual N-CSR filings. One row per ETF per fiscal year.
-
-| Field | Description |
-|-------|-------------|
-| **etf** | FK to ETF |
-| **fiscal_year_end** | End date of the reporting period |
-| **return_1yr** | 1-year total return as decimal (0.1234 = 12.34%) |
-| **return_5yr** | Annualized 5-year return |
-| **return_10yr** | Annualized 10-year return |
-| **return_since_inception** | Annualized return since fund inception |
-| **benchmark_name** | Name of the benchmark index |
-| **benchmark_return_1yr/5yr/10yr** | Corresponding benchmark returns |
-| **portfolio_turnover** | Portfolio turnover rate as decimal (0.50000 = 50%) |
-| **expense_ratio_actual** | Actual expense ratio from operations |
-
----
-
-### FeeExpense
-Fee schedules from 485BPOS prospectus filings. One row per ETF per effective date.
-
-| Field | Description |
-|-------|-------------|
-| **etf** | FK to ETF |
-| **effective_date** | When this fee schedule became effective |
-| **management_fee** | Advisory/management fee (0.00450 = 0.45%) |
-| **distribution_12b1** | 12b-1 marketing/distribution fee |
-| **other_expenses** | Other annual operating expenses |
-| **total_expense_gross** | Total expense ratio before any waivers |
-| **fee_waiver** | Amount waived by the adviser (stored as positive) |
-| **total_expense_net** | Net expense ratio the investor actually pays |
-| **acquired_fund_fees** | Acquired fund fees and expenses over assets (`rr:AcquiredFundFeesAndExpensesOverAssets`) |
-
----
-
-### ShareholderFee
-Shareholder transaction fees from 485BPOS prospectus filings. One row per ETF per effective date.
-
-| Field | Description |
-|-------|-------------|
-| **etf** | FK to ETF |
-| **effective_date** | When this fee schedule became effective (from `dei:DocumentPeriodEndDate`) |
-| **front_load** | Maximum sales charge on purchases (`rr:MaximumSalesChargeImposedOnPurchasesOverOfferingPrice`) as decimal (0.05750 = 5.75%) |
-| **deferred_load** | Maximum deferred sales charge (`rr:MaximumDeferredSalesChargeOverOther`) |
-| **reinvestment_charge** | Maximum sales charge on reinvested dividends (`rr:MaximumSalesChargeOnReinvestedDividendsAndDistributionsOverOther`) |
-| **redemption_fee** | Redemption fee (`rr:RedemptionFeeOverRedemption`) — stored as positive |
-| **exchange_fee** | Exchange fee (`rr:ExchangeFeeOverRedemption`) |
-
----
-
-### ExpenseExample
-Expense projections from 485BPOS prospectus filings. One row per ETF per effective date.
-
-| Field | Description |
-|-------|-------------|
-| **etf** | FK to ETF |
-| **effective_date** | When this expense example became effective (from `dei:DocumentPeriodEndDate`) |
-| **year_01** | Dollar cost on $10,000 investment after 1 year with redemption (`rr:ExpenseExampleYear01`) |
-| **year_03** | Dollar cost on $10,000 investment after 3 years with redemption (`rr:ExpenseExampleYear03`) |
-| **year_05** | Dollar cost on $10,000 investment after 5 years with redemption (`rr:ExpenseExampleYear05`) |
-| **year_10** | Dollar cost on $10,000 investment after 10 years with redemption (`rr:ExpenseExampleYear10`) |
-
----
-
-### FlowData
-Dollar-value fund flows from 24F-2NT filings. One row per CIK per fiscal year.
-
-**Important**: 24F-2NT filings report aggregate flow data at the trust (CIK) level, NOT per individual fund/series.
-
-| Field | Description |
-|-------|-------------|
-| **cik** | SEC Central Index Key — identifies the issuer/trust. Indexed for lookups |
-| **fiscal_year_end** | End of the fiscal year covered by the filing |
-| **sales_value** | Total dollar value of shares sold (creations) during the year across all series in the trust |
-| **redemptions_value** | Total dollar value of shares redeemed during the year across all series in the trust |
-| **net_sales** | Net flows: sales minus redemptions. Positive = net inflows |
-
----
-
-### PerShareOperating
-Per-share operating data from Financial Highlights tables in N-CSR filings. One row per ETF per fiscal year.
-
-| Field | Description |
-|-------|-------------|
-| **etf** | FK to ETF |
-| **fiscal_year_end** | End date of the reporting period |
-| **nav_beginning** | Net asset value per share at beginning of period |
-| **net_investment_income** | Per-share net investment income/loss |
-| **net_realized_unrealized_gain** | Per-share net realized and unrealized gains/losses |
-| **total_from_operations** | Sum of investment income + gains |
-| **equalization** | Net equalization credits/charges (some issuers only) |
-| **nav_end** | Net asset value per share at end of period |
-| **total_return** | Total return for the period as decimal (0.1234 = 12.34%) |
-| **math_validated** | True if NAV_begin + operations - distributions (+/- equalization) = NAV_end within $0.01 |
-
----
-
-### PerShareDistribution
-Per-share distribution amounts from Financial Highlights tables in N-CSR filings. One row per ETF per fiscal year.
-
-| Field | Description |
-|-------|-------------|
-| **etf** | FK to ETF |
-| **fiscal_year_end** | End date of the reporting period |
-| **dist_net_investment_income** | Dividends from net investment income (reported as negative) |
-| **dist_realized_gains** | Distributions from realized capital gains |
-| **dist_return_of_capital** | Return of capital distributions |
-| **dist_total** | Total distributions |
-
----
-
-### PerShareRatios
-Fund-level ratios and supplemental data from Financial Highlights tables in N-CSR filings. One row per ETF per fiscal year.
-
-| Field | Description |
-|-------|-------------|
-| **etf** | FK to ETF |
-| **fiscal_year_end** | End date of the reporting period |
-| **expense_ratio** | Total expense ratio as decimal (0.00450 = 0.45%) |
-| **portfolio_turnover** | Portfolio turnover rate as decimal (0.50000 = 50%) |
-| **net_assets_end** | Total net assets at end of period in USD |
-
----
-
-## Entity Relationship Diagram
-
-```mermaid
-erDiagram
-    ETF ||--o{ Holding : "has many"
-    ETF ||--o{ Derivative : "has many"
-    ETF ||--o{ Performance : "has many"
-    ETF ||--o{ FeeExpense : "has many"
-    ETF ||--o{ ShareholderFee : "has many"
-    ETF ||--o{ ExpenseExample : "has many"
-    ETF ||--o{ PerShareOperating : "has many"
-    ETF ||--o{ PerShareDistribution : "has many"
-    ETF ||--o{ PerShareRatios : "has many"
-
-    ETF {
-        int id PK
-        varchar ticker UK "e.g. SPY"
-        varchar cik IX "SEC Central Index Key"
-        varchar series_id "nullable"
-        varchar class_id IX "nullable, SEC Class ID"
-        varchar fund_name "nullable"
-        varchar issuer_name
-        text objective_text "nullable"
-        text strategy_text "nullable"
-        url filing_url "nullable"
-        varchar category "nullable"
-        bool is_active "default true"
-        datetime last_fetched "nullable"
-        bool incomplete_data "default false"
-        datetime created_at
-        datetime updated_at
-    }
-
-    Holding {
-        int id PK
-        int etf_id FK
-        date report_date IX
-        varchar name
-        varchar cusip IX "nullable, 9 chars"
-        varchar isin "nullable, 12 chars"
-        varchar ticker "nullable"
-        varchar lei "nullable"
-        decimal balance "20,4"
-        varchar units "shares|principal|contracts"
-        decimal value_usd "20,2"
-        decimal pct_val "8,5 (0.05000 = 5%)"
-        varchar asset_category "EC|DBT|etc"
-        varchar issuer_category "nullable"
-        varchar country "nullable, 3 chars"
-        varchar currency "3 chars"
-        int fair_value_level "nullable, 1|2|3"
-        bool is_restricted "default false"
-    }
-
-    Derivative {
-        int id PK
-        int etf_id FK
-        date report_date IX
-        varchar derivative_type "future|option|swap|forward"
-        varchar underlying_name "nullable"
-        varchar underlying_cusip "nullable"
-        decimal notional_value "20,2"
-        varchar counterparty "nullable"
-        varchar counterparty_lei "nullable"
-        decimal delta "10,6 nullable"
-        date expiration_date "nullable"
-    }
-
-    Performance {
-        int id PK
-        int etf_id FK
-        date fiscal_year_end "UK(etf,fiscal_year_end)"
-        decimal return_1yr "8,5 nullable"
-        decimal return_5yr "8,5 nullable"
-        decimal return_10yr "8,5 nullable"
-        decimal return_since_inception "8,5 nullable"
-        varchar benchmark_name "nullable"
-        decimal benchmark_return_1yr "8,5 nullable"
-        decimal benchmark_return_5yr "8,5 nullable"
-        decimal benchmark_return_10yr "8,5 nullable"
-        decimal portfolio_turnover "8,5 nullable"
-        decimal expense_ratio_actual "6,5 nullable"
-    }
-
-    FeeExpense {
-        int id PK
-        int etf_id FK
-        date effective_date "UK(etf,effective_date)"
-        decimal management_fee "6,5 nullable"
-        decimal distribution_12b1 "6,5 nullable"
-        decimal other_expenses "6,5 nullable"
-        decimal total_expense_gross "6,5 nullable"
-        decimal fee_waiver "6,5 nullable"
-        decimal total_expense_net "6,5 nullable"
-        decimal acquired_fund_fees "6,5 nullable"
-    }
-
-    ShareholderFee {
-        int id PK
-        int etf_id FK
-        date effective_date "UK(etf,effective_date)"
-        decimal front_load "6,5 nullable"
-        decimal deferred_load "6,5 nullable"
-        decimal reinvestment_charge "6,5 nullable"
-        decimal redemption_fee "6,5 nullable"
-        decimal exchange_fee "6,5 nullable"
-    }
-
-    ExpenseExample {
-        int id PK
-        int etf_id FK
-        date effective_date "UK(etf,effective_date)"
-        int year_01 "nullable"
-        int year_03 "nullable"
-        int year_05 "nullable"
-        int year_10 "nullable"
-    }
-
-    FlowData {
-        int id PK
-        varchar cik IX "10 chars"
-        date fiscal_year_end "UK(cik,fiscal_year_end)"
-        decimal sales_value "20,4 nullable"
-        decimal redemptions_value "20,4 nullable"
-        decimal net_sales "20,4 nullable"
-    }
-
-    PerShareOperating {
-        int id PK
-        int etf_id FK
-        date fiscal_year_end "UK(etf,fiscal_year_end)"
-        decimal nav_beginning "10,4 nullable"
-        decimal net_investment_income "10,4 nullable"
-        decimal net_realized_unrealized_gain "10,4 nullable"
-        decimal total_from_operations "10,4 nullable"
-        decimal equalization "10,4 nullable"
-        decimal nav_end "10,4 nullable"
-        decimal total_return "8,5 nullable"
-        bool math_validated
-    }
-
-    PerShareDistribution {
-        int id PK
-        int etf_id FK
-        date fiscal_year_end "UK(etf,fiscal_year_end)"
-        decimal dist_net_investment_income "10,4 nullable"
-        decimal dist_realized_gains "10,4 nullable"
-        decimal dist_return_of_capital "10,4 nullable"
-        decimal dist_total "10,4 nullable"
-    }
-
-    PerShareRatios {
-        int id PK
-        int etf_id FK
-        date fiscal_year_end "UK(etf,fiscal_year_end)"
-        decimal expense_ratio "6,5 nullable"
-        decimal portfolio_turnover "8,5 nullable"
-        decimal net_assets_end "20,2 nullable"
-    }
+FlowData (standalone, keyed by CIK)
 ```
 
 ---
 
-## Data Source Mapping
+## Tables
 
-```
-SEC EDGAR Filing Types ──────────────────────── Database Tables
+### `etf`
 
-  company_tickers_mf.json ──────────────────┐
-  485BPOS (prospectus)  ────────────────────┤── ETF
-                                            │
-  NPORT-P (quarterly holdings) ─────────────┤── Holding
-                                            │── Derivative
-                                            │
-  N-CSR / N-CSRS (annual/semi-annual) ─────┤── Performance
-                                            │── PerShareOperating
-                                            │── PerShareDistribution
-                                            │── PerShareRatios
-                                            │
-  485BPOS (prospectus fee tables) ──────────┤── FeeExpense
-                                            │── ShareholderFee
-                                            │── ExpenseExample
-                                            │
-  24F-2NT (annual flow notice) ─────────────┘── FlowData
-```
+Central table identifying each ETF share class.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | Auto-increment ID |
+| `ticker` | String(10) | UNIQUE, NOT NULL | ETF ticker symbol |
+| `cik` | String(10) | NOT NULL, INDEXED | SEC Central Index Key |
+| `series_id` | String(20) | | SEC series identifier |
+| `class_id` | String(20) | INDEXED | SEC class/contract identifier |
+| `fund_name` | String(500) | | Full fund name |
+| `issuer_name` | String(500) | NOT NULL | Issuer/registrant name |
+| `objective_text` | Text | | Investment objective narrative |
+| `strategy_text` | Text | | Principal strategy narrative |
+| `filing_url` | String(1000) | | Source filing URL |
+| `category` | String(100) | | Fund category |
+| `is_active` | Boolean | NOT NULL, default=True | Whether the ETF is active |
+| `last_fetched` | DateTime | | Last pipeline run timestamp |
+| `incomplete_data` | Boolean | NOT NULL, default=False | Flag for partial data loads |
+| `created_at` | DateTime | NOT NULL, server default | Row creation timestamp |
+| `updated_at` | DateTime | NOT NULL, auto-update | Last modification timestamp |
 
 ---
 
-## Table Relationships (ASCII)
+### `holding`
 
-```
-                              +-------------+
-                              |     ETF     |
-                              |-------------|
-                              | PK id       |
-                              | UK ticker   |
-                              | IX cik      |
-                              +------+------+
-                                     |
-              +----------+-----------+-----------+----------+
-              |          |           |           |          |
-              v          v           v           v          v
-        +---------+ +-----------+ +-----------+ +-------+ +--------+
-        | Holding | | Derivative| |Performance| |FeExp. | |FlowData|
-        |---------| |-----------| |-----------| |-------| |--------|
-        | FK etf  | | FK etf    | | FK etf    | |FK etf | |   cik  |
-        | IX date | | IX date   | | UK etf+fy | |UK etf | |UK cik  |
-        | IX cusip| |           | |           | | +date | | +fy    |
-        +---------+ +-----------+ +-----------+ +-------+ +--------+
-         1 ETF:N     1 ETF:N       1 ETF:N      1 ETF:N    Per CIK
-       (per qtr)   (per qtr)    (per fiscal yr)  (per eff  (per fis
-                                                   date)    cal yr)
-```
+Individual portfolio holdings from NPORT-P filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `report_date` | Date | NOT NULL | Filing report date |
+| `name` | String(500) | NOT NULL | Security name |
+| `cusip` | String(9) | INDEXED | CUSIP identifier |
+| `isin` | String(12) | | ISIN identifier |
+| `ticker` | String(20) | | Security ticker |
+| `lei` | String(20) | | Legal Entity Identifier |
+| `balance` | Numeric(20,4) | | Quantity held |
+| `units` | String(20) | | Unit type (NS, PA, etc.) |
+| `value_usd` | Numeric(20,2) | | Market value in USD |
+| `pct_val` | Numeric(8,5) | | Percentage of net assets |
+| `asset_category` | String(20) | | Asset category code |
+| `issuer_category` | String(50) | | Issuer type category |
+| `country` | String(3) | | ISO country code |
+| `currency` | String(3) | | ISO currency code |
+| `fair_value_level` | Integer | | Fair value hierarchy (1/2/3) |
+| `is_restricted` | Boolean | NOT NULL, default=False | Restricted security flag |
+
+**Indexes:** `(etf_id, report_date)`, `(cusip)`, `(report_date)`
+
+---
+
+### `derivative`
+
+Derivative positions from NPORT-P filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `report_date` | Date | NOT NULL | Filing report date |
+| `derivative_type` | String(20) | NOT NULL | Type (FWD, SWP, FUT, OPT, etc.) |
+| `underlying_name` | String(500) | | Underlying instrument name |
+| `underlying_cusip` | String(9) | | Underlying CUSIP |
+| `notional_value` | Numeric(20,2) | | Notional amount in USD |
+| `counterparty` | String(500) | | Counterparty name |
+| `counterparty_lei` | String(20) | | Counterparty LEI |
+| `delta` | Numeric(10,6) | | Option delta |
+| `expiration_date` | Date | | Contract expiration |
+
+**Indexes:** `(etf_id, report_date)`, `(report_date)`
+
+---
+
+### `performance`
+
+Annual return and benchmark data from N-CSR filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `fiscal_year_end` | Date | NOT NULL | Fiscal year end date |
+| `return_1yr` | Numeric(8,5) | | 1-year return |
+| `return_5yr` | Numeric(8,5) | | 5-year annualized return |
+| `return_10yr` | Numeric(8,5) | | 10-year annualized return |
+| `return_since_inception` | Numeric(8,5) | | Since-inception return |
+| `benchmark_name` | String(500) | | Benchmark index name |
+| `benchmark_return_1yr` | Numeric(8,5) | | Benchmark 1-year return |
+| `benchmark_return_5yr` | Numeric(8,5) | | Benchmark 5-year return |
+| `benchmark_return_10yr` | Numeric(8,5) | | Benchmark 10-year return |
+| `portfolio_turnover` | Numeric(8,5) | | Portfolio turnover rate |
+| `expense_ratio_actual` | Numeric(6,5) | | Actual expense ratio |
+
+**Unique:** `(etf_id, fiscal_year_end)`
+
+---
+
+### `fee_expense`
+
+Annual fee table data from 485BPOS prospectus filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `effective_date` | Date | NOT NULL | Prospectus effective date |
+| `management_fee` | Numeric(6,5) | | Management fee rate |
+| `distribution_12b1` | Numeric(6,5) | | 12b-1 distribution fee |
+| `other_expenses` | Numeric(6,5) | | Other expenses rate |
+| `total_expense_gross` | Numeric(6,5) | | Gross total expense ratio |
+| `fee_waiver` | Numeric(6,5) | | Fee waiver/reimbursement |
+| `total_expense_net` | Numeric(6,5) | | Net total expense ratio |
+| `acquired_fund_fees` | Numeric(6,5) | | Acquired fund fees and expenses |
+
+**Unique:** `(etf_id, effective_date)`
+
+---
+
+### `shareholder_fee`
+
+Shareholder-level fees from 485BPOS prospectus filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `effective_date` | Date | NOT NULL | Prospectus effective date |
+| `front_load` | Numeric(6,5) | | Front-end sales load |
+| `deferred_load` | Numeric(6,5) | | Deferred sales load |
+| `reinvestment_charge` | Numeric(6,5) | | Dividend reinvestment charge |
+| `redemption_fee` | Numeric(6,5) | | Redemption fee |
+| `exchange_fee` | Numeric(6,5) | | Exchange fee |
+
+**Unique:** `(etf_id, effective_date)`
+
+---
+
+### `expense_example`
+
+Dollar-cost examples from 485BPOS prospectus filings ($10,000 investment).
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `effective_date` | Date | NOT NULL | Prospectus effective date |
+| `year_01` | Integer | | Cost after 1 year ($) |
+| `year_03` | Integer | | Cost after 3 years ($) |
+| `year_05` | Integer | | Cost after 5 years ($) |
+| `year_10` | Integer | | Cost after 10 years ($) |
+
+**Unique:** `(etf_id, effective_date)`
+
+---
+
+### `flow_data`
+
+Fund-level sales and redemption flows from 24F-2NT filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `cik` | String(10) | NOT NULL | SEC CIK (issuer-level, not per-ETF) |
+| `fiscal_year_end` | Date | NOT NULL, INDEXED | Fiscal year end date |
+| `sales_value` | Numeric(20,4) | | Aggregate sales |
+| `redemptions_value` | Numeric(20,4) | | Aggregate redemptions |
+| `net_sales` | Numeric(20,4) | | Net sales (sales - redemptions) |
+
+**Unique:** `(cik, fiscal_year_end)`
+
+> Note: `flow_data` is keyed by CIK, not `etf_id`. 24F-2NT filings report at the issuer level, not per share class.
+
+---
+
+### `per_share_operating`
+
+Per-share operating performance from N-CSR financial highlights.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `fiscal_year_end` | Date | NOT NULL | Fiscal year end date |
+| `nav_beginning` | Numeric(10,4) | | NAV at start of period |
+| `net_investment_income` | Numeric(10,4) | | Per-share net investment income |
+| `net_realized_unrealized_gain` | Numeric(10,4) | | Per-share realized + unrealized gains |
+| `total_from_operations` | Numeric(10,4) | | Total income from operations |
+| `equalization` | Numeric(10,4) | | Equalization adjustment |
+| `nav_end` | Numeric(10,4) | | NAV at end of period |
+| `total_return` | Numeric(8,5) | | Total return for the period |
+| `math_validated` | Boolean | NOT NULL | Whether NAV math checks out |
+
+**Unique:** `(etf_id, fiscal_year_end)`
+
+---
+
+### `per_share_distribution`
+
+Per-share distributions from N-CSR financial highlights.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `fiscal_year_end` | Date | NOT NULL | Fiscal year end date |
+| `dist_net_investment_income` | Numeric(10,4) | | Distributions from net investment income |
+| `dist_realized_gains` | Numeric(10,4) | | Distributions from realized gains |
+| `dist_return_of_capital` | Numeric(10,4) | | Return of capital distributions |
+| `dist_total` | Numeric(10,4) | | Total distributions |
+
+**Unique:** `(etf_id, fiscal_year_end)`
+
+---
+
+### `per_share_ratios`
+
+Per-share supplemental ratios from N-CSR financial highlights.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `fiscal_year_end` | Date | NOT NULL | Fiscal year end date |
+| `expense_ratio` | Numeric(6,5) | | Expense ratio |
+| `portfolio_turnover` | Numeric(8,5) | | Portfolio turnover rate |
+| `net_assets_end` | Numeric(20,2) | | Net assets at period end |
+
+**Unique:** `(etf_id, fiscal_year_end)`
 
 ---
 
 ## Indexes and Constraints Summary
 
-| Table | Constraint | Type | Columns |
-|-------|-----------|------|---------|
-| ETF | `etf_ticker_key` | UNIQUE | `ticker` |
-| ETF | `etf_cik_idx` | INDEX | `cik` |
-| Holding | `holding_etf_report_idx` | INDEX | `etf_id, report_date` |
-| Holding | `holding_cusip_idx` | INDEX | `cusip` |
-| Holding | `holding_report_date_idx` | INDEX | `report_date` |
-| Derivative | `derivative_etf_report_idx` | INDEX | `etf_id, report_date` |
-| Derivative | `derivative_report_date_idx` | INDEX | `report_date` |
-| Performance | `performance_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
-| FeeExpense | `fee_expense_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
-| ShareholderFee | `shareholder_fee_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
-| ExpenseExample | `expense_example_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
-| FlowData | `flow_data_cik_fy_uniq` | UNIQUE | `cik, fiscal_year_end` |
-| FlowData | `flow_data_fy_idx` | INDEX | `fiscal_year_end` |
-| PerShareOperating | `per_share_operating_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
-| PerShareDistribution | `per_share_distribution_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
-| PerShareRatios | `per_share_ratios_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
+| Table | Name | Type | Columns |
+|---|---|---|---|
+| etf | — | UNIQUE | `ticker` |
+| etf | — | INDEX | `cik` |
+| etf | — | INDEX | `class_id` |
+| holding | `holding_etf_report_idx` | INDEX | `etf_id, report_date` |
+| holding | `holding_cusip_idx` | INDEX | `cusip` |
+| holding | `holding_report_date_idx` | INDEX | `report_date` |
+| derivative | `derivative_etf_report_idx` | INDEX | `etf_id, report_date` |
+| derivative | `derivative_report_date_idx` | INDEX | `report_date` |
+| performance | `performance_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
+| fee_expense | `fee_expense_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
+| shareholder_fee | `shareholder_fee_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
+| expense_example | `expense_example_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
+| flow_data | `flow_data_cik_fy_uniq` | UNIQUE | `cik, fiscal_year_end` |
+| flow_data | `flow_data_fy_idx` | INDEX | `fiscal_year_end` |
+| per_share_operating | `per_share_operating_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
+| per_share_distribution | `per_share_distribution_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
+| per_share_ratios | `per_share_ratios_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
 
 ---
 
-## SEC Upstream Source: `company_tickers_mf.json`
+## Data Sources by Filing Type
 
-The ETF table is seeded from a single SEC file that maps every registered mutual fund and ETF share class to its identifiers. This is the entry point for the entire pipeline.
-
-**URL**: `https://www.sec.gov/files/company_tickers_mf.json`
-
-### JSON Structure
-
-The file uses a compact array-of-arrays format (not objects) with a separate `fields` header:
-
-```json
-{
-  "fields": ["cik", "seriesId", "classId", "symbol"],
-  "data": [
-    [2110,    "S000009184", "C000024954", "LACAX"],
-    [2110,    "S000009184", "C000024956", "LIACX"],
-    [1592900, "S000047440", "C000148278", "IJAN"],
-    [1174610, "S000021823", "C000060674", "SSO"]
-  ]
-}
-```
-
-### Field Definitions
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `cik` | integer | SEC Central Index Key. Identifies the issuer/trust. Multiple funds share one CIK |
-| `seriesId` | string | SEC Series ID (e.g., `S000047440`). Identifies a specific fund within a trust |
-| `classId` | string | SEC Class ID (e.g., `C000148278`). Identifies a share class within a fund. Maps to `class_id` in ETF table |
-| `symbol` | string | Trading ticker symbol. Used as the unique key in the ETF table |
-
-### ETF vs Mutual Fund Filtering
-
-The file contains both ETFs and mutual funds (~50,000+ rows). The pipeline filters using a ticker-length heuristic:
-
-```
- Symbol        Length   Ends in X?   Classification
- ───────────── ──────── ──────────── ──────────────
- SPY           3        no           ETF
- QQQ           3        no           ETF
- TQQQ          4        no           ETF
- QYLD          4        no           ETF
- LACAX         5        yes          Mutual fund (excluded)
- VFINX         5        yes          Mutual fund (excluded)
- AB            2        no           Rejected (too short)
- ABCDEF        6        no           Rejected (too long)
-```
-
-**Rules**:
-- 3-4 characters long --> ETF (included)
-- 5 characters ending in `X` --> mutual fund (excluded)
-- Everything else --> rejected
-
-### Data Flow: JSON to ETF Table
-
-```
-company_tickers_mf.json
-        |
-        |  fetch_company_tickers()
-        v
-  { fields: [...], data: [[...], ...] }
-        |
-        |  fetch_and_filter_etf_tickers()
-        |  - parse array-of-arrays using field indices
-        |  - apply is_etf_ticker() filter
-        v
-  [ {cik, series_id, ticker}, ... ]     ~5,000 ETF records
-        |
-        |  group by CIK
-        v
-  { cik: [tickers...], ... }                      ~2,000 unique CIKs
-        |
-        |  for each CIK:
-        |    fetch submissions -> find 485BPOS filing
-        |    parse prospectus -> extract fund_name, strategy, issuer
-        |    match back to tickers via series_id
-        v
-  upsert_etf() per ticker
-        |
-        |  - INSERT if new ticker
-        |  - UPDATE strategy, filing_url, issuer_name if exists
-        |  - set is_active=True, last_fetched=now()
-        v
-  ETF table
-        |
-        |  mark_stale_etfs()
-        |  - set is_active=False for any ETF
-        |    with last_fetched < run_start
-        v
-  Final ETF table (active + inactive)
-```
-
-### Mapping to ETF Table Columns
-
-| JSON field | ETF column | Notes |
-|------------|------------|-------|
-| `cik` | `cik` | Cast from int to string, zero-padded to 10 digits for API calls |
-| `seriesId` | `series_id` | Used to match tickers to prospectus sections |
-| `classId` | `class_id` | Stored in ETF table for N-CSR XBRL data mapping (identifies fund in iXBRL via ClassAxis dimension) |
-| `symbol` | `ticker` | Unique key for deduplication |
-| — | `fund_name` | Parsed from 485BPOS prospectus, or backfilled from Yahoo Finance |
-| — | `issuer_name` | Parsed from SEC submissions JSON |
-| — | `strategy_text` | Parsed from 485BPOS prospectus narrative |
-| — | `filing_url` | Constructed from CIK + accession number + document name |
+| Filing Type | Tables Populated |
+|---|---|
+| NPORT-P | `holding`, `derivative` |
+| N-CSR | `performance`, `per_share_operating`, `per_share_distribution`, `per_share_ratios` |
+| 485BPOS | `etf` (objective/strategy), `fee_expense`, `shareholder_fee`, `expense_example` |
+| 24F-2NT | `flow_data` |

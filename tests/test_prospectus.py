@@ -30,6 +30,21 @@ def sample_filing_path():
     return Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos.html"
 
 
+@pytest.fixture
+def sample_filing_oef():
+    """Load sample 485BPOS fixture with OEF namespace."""
+    fixture_path = Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos_oef.html"
+    with open(fixture_path, 'r', encoding='utf-8') as f:
+        html = f.read()
+    return BeautifulSoup(html, 'html.parser')
+
+
+@pytest.fixture
+def sample_filing_oef_path():
+    """Return path to sample 485BPOS OEF fixture."""
+    return Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos_oef.html"
+
+
 class TestParseContexts:
     """Test context parsing (CIK, series_id, class_id extraction)."""
 
@@ -459,7 +474,7 @@ class TestIntegrationProcessCikProspectus:
         mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
 
         mock_filings = Mock()
-        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -558,7 +573,7 @@ class TestIntegrationProcessCikProspectus:
         mock_filing.filing_date = date(2022, 11, 3)
 
         mock_filings = Mock()
-        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -597,7 +612,7 @@ class TestIntegrationProcessCikProspectus:
         mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
 
         mock_filings = Mock()
-        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -648,7 +663,7 @@ class TestIntegrationProcessCikProspectus:
         mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
 
         mock_filings = Mock()
-        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -696,7 +711,7 @@ class TestIntegrationParseProspectus:
         mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
 
         mock_filings = Mock()
-        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -717,3 +732,123 @@ class TestIntegrationParseProspectus:
         # Verify data was inserted
         fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
         assert fee.management_fee == pytest.approx(Decimal('0.0070'))
+
+
+class TestOEFNamespace:
+    """Test OEF namespace support (oef: prefix instead of rr:)."""
+
+    def test_parse_contexts_oef_class_axis(self, sample_filing_oef):
+        """Test parsing contexts with OEF ClassAxis dimension."""
+        context_map = parse_contexts(sample_filing_oef)
+
+        # Class-level context should parse correctly with oef:ClassAxis
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
+        assert context_id in context_map
+        assert context_map[context_id]["cik"] == "0001314612"
+        assert context_map[context_id]["series_id"] == "S000014796"
+        assert context_map[context_id]["class_id"] == "C000014542"
+
+    def test_extract_oef_management_fee(self, sample_filing_oef):
+        """Test extracting management fee with oef: prefix."""
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
+        value = extract_tag_value(sample_filing_oef, "oef:ManagementFeesOverAssets", context_id)
+
+        assert value == Decimal('0.0070')
+
+    def test_extract_oef_expense_example(self, sample_filing_oef):
+        """Test extracting expense example with oef: prefix."""
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
+        value = extract_tag_value(sample_filing_oef, "oef:ExpenseExampleYear01", context_id)
+
+        assert value == Decimal('695')
+
+    def test_extract_oef_objective_text(self, sample_filing_oef):
+        """Test extracting objective text with oef: prefix."""
+        context_id = "AsOf2022-11-03_custom_S000014796Member"
+        value = extract_tag_value(sample_filing_oef, "oef:ObjectivePrimaryTextBlock", context_id)
+
+        assert isinstance(value, str)
+        assert value == "The fund seeks long-term capital growth."
+
+    def test_process_cik_oef_full_flow(self, session, sample_filing_oef_path):
+        """Test full CIK processing flow with OEF namespace."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF records matching the fixture
+        etf_a = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A', issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        etf_i = ETF(
+            cik='0001314612',
+            ticker='TESTI',
+            fund_name='Test Fund - Class I', issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014546',
+        )
+        session.add_all([etf_a, etf_i])
+        session.commit()
+
+        # Read fixture HTML
+        with open(sample_filing_oef_path) as f:
+            html_content = f.read()
+
+        # Mock edgartools objects
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        # Patch Company class
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Verify FeeExpense data for Class A (should work identically to RR namespace)
+        fee_a = session.query(FeeExpense).filter_by(etf_id=etf_a.id).one()
+        assert fee_a.management_fee == pytest.approx(Decimal('0.0070'))
+        assert fee_a.distribution_12b1 == pytest.approx(Decimal('0.0025'))
+        assert fee_a.other_expenses == pytest.approx(Decimal('0.0030'))
+        assert fee_a.total_expense_gross == pytest.approx(Decimal('0.0125'))
+        assert fee_a.fee_waiver == pytest.approx(Decimal('0.0010'))
+        assert fee_a.total_expense_net == pytest.approx(Decimal('0.0115'))
+        assert fee_a.effective_date == date(2022, 11, 3)
+
+        # Verify FeeExpense data for Class I
+        fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i.id).one()
+        assert fee_i.management_fee == pytest.approx(Decimal('0.0070'))
+        assert fee_i.distribution_12b1 == Decimal('0')  # zerodash
+
+        # Verify ShareholderFee data
+        sh_fee_a = session.query(ShareholderFee).filter_by(etf_id=etf_a.id).one()
+        assert sh_fee_a.front_load == pytest.approx(Decimal('0.0575'))
+        assert sh_fee_a.redemption_fee == pytest.approx(Decimal('0.0200'))
+
+        # Verify ExpenseExample data
+        exp_a = session.query(ExpenseExample).filter_by(etf_id=etf_a.id).one()
+        assert exp_a.year_01 == 695
+        assert exp_a.year_03 == 949
+        assert exp_a.year_05 == 1223
+        assert exp_a.year_10 == 2019
+
+        # Verify narrative text
+        session.refresh(etf_a)
+        session.refresh(etf_i)
+        assert etf_a.objective_text == 'The fund seeks long-term capital growth.'
+        assert etf_a.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
+        assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'

@@ -9,7 +9,7 @@ import logging
 import re
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Optional
+from typing import Any, Optional
 
 from bs4 import BeautifulSoup
 
@@ -80,8 +80,8 @@ def parse_contexts(soup: BeautifulSoup) -> dict[str, dict[str, Optional[str]]]:
                     if match:
                         series_id = match.group(1).upper()
 
-                # Extract class_id from ProspectusShareClassAxis
-                elif 'prospectusshare' in dimension.lower():
+                # Extract class_id from ProspectusShareClassAxis (RR) or ClassAxis (OEF)
+                elif 'prospectusshare' in dimension.lower() or 'classaxis' in dimension.lower():
                     # Format: "rr01:C000014542Member" or "C000014542Member"
                     match = re.search(r'(C\d+)Member', member_value, re.IGNORECASE)
                     if match:
@@ -195,8 +195,36 @@ def strip_html_to_text(html_fragment: str) -> str:
     return text.strip()
 
 
+def build_tag_index(soup: BeautifulSoup) -> dict[tuple[str, str], Any]:
+    """Build an index of all iXBRL tags keyed by (tag_name, context_id).
+
+    This pre-indexes all ix:nonfraction and ix:nonnumeric elements to enable
+    O(1) lookups instead of O(n) scans for each field extraction.
+
+    Args:
+        soup: BeautifulSoup object of the filing
+
+    Returns:
+        Dict mapping (tag_name, context_id) to BeautifulSoup element
+    """
+    tag_index = {}
+
+    # Find all iXBRL tags once
+    for element in soup.find_all(['ix:nonfraction', 'ix:nonnumeric']):
+        tag_name = element.get('name')
+        context_id = element.get('contextref')
+
+        if tag_name and context_id:
+            # Use first occurrence if multiple tags with same (name, contextref)
+            key = (tag_name, context_id)
+            if key not in tag_index:
+                tag_index[key] = element
+
+    return tag_index
+
+
 def extract_tag_value(
-    soup: BeautifulSoup,
+    soup_or_index,
     tag_name: str,
     context_id: str,
     negate_to_positive: bool = False,
@@ -204,7 +232,7 @@ def extract_tag_value(
     """Extract and convert value for a given RR tag and context.
 
     Args:
-        soup: BeautifulSoup object of the filing
+        soup_or_index: BeautifulSoup object OR tag index dict (for performance)
         tag_name: Full tag name (e.g., "rr:ManagementFeesOverAssets")
         context_id: Context ID to match
         negate_to_positive: If True, negate negative numeric values to positive
@@ -212,18 +240,26 @@ def extract_tag_value(
     Returns:
         Decimal for numeric tags, str for text tags, or None if not found
     """
-    # Find all elements with this tag name and context (namespace-aware: ix:nonFraction, ix:nonNumeric)
-    elements = soup.find_all(
-        lambda tag: tag.name in ('ix:nonfraction', 'ix:nonnumeric')
-        and tag.get('name') == tag_name
-        and tag.get('contextref') == context_id
-    )
+    # Support both BeautifulSoup (legacy) and dict index (optimized)
+    if isinstance(soup_or_index, dict):
+        # O(1) lookup from pre-built index
+        element = soup_or_index.get((tag_name, context_id))
+        if not element:
+            return None
+    else:
+        # O(n) scan for backward compatibility
+        soup = soup_or_index
+        elements = soup.find_all(
+            lambda tag: tag.name in ('ix:nonfraction', 'ix:nonnumeric')
+            and tag.get('name') == tag_name
+            and tag.get('contextref') == context_id
+        )
 
-    if not elements:
-        return None
+        if not elements:
+            return None
 
-    # Use the first matching element
-    element = elements[0]
+        # Use the first matching element
+        element = elements[0]
 
     # Handle numeric tags (ix:nonFraction)
     if element.name == 'ix:nonfraction':
@@ -255,21 +291,21 @@ def extract_tag_value(
 
 
 def parse_date_tag(
-    soup: BeautifulSoup,
+    soup_or_index,
     tag_name: str,
     context_id: str,
 ) -> Optional[date]:
     """Extract and parse a date from an iXBRL tag.
 
     Args:
-        soup: BeautifulSoup object of the filing
+        soup_or_index: BeautifulSoup object OR tag index dict (for performance)
         tag_name: Full tag name (e.g., "dei:DocumentPeriodEndDate")
         context_id: Context ID to match
 
     Returns:
         date object or None
     """
-    value = extract_tag_value(soup, tag_name, context_id)
+    value = extract_tag_value(soup_or_index, tag_name, context_id)
     if not value or not isinstance(value, str):
         return None
 
@@ -329,7 +365,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
             logger.info(f"CIK {cik}: No 485BPOS filings found")
             return True  # Not an error, just no data
 
-        filing = filings.latest(1)[0]
+        filing = filings[0]
         filing_url = filing.document.url if hasattr(filing, 'document') else None
 
         # Get HTML content
@@ -344,11 +380,20 @@ def _process_cik_prospectus(session, cik: str) -> bool:
         # Extract contexts
         context_map = parse_contexts(soup)
 
-        # Check if there are any RR tags
+        # Detect which namespace prefix is in use (rr: or oef:)
         rr_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('rr:'))
-        if not rr_tags:
-            logger.warning(f"CIK {cik}: No RR iXBRL tags found in filing")
+        oef_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('oef:'))
+
+        if rr_tags:
+            tag_prefix = 'rr'
+        elif oef_tags:
+            tag_prefix = 'oef'
+        else:
+            logger.warning(f"CIK {cik}: No RR or OEF iXBRL tags found in filing")
             return True
+
+        # Build tag index for O(1) lookups (performance optimization)
+        tag_index = build_tag_index(soup)
 
         # Find the base context (no dimensions) for effective_date
         base_context_id = None
@@ -364,7 +409,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
         # Extract effective_date from DocumentPeriodEndDate
         effective_date = None
         if base_context_id:
-            effective_date = parse_date_tag(soup, 'dei:DocumentPeriodEndDate', base_context_id)
+            effective_date = parse_date_tag(tag_index, 'dei:DocumentPeriodEndDate', base_context_id)
 
         if not effective_date:
             logger.warning(f"CIK {cik}: No effective_date found, using filing date")
@@ -389,13 +434,13 @@ def _process_cik_prospectus(session, cik: str) -> bool:
             fee_data = {
                 'etf_id': etf.id,
                 'effective_date': effective_date,
-                'management_fee': extract_tag_value(soup, 'rr:ManagementFeesOverAssets', context_id),
-                'distribution_12b1': extract_tag_value(soup, 'rr:DistributionAndService12b1FeesOverAssets', context_id),
-                'other_expenses': extract_tag_value(soup, 'rr:OtherExpensesOverAssets', context_id),
-                'total_expense_gross': extract_tag_value(soup, 'rr:ExpensesOverAssets', context_id),
-                'fee_waiver': extract_tag_value(soup, 'rr:FeeWaiverOrReimbursementOverAssets', context_id, negate_to_positive=True),
-                'total_expense_net': extract_tag_value(soup, 'rr:NetExpensesOverAssets', context_id),
-                'acquired_fund_fees': extract_tag_value(soup, 'rr:AcquiredFundFeesAndExpensesOverAssets', context_id),
+                'management_fee': extract_tag_value(tag_index, f'{tag_prefix}:ManagementFeesOverAssets', context_id),
+                'distribution_12b1': extract_tag_value(tag_index, f'{tag_prefix}:DistributionAndService12b1FeesOverAssets', context_id),
+                'other_expenses': extract_tag_value(tag_index, f'{tag_prefix}:OtherExpensesOverAssets', context_id),
+                'total_expense_gross': extract_tag_value(tag_index, f'{tag_prefix}:ExpensesOverAssets', context_id),
+                'fee_waiver': extract_tag_value(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssets', context_id, negate_to_positive=True),
+                'total_expense_net': extract_tag_value(tag_index, f'{tag_prefix}:NetExpensesOverAssets', context_id),
+                'acquired_fund_fees': extract_tag_value(tag_index, f'{tag_prefix}:AcquiredFundFeesAndExpensesOverAssets', context_id),
             }
 
             # Upsert FeeExpense (if any data present)
@@ -424,11 +469,11 @@ def _process_cik_prospectus(session, cik: str) -> bool:
             shareholder_fee_data = {
                 'etf_id': etf.id,
                 'effective_date': effective_date,
-                'front_load': extract_tag_value(soup, 'rr:MaximumSalesChargeImposedOnPurchasesOverOfferingPrice', context_id),
-                'deferred_load': extract_tag_value(soup, 'rr:MaximumDeferredSalesChargeOverOther', context_id),
-                'reinvestment_charge': extract_tag_value(soup, 'rr:MaximumSalesChargeOnReinvestedDividendsAndDistributionsOverOther', context_id),
-                'redemption_fee': extract_tag_value(soup, 'rr:RedemptionFeeOverRedemption', context_id, negate_to_positive=True),
-                'exchange_fee': extract_tag_value(soup, 'rr:ExchangeFeeOverRedemption', context_id),
+                'front_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeImposedOnPurchasesOverOfferingPrice', context_id),
+                'deferred_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumDeferredSalesChargeOverOther', context_id),
+                'reinvestment_charge': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeOnReinvestedDividendsAndDistributionsOverOther', context_id),
+                'redemption_fee': extract_tag_value(tag_index, f'{tag_prefix}:RedemptionFeeOverRedemption', context_id, negate_to_positive=True),
+                'exchange_fee': extract_tag_value(tag_index, f'{tag_prefix}:ExchangeFeeOverRedemption', context_id),
             }
 
             # Upsert ShareholderFee (if any data present)
@@ -455,10 +500,10 @@ def _process_cik_prospectus(session, cik: str) -> bool:
             expense_example_data = {
                 'etf_id': etf.id,
                 'effective_date': effective_date,
-                'year_01': extract_tag_value(soup, 'rr:ExpenseExampleYear01', context_id),
-                'year_03': extract_tag_value(soup, 'rr:ExpenseExampleYear03', context_id),
-                'year_05': extract_tag_value(soup, 'rr:ExpenseExampleYear05', context_id),
-                'year_10': extract_tag_value(soup, 'rr:ExpenseExampleYear10', context_id),
+                'year_01': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear01', context_id),
+                'year_03': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear03', context_id),
+                'year_05': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear05', context_id),
+                'year_10': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear10', context_id),
             }
 
             # Convert Decimal to int for expense examples (they're dollar amounts)
@@ -499,8 +544,8 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                     continue
 
                 # Extract objective and strategy text
-                objective_text = extract_tag_value(soup, 'rr:ObjectivePrimaryTextBlock', context_id)
-                strategy_text = extract_tag_value(soup, 'rr:StrategyNarrativeTextBlock', context_id)
+                objective_text = extract_tag_value(tag_index, f'{tag_prefix}:ObjectivePrimaryTextBlock', context_id)
+                strategy_text = extract_tag_value(tag_index, f'{tag_prefix}:StrategyNarrativeTextBlock', context_id)
 
                 # Update all ETFs with this series_id (multiple share classes can belong to same series)
                 for etf in etf_list:
