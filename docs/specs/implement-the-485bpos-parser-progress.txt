@@ -1,0 +1,8 @@
+Feature: implement-the-485bpos-parser
+Spec: docs/specs/implement-the-485bpos-parser.md
+Created: 2026-02-13
+
+Phase 1: Data Model Updates [PENDING]
+Phase 2: iXBRL Parsing Engine [PENDING]
+Phase 3: Database Upsert and CIK Processing [PENDING]
+Phase 4: CLI Command and Entry Point [PENDING]

@@ -32,6 +32,7 @@ class ETF(Base):
     class_id: Mapped[Optional[str]] = mapped_column(String(20), index=True)
     fund_name: Mapped[Optional[str]] = mapped_column(String(500))
     issuer_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    objective_text: Mapped[Optional[str]] = mapped_column(Text)
     strategy_text: Mapped[Optional[str]] = mapped_column(Text)
     filing_url: Mapped[Optional[str]] = mapped_column(String(1000))
     category: Mapped[Optional[str]] = mapped_column(String(100))
@@ -51,6 +52,8 @@ class ETF(Base):
     derivatives: Mapped[list["Derivative"]] = relationship(back_populates="etf")
     performances: Mapped[list["Performance"]] = relationship(back_populates="etf")
     fee_expenses: Mapped[list["FeeExpense"]] = relationship(back_populates="etf")
+    shareholder_fees: Mapped[list["ShareholderFee"]] = relationship(back_populates="etf")
+    expense_examples: Mapped[list["ExpenseExample"]] = relationship(back_populates="etf")
     per_share_operating: Mapped[list["PerShareOperating"]] = relationship(
         back_populates="etf"
     )
@@ -154,8 +157,48 @@ class FeeExpense(Base):
     total_expense_gross: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
     fee_waiver: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
     total_expense_net: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
+    acquired_fund_fees: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
 
     etf: Mapped["ETF"] = relationship(back_populates="fee_expenses")
+
+
+class ShareholderFee(Base):
+    __tablename__ = "shareholder_fee"
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_id", "effective_date", name="shareholder_fee_etf_date_uniq"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
+    effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    front_load: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
+    deferred_load: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
+    reinvestment_charge: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
+    redemption_fee: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
+    exchange_fee: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
+
+    etf: Mapped["ETF"] = relationship(back_populates="shareholder_fees")
+
+
+class ExpenseExample(Base):
+    __tablename__ = "expense_example"
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_id", "effective_date", name="expense_example_etf_date_uniq"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
+    effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    year_01: Mapped[Optional[int]] = mapped_column(Integer)
+    year_03: Mapped[Optional[int]] = mapped_column(Integer)
+    year_05: Mapped[Optional[int]] = mapped_column(Integer)
+    year_10: Mapped[Optional[int]] = mapped_column(Integer)
+
+    etf: Mapped["ETF"] = relationship(back_populates="expense_examples")
 
 
 class FlowData(Base):

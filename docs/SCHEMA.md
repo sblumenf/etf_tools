@@ -11,7 +11,8 @@ The central table. One row per exchange-traded fund, discovered from SEC's `comp
 | **class_id** | SEC Class ID — identifies the share class within a fund. Used by N-CSR XBRL data for fund identification |
 | **fund_name** | Full name (e.g., "SPDR S&P 500 ETF Trust"). Backfilled from Yahoo Finance |
 | **issuer_name** | Trust or issuer name (e.g., "State Street Global Advisors"). From SEC submissions |
-| **strategy_text** | Investment strategy/objective extracted from the 485BPOS prospectus narrative |
+| **objective_text** | Investment objective text extracted from the 485BPOS prospectus (`rr:ObjectivePrimaryTextBlock`), HTML stripped to plain text |
+| **strategy_text** | Investment strategy/objective extracted from the 485BPOS prospectus narrative (`rr:StrategyNarrativeTextBlock`), HTML stripped to plain text |
 | **filing_url** | URL to the source 485BPOS filing on EDGAR |
 | **category** | ETF classification — reserved for future use, not yet populated |
 | **is_active** | Soft delete flag. Set to False if the ticker disappears from SEC data |
@@ -92,8 +93,38 @@ Fee schedules from 485BPOS prospectus filings. One row per ETF per effective dat
 | **distribution_12b1** | 12b-1 marketing/distribution fee |
 | **other_expenses** | Other annual operating expenses |
 | **total_expense_gross** | Total expense ratio before any waivers |
-| **fee_waiver** | Amount waived by the adviser |
+| **fee_waiver** | Amount waived by the adviser (stored as positive) |
 | **total_expense_net** | Net expense ratio the investor actually pays |
+| **acquired_fund_fees** | Acquired fund fees and expenses over assets (`rr:AcquiredFundFeesAndExpensesOverAssets`) |
+
+---
+
+### ShareholderFee
+Shareholder transaction fees from 485BPOS prospectus filings. One row per ETF per effective date.
+
+| Field | Description |
+|-------|-------------|
+| **etf** | FK to ETF |
+| **effective_date** | When this fee schedule became effective (from `dei:DocumentPeriodEndDate`) |
+| **front_load** | Maximum sales charge on purchases (`rr:MaximumSalesChargeImposedOnPurchasesOverOfferingPrice`) as decimal (0.05750 = 5.75%) |
+| **deferred_load** | Maximum deferred sales charge (`rr:MaximumDeferredSalesChargeOverOther`) |
+| **reinvestment_charge** | Maximum sales charge on reinvested dividends (`rr:MaximumSalesChargeOnReinvestedDividendsAndDistributionsOverOther`) |
+| **redemption_fee** | Redemption fee (`rr:RedemptionFeeOverRedemption`) — stored as positive |
+| **exchange_fee** | Exchange fee (`rr:ExchangeFeeOverRedemption`) |
+
+---
+
+### ExpenseExample
+Expense projections from 485BPOS prospectus filings. One row per ETF per effective date.
+
+| Field | Description |
+|-------|-------------|
+| **etf** | FK to ETF |
+| **effective_date** | When this expense example became effective (from `dei:DocumentPeriodEndDate`) |
+| **year_01** | Dollar cost on $10,000 investment after 1 year with redemption (`rr:ExpenseExampleYear01`) |
+| **year_03** | Dollar cost on $10,000 investment after 3 years with redemption (`rr:ExpenseExampleYear03`) |
+| **year_05** | Dollar cost on $10,000 investment after 5 years with redemption (`rr:ExpenseExampleYear05`) |
+| **year_10** | Dollar cost on $10,000 investment after 10 years with redemption (`rr:ExpenseExampleYear10`) |
 
 ---
 
@@ -165,6 +196,8 @@ erDiagram
     ETF ||--o{ Derivative : "has many"
     ETF ||--o{ Performance : "has many"
     ETF ||--o{ FeeExpense : "has many"
+    ETF ||--o{ ShareholderFee : "has many"
+    ETF ||--o{ ExpenseExample : "has many"
     ETF ||--o{ PerShareOperating : "has many"
     ETF ||--o{ PerShareDistribution : "has many"
     ETF ||--o{ PerShareRatios : "has many"
@@ -177,6 +210,7 @@ erDiagram
         varchar class_id IX "nullable, SEC Class ID"
         varchar fund_name "nullable"
         varchar issuer_name
+        text objective_text "nullable"
         text strategy_text "nullable"
         url filing_url "nullable"
         varchar category "nullable"
@@ -248,6 +282,28 @@ erDiagram
         decimal total_expense_gross "6,5 nullable"
         decimal fee_waiver "6,5 nullable"
         decimal total_expense_net "6,5 nullable"
+        decimal acquired_fund_fees "6,5 nullable"
+    }
+
+    ShareholderFee {
+        int id PK
+        int etf_id FK
+        date effective_date "UK(etf,effective_date)"
+        decimal front_load "6,5 nullable"
+        decimal deferred_load "6,5 nullable"
+        decimal reinvestment_charge "6,5 nullable"
+        decimal redemption_fee "6,5 nullable"
+        decimal exchange_fee "6,5 nullable"
+    }
+
+    ExpenseExample {
+        int id PK
+        int etf_id FK
+        date effective_date "UK(etf,effective_date)"
+        int year_01 "nullable"
+        int year_03 "nullable"
+        int year_05 "nullable"
+        int year_10 "nullable"
     }
 
     FlowData {
@@ -312,6 +368,8 @@ SEC EDGAR Filing Types ───────────────────
                                             │── PerShareRatios
                                             │
   485BPOS (prospectus fee tables) ──────────┤── FeeExpense
+                                            │── ShareholderFee
+                                            │── ExpenseExample
                                             │
   24F-2NT (annual flow notice) ─────────────┘── FlowData
 ```
@@ -359,6 +417,8 @@ SEC EDGAR Filing Types ───────────────────
 | Derivative | `derivative_report_date_idx` | INDEX | `report_date` |
 | Performance | `performance_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
 | FeeExpense | `fee_expense_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
+| ShareholderFee | `shareholder_fee_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
+| ExpenseExample | `expense_example_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
 | FlowData | `flow_data_cik_fy_uniq` | UNIQUE | `cik, fiscal_year_end` |
 | FlowData | `flow_data_fy_idx` | INDEX | `fiscal_year_end` |
 | PerShareOperating | `per_share_operating_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
