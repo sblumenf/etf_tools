@@ -68,9 +68,19 @@ def ncsr(cik, limit, keep_cache):
 
 
 @main.command()
-def prospectus():
-    """Parse 485BPOS filings for fee schedules and strategy."""
-    click.echo("prospectus: not yet implemented")
+@click.option("--cik", type=str, help="Process only this CIK")
+@click.option("--limit", type=int, help="Process only the first N CIKs")
+@click.option("--keep-cache", is_flag=True, default=False,
+              help="Keep edgartools HTTP cache after processing (default: clear)")
+def prospectus(cik, limit, keep_cache):
+    """Parse 485BPOS filings for fee schedules, shareholder fees, and strategy."""
+    import logging
+    from etf_pipeline.parsers.prospectus import parse_prospectus
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    parse_prospectus(cik=cik, limit=limit, clear_cache=not keep_cache)
 
 
 @main.command()
