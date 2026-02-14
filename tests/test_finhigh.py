@@ -272,20 +272,41 @@ class TestProcessCikFinhigh:
         with open(fixture_path, "r") as f:
             sample_html = f.read()
 
-        # Create full HTML document with heading
+        # Create full HTML document with heading and share class
         full_html = f"""
         <html>
         <body>
-        <h2>Financial Highlights - Vanguard 500 Index Fund Investor Shares</h2>
+        <h2>Vanguard 500 Index Fund</h2>
+        <h3>Investor Shares</h3>
+        <h4>Financial Highlights</h4>
         {sample_html}
         </body>
         </html>
+        """
+
+        # Create SGML header with series/class mapping
+        sgml_header = """
+        <SERIES-AND-CLASSES-CONTRACTS-DATA>
+        <EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        <SERIES>
+        <SERIES-NAME>Vanguard 500 Index Fund
+        <CLASS-CONTRACT>
+        <CLASS-CONTRACT-ID>C000123456
+        <CLASS-CONTRACT-NAME>Investor Shares
+        <CLASS-CONTRACT-TICKER-SYMBOL>VFIAX
+        </CLASS-CONTRACT>
+        </SERIES>
+        </EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        </SERIES-AND-CLASSES-CONTRACTS-DATA>
         """
 
         # Mock edgartools Company and Filing
         with patch('etf_pipeline.parsers.finhigh.Company') as mock_company:
             mock_filing = MagicMock()
             mock_filing.html.return_value = full_html
+            mock_header = MagicMock()
+            mock_header.text = sgml_header
+            mock_filing.header = mock_header
 
             mock_filings = [mock_filing]
             mock_company_instance = MagicMock()
@@ -345,16 +366,37 @@ class TestProcessCikFinhigh:
         full_html = f"""
         <html>
         <body>
-        <h2>Financial Highlights - Unrelated Fund Name</h2>
+        <h2>Unrelated Fund Name</h2>
+        <h3>Some Other Shares</h3>
+        <h4>Financial Highlights</h4>
         {sample_html}
         </body>
         </html>
+        """
+
+        # Create SGML header with non-matching series/class
+        sgml_header = """
+        <SERIES-AND-CLASSES-CONTRACTS-DATA>
+        <EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        <SERIES>
+        <SERIES-NAME>Unrelated Fund Name
+        <CLASS-CONTRACT>
+        <CLASS-CONTRACT-ID>C000888888
+        <CLASS-CONTRACT-NAME>Some Other Shares
+        <CLASS-CONTRACT-TICKER-SYMBOL>XXX
+        </CLASS-CONTRACT>
+        </SERIES>
+        </EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        </SERIES-AND-CLASSES-CONTRACTS-DATA>
         """
 
         # Mock edgartools
         with patch('etf_pipeline.parsers.finhigh.Company') as mock_company:
             mock_filing = MagicMock()
             mock_filing.html.return_value = full_html
+            mock_header = MagicMock()
+            mock_header.text = sgml_header
+            mock_filing.header = mock_header
 
             mock_filings = [mock_filing]
             mock_company_instance = MagicMock()
@@ -408,16 +450,37 @@ class TestProcessCikFinhigh:
         full_html = f"""
         <html>
         <body>
-        <h2>Financial Highlights - Vanguard 500 Index Fund Investor Shares</h2>
+        <h2>Vanguard 500 Index Fund</h2>
+        <h3>Investor Shares</h3>
+        <h4>Financial Highlights</h4>
         {sample_html}
         </body>
         </html>
+        """
+
+        # Create SGML header with series/class mapping
+        sgml_header = """
+        <SERIES-AND-CLASSES-CONTRACTS-DATA>
+        <EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        <SERIES>
+        <SERIES-NAME>Vanguard 500 Index Fund
+        <CLASS-CONTRACT>
+        <CLASS-CONTRACT-ID>C000123456
+        <CLASS-CONTRACT-NAME>Investor Shares
+        <CLASS-CONTRACT-TICKER-SYMBOL>VFIAX
+        </CLASS-CONTRACT>
+        </SERIES>
+        </EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        </SERIES-AND-CLASSES-CONTRACTS-DATA>
         """
 
         # Mock edgartools
         with patch('etf_pipeline.parsers.finhigh.Company') as mock_company:
             mock_filing = MagicMock()
             mock_filing.html.return_value = full_html
+            mock_header = MagicMock()
+            mock_header.text = sgml_header
+            mock_filing.header = mock_header
 
             mock_filings = [mock_filing]
             mock_company_instance = MagicMock()

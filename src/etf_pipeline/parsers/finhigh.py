@@ -114,6 +114,111 @@ def _parse_date(value: str) -> Optional[date]:
     return None
 
 
+def _parse_series_class_mapping(header_text: str) -> dict:
+    """Parse SGML header to extract series/class mapping.
+
+    Args:
+        header_text: SGML header text from filing.header.text
+
+    Returns:
+        Dictionary with two keys:
+        - 'by_name': {(normalized_series_name, normalized_class_name): class_id}
+        - 'by_ticker': {ticker: class_id}
+    """
+    result = {
+        'by_name': {},
+        'by_ticker': {}
+    }
+
+    if not header_text:
+        return result
+
+    # Extract all SERIES blocks
+    series_blocks = re.findall(r'<SERIES>(.*?)</SERIES>', header_text, re.DOTALL)
+
+    for series_block in series_blocks:
+        # Extract series name
+        series_match = re.search(r'<SERIES-NAME>(.*?)(?:\n|<)', series_block)
+        if not series_match:
+            continue
+
+        series_name = series_match.group(1).strip()
+        normalized_series = series_name.lower()
+
+        # Extract all CLASS-CONTRACT blocks within this series
+        class_blocks = re.findall(r'<CLASS-CONTRACT>(.*?)</CLASS-CONTRACT>', series_block, re.DOTALL)
+
+        for class_block in class_blocks:
+            # Extract class contract ID
+            class_id_match = re.search(r'<CLASS-CONTRACT-ID>(.*?)(?:\n|<)', class_block)
+            if not class_id_match:
+                continue
+
+            class_id = class_id_match.group(1).strip()
+
+            # Extract class contract name
+            class_name_match = re.search(r'<CLASS-CONTRACT-NAME>(.*?)(?:\n|<)', class_block)
+            if class_name_match:
+                class_name = class_name_match.group(1).strip()
+                normalized_class = class_name.lower()
+
+                # Store by name tuple
+                result['by_name'][(normalized_series, normalized_class)] = class_id
+
+            # Extract ticker
+            ticker_match = re.search(r'<CLASS-CONTRACT-TICKER-SYMBOL>(.*?)(?:\n|<)', class_block)
+            if ticker_match:
+                ticker = ticker_match.group(1).strip()
+                if ticker:
+                    result['by_ticker'][ticker] = class_id
+
+    return result
+
+
+def _find_table_context(table) -> tuple[Optional[str], Optional[str]]:
+    """Extract fund name and share class name from HTML context around table.
+
+    In real N-CSR filings, the structure is:
+      <div>Fund Name</div>
+      <div>Financial Highlights</div>
+      <table> first row has share class label like "Investor Shares"
+
+    Args:
+        table: BeautifulSoup table element
+
+    Returns:
+        Tuple of (fund_name, class_name) or (None, None) if not found
+    """
+    # Extract share class from table's first row (first cell text)
+    class_name = None
+    first_row = table.find('tr')
+    if first_row:
+        first_cell = first_row.find(['td', 'th'])
+        if first_cell:
+            cell_text = first_cell.get_text().strip()
+            if cell_text and 'shares' in cell_text.lower() and len(cell_text) < 100:
+                class_name = cell_text
+
+    # Walk backward from table to find fund name
+    fund_name = None
+    prev_element = table.find_previous(['h1', 'h2', 'h3', 'h4', 'h5', 'p', 'div'])
+    for _ in range(30):
+        if not prev_element:
+            break
+        text = prev_element.get_text().strip()
+
+        # Skip empty, very long, or "Financial Highlights" headings
+        if text and len(text) < 200 and 'financial highlights' not in text.lower():
+            text_lower = text.lower()
+            if any(kw in text_lower for kw in ['fund', 'index', 'portfolio', 'trust']):
+                fund_name = text
+                break
+
+        prev_element = prev_element.find_previous(['h1', 'h2', 'h3', 'h4', 'h5', 'p', 'div'])
+
+    return (fund_name, class_name)
+
+
 def parse_financial_highlights_table(html_table_str: str) -> dict:
     """Parse a Financial Highlights HTML table using positional extraction.
 
@@ -138,7 +243,7 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
         - fiscal_year_end: date object
         - math_validated: bool
     """
-    soup = BeautifulSoup(html_table_str, "lxml")
+    soup = BeautifulSoup(html_table_str, "html.parser")
     table = soup.find("table")
 
     if not table:
@@ -181,45 +286,38 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
         return cells[0].get_text().strip().lower()
 
     # Extract fiscal_year_end from column headers
-    # Look for "Year Ended XX/XX/XXXX" or similar patterns in first few rows
+    # Patterns: "Year Ended August 31," with years in next row, or "12/31/2024" inline
     fiscal_year_end = None
+    month_day_str = None  # e.g. "August 31" extracted from "Year Ended August 31,"
+
     for i in range(min(5, len(rows))):
         row_text = rows[i].get_text()
-        # Match patterns like "Year Ended December 31," or dates
+
+        # Direct date pattern: "12/31/2024"
         date_match = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', row_text)
         if date_match:
             fiscal_year_end = _parse_date(date_match.group(1))
             break
-        # Try parsing month/year from column headers
+
+        # "Year Ended <Month> <Day>," pattern — extract month/day, find year in next row
         if 'year ended' in row_text.lower():
-            # Extract date if present in same row
-            if 'december 31' in row_text.lower() or 'dec 31' in row_text.lower() or 'dec. 31' in row_text.lower():
-                # Look for year in next row (typical format)
+            md_match = re.search(
+                r'year ended\s+(\w+ \d{1,2})', row_text, re.IGNORECASE
+            )
+            if md_match:
+                month_day_str = md_match.group(1)  # e.g. "August 31"
+
+                # Look for year in next row
                 if i + 1 < len(rows):
-                    next_row = rows[i + 1]
-                    next_cells = next_row.find_all(['td', 'th'])
-                    # Try cells starting from index 0 (years may be in first cell if header has colspan)
-                    for cell_idx in range(len(next_cells)):
-                        year_text = next_cells[cell_idx].get_text().strip()
-                        year_match = re.search(r'\d{4}', year_text)
+                    next_cells = rows[i + 1].find_all(['td', 'th'])
+                    for cell in next_cells:
+                        year_match = re.search(r'\d{4}', cell.get_text().strip())
                         if year_match:
-                            year = year_match.group(0)
-                            fiscal_year_end = _parse_date(f"12/31/{year}")
+                            fiscal_year_end = _parse_date(
+                                f"{month_day_str}, {year_match.group(0)}"
+                            )
                             break
-                    if fiscal_year_end:
-                        break
-            # Otherwise look for year in same row
-            cells = rows[i].find_all(['td', 'th'])
-            if len(cells) > 1:
-                # Most recent year is typically in first data column
-                year_text = cells[1].get_text().strip() if len(cells) > 1 else cells[0].get_text().strip()
-                # Try to find year in header row or next row
-                if re.search(r'\d{4}', year_text):
-                    year_match = re.search(r'\d{4}', year_text)
-                    year = year_match.group(0)
-                    # Look for "December 31," or similar in previous cells
-                    month_day = "12/31"  # Default to Dec 31 for fiscal year end
-                    fiscal_year_end = _parse_date(f"{month_day}/{year}")
+                if fiscal_year_end:
                     break
 
     # Find key rows by looking for distinctive text patterns
@@ -391,66 +489,79 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                 )
                 continue
 
+            # Parse SGML header to build series/class mapping
+            try:
+                header_text = filing.header.text if hasattr(filing, 'header') and hasattr(filing.header, 'text') else ""
+                series_class_mapping = _parse_series_class_mapping(header_text)
+            except Exception as e:
+                logger.warning(f"CIK {cik}: Failed to parse SGML header: {e}")
+                series_class_mapping = {'by_name': {}, 'by_ticker': {}}
+
             # Parse HTML to find Financial Highlights tables
-            soup = BeautifulSoup(html, 'lxml')
+            soup = BeautifulSoup(html, 'html.parser')
 
             # Strategy: Find tables that contain Financial Highlights data
             # by looking for characteristic row patterns (Net Asset Value, etc.)
             tables = soup.find_all('table')
+            fh_tables = []
 
             for table in tables:
+                table_text = table.get_text().lower()
+                if 'net asset value' in table_text and 'investment operations' in table_text:
+                    fh_tables.append(table)
+
+            logger.info(f"CIK {cik}: Found {len(fh_tables)} Financial Highlights tables in filing {filing_idx}")
+
+            for table in fh_tables:
                 try:
-                    # Check if this table looks like a Financial Highlights table
-                    # by scanning for characteristic text patterns
-                    table_text = table.get_text().lower()
+                    # Extract fund name and share class from HTML context
+                    fund_name, class_name = _find_table_context(table)
 
-                    if 'net asset value' not in table_text or 'investment operations' not in table_text:
-                        continue
-
-                    # Try to find fund name context from preceding headings
-                    fund_name_context = ""
-
-                    # Look backward from table to find headings
-                    prev_sibling = table.find_previous(['h1', 'h2', 'h3', 'h4', 'p', 'div'])
-                    search_depth = 0
-                    while prev_sibling and search_depth < 20:
-                        prev_text = prev_sibling.get_text().strip()
-
-                        # Look for "Financial Highlights" heading or fund name
-                        if prev_text and len(prev_text) < 500:  # Ignore very long sections
-                            fund_name_context = prev_text + " " + fund_name_context
-
-                            # Stop if we hit a "Financial Highlights" heading
-                            if 'financial highlights' in prev_text.lower():
-                                break
-
-                        prev_sibling = prev_sibling.find_previous(['h1', 'h2', 'h3', 'h4', 'p', 'div'])
-                        search_depth += 1
-
-                    # Also check table caption or first row for fund name
-                    caption = table.find('caption')
-                    if caption:
-                        fund_name_context = caption.get_text().strip() + " " + fund_name_context
-
-                    # Try to match to an ETF
-                    matched_etf = None
-                    for etf in class_id_to_etf.values():
-                        if etf.fund_name and etf.fund_name.lower() in fund_name_context.lower():
-                            matched_etf = etf
-                            break
-
-                    # If no match by fund_name, try matching by ticker (less reliable)
-                    if not matched_etf:
-                        for etf in class_id_to_etf.values():
-                            if etf.ticker and etf.ticker.lower() in fund_name_context.lower():
-                                matched_etf = etf
-                                break
-
-                    if not matched_etf:
+                    if not fund_name or not class_name:
                         logger.debug(
-                            f"CIK {cik}: Could not match table to ETF, context: {fund_name_context[:100]}"
+                            f"CIK {cik}: Could not extract context from table (fund={fund_name}, class={class_name})"
                         )
                         continue
+
+                    # Match to class_id using SGML mapping
+                    matched_class_id = None
+
+                    # Normalize for matching
+                    fund_name_norm = fund_name.lower()
+                    class_name_norm = class_name.lower()
+
+                    # Try substring match (bidirectional: HTML may truncate or SGML may prefix)
+                    for (series_norm, class_norm), class_id in series_class_mapping['by_name'].items():
+                        series_match = series_norm in fund_name_norm or fund_name_norm in series_norm
+                        class_match = class_norm in class_name_norm or class_name_norm in class_norm
+                        if series_match and class_match:
+                            matched_class_id = class_id
+                            break
+
+                    # If no match by name, try ticker fallback (extract from context)
+                    if not matched_class_id:
+                        for ticker, class_id in series_class_mapping['by_ticker'].items():
+                            if ticker.lower() in fund_name_norm or ticker.lower() in class_name_norm:
+                                matched_class_id = class_id
+                                break
+
+                    if not matched_class_id:
+                        logger.debug(
+                            f"CIK {cik}: Could not match table to class_id (fund='{fund_name}', class='{class_name}')"
+                        )
+                        continue
+
+                    # Look up ETF by class_id
+                    matched_etf = class_id_to_etf.get(matched_class_id)
+                    if not matched_etf:
+                        logger.debug(
+                            f"CIK {cik}: class_id {matched_class_id} not found in database"
+                        )
+                        continue
+
+                    logger.info(
+                        f"CIK {cik}: Matched table to {matched_etf.ticker} (fund='{fund_name}', class='{class_name}', class_id={matched_class_id})"
+                    )
 
                     # Parse the table
                     table_data = parse_financial_highlights_table(str(table))
