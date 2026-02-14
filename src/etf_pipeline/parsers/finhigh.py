@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 from edgar import Company
 from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
@@ -23,6 +24,7 @@ from etf_pipeline.models import (
     PerShareDistribution,
     PerShareOperating,
     PerShareRatios,
+    ProcessingLog,
 )
 from etf_pipeline.sgml import parse_series_class_info
 
@@ -393,6 +395,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
         needed_class_ids = set(class_id_to_etf.keys())
         # Track (class_id, fiscal_year_end) pairs already processed
         satisfied = set()
+        latest_filing_date = None
 
         company = Company(cik)
         filings = company.get_filings(form="N-CSR")
@@ -414,6 +417,16 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                 break
 
             filing = filings[filing_idx]
+            raw_filing_date = filing.filing_date if hasattr(filing, 'filing_date') else date.today()
+            # Convert to date if it's a datetime
+            if isinstance(raw_filing_date, datetime):
+                filing_date = raw_filing_date.date()
+            else:
+                filing_date = raw_filing_date
+
+            # Track the latest filing date
+            if latest_filing_date is None or filing_date > latest_filing_date:
+                latest_filing_date = filing_date
 
             # Get HTML from filing
             try:
@@ -513,6 +526,10 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                         skipped_etfs += 1
                         continue
 
+                    # Ensure fiscal_year_end is a date object
+                    if isinstance(table_data['fiscal_year_end'], datetime):
+                        table_data['fiscal_year_end'] = table_data['fiscal_year_end'].date()
+
                     # Check if already processed
                     if (matched_etf.class_id, table_data['fiscal_year_end']) in satisfied:
                         logger.debug(
@@ -524,7 +541,8 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                     # Query for existing record
                     existing_operating = session.query(PerShareOperating).filter_by(
                         etf_id=matched_etf.id,
-                        fiscal_year_end=table_data['fiscal_year_end']
+                        fiscal_year_end=table_data['fiscal_year_end'],
+                        filing_date=filing_date
                     ).first()
 
                     if existing_operating:
@@ -537,6 +555,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                         operating = PerShareOperating(
                             etf_id=matched_etf.id,
                             fiscal_year_end=table_data['fiscal_year_end'],
+                            filing_date=filing_date,
                             math_validated=table_data.get('math_validated', False),
                             **table_data['operating']
                         )
@@ -545,7 +564,8 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                     # Upsert PerShareDistribution
                     existing_distribution = session.query(PerShareDistribution).filter_by(
                         etf_id=matched_etf.id,
-                        fiscal_year_end=table_data['fiscal_year_end']
+                        fiscal_year_end=table_data['fiscal_year_end'],
+                        filing_date=filing_date
                     ).first()
 
                     if existing_distribution:
@@ -555,6 +575,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                         distribution = PerShareDistribution(
                             etf_id=matched_etf.id,
                             fiscal_year_end=table_data['fiscal_year_end'],
+                            filing_date=filing_date,
                             **table_data['distribution']
                         )
                         session.add(distribution)
@@ -562,7 +583,8 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                     # Upsert PerShareRatios
                     existing_ratios = session.query(PerShareRatios).filter_by(
                         etf_id=matched_etf.id,
-                        fiscal_year_end=table_data['fiscal_year_end']
+                        fiscal_year_end=table_data['fiscal_year_end'],
+                        filing_date=filing_date
                     ).first()
 
                     if existing_ratios:
@@ -572,6 +594,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                         ratios = PerShareRatios(
                             etf_id=matched_etf.id,
                             fiscal_year_end=table_data['fiscal_year_end'],
+                            filing_date=filing_date,
                             **table_data['ratios']
                         )
                         session.add(ratios)
@@ -591,6 +614,26 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                     logger.warning(f"CIK {cik}: Failed to parse table: {e}")
                     skipped_etfs += 1
                     continue
+
+        # Update processing log after successful processing
+        if latest_filing_date is not None:
+            # Ensure latest_filing_date is a date object
+            if isinstance(latest_filing_date, datetime):
+                latest_filing_date = latest_filing_date.date()
+
+            stmt = insert(ProcessingLog).values(
+                cik=cik,
+                parser_type="finhigh",
+                last_run_at=datetime.now(),
+                latest_filing_date_seen=latest_filing_date,
+            ).on_conflict_do_update(
+                index_elements=["cik", "parser_type"],
+                set_={
+                    "last_run_at": datetime.now(),
+                    "latest_filing_date_seen": latest_filing_date,
+                },
+            )
+            session.execute(stmt)
 
         session.commit()
         logger.info(f"CIK {cik}: Processed {processed_etfs} ETF(s), skipped {skipped_etfs}")

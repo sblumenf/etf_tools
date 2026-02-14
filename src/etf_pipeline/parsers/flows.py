@@ -2,17 +2,18 @@
 
 import logging
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from edgar import Company
 from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import ETF, FlowData
+from etf_pipeline.models import ETF, FlowData, ProcessingLog
 
 logger = logging.getLogger(__name__)
 
@@ -57,14 +58,14 @@ def _parse_money(val: Optional[str]) -> Optional[Decimal]:
         return None
 
 
-def _parse_date(date_str: Optional[str]) -> Optional[datetime]:
+def _parse_date(date_str: Optional[str]) -> Optional[date]:
     """Parse MM/DD/YYYY date string.
 
     Args:
         date_str: Date string from XML (format: MM/DD/YYYY)
 
     Returns:
-        datetime.date object or None if parsing fails
+        date object or None if parsing fails
     """
     if not date_str:
         return None
@@ -159,6 +160,14 @@ def _process_cik_flows(session: Session, cik: str) -> bool:
 
         # Get the latest filing
         filing = filings[0]
+        raw_filing_date = filing.filing_date if hasattr(filing, 'filing_date') else date.today()
+        # Convert to date if it's a datetime
+        if isinstance(raw_filing_date, datetime):
+            filing_date = raw_filing_date.date()
+        elif isinstance(raw_filing_date, date):
+            filing_date = raw_filing_date
+        else:
+            filing_date = date.today()
 
         # Get XML content
         xml_content = filing.xml()
@@ -174,7 +183,8 @@ def _process_cik_flows(session: Session, cik: str) -> bool:
         # Upsert into database
         stmt = select(FlowData).where(
             FlowData.cik == cik,
-            FlowData.fiscal_year_end == flow_data["fiscal_year_end"]
+            FlowData.fiscal_year_end == flow_data["fiscal_year_end"],
+            FlowData.filing_date == filing_date
         )
         existing = session.execute(stmt).scalar_one_or_none()
 
@@ -183,18 +193,34 @@ def _process_cik_flows(session: Session, cik: str) -> bool:
             existing.sales_value = flow_data["sales_value"]
             existing.redemptions_value = flow_data["redemptions_value"]
             existing.net_sales = flow_data["net_sales"]
-            logger.info(f"CIK {cik}: Updated flow data for fiscal year {flow_data['fiscal_year_end']}")
+            logger.info(f"CIK {cik}: Updated flow data for fiscal year {flow_data['fiscal_year_end']}, filing_date {filing_date}")
         else:
             # Insert new record
             new_flow = FlowData(
                 cik=cik,
                 fiscal_year_end=flow_data["fiscal_year_end"],
+                filing_date=filing_date,
                 sales_value=flow_data["sales_value"],
                 redemptions_value=flow_data["redemptions_value"],
                 net_sales=flow_data["net_sales"],
             )
             session.add(new_flow)
-            logger.info(f"CIK {cik}: Inserted flow data for fiscal year {flow_data['fiscal_year_end']}")
+            logger.info(f"CIK {cik}: Inserted flow data for fiscal year {flow_data['fiscal_year_end']}, filing_date {filing_date}")
+
+        # Update processing log after successful processing
+        stmt = insert(ProcessingLog).values(
+            cik=cik,
+            parser_type="flows",
+            last_run_at=datetime.now(),
+            latest_filing_date_seen=filing_date,
+        ).on_conflict_do_update(
+            index_elements=["cik", "parser_type"],
+            set_={
+                "last_run_at": datetime.now(),
+                "latest_filing_date_seen": filing_date,
+            },
+        )
+        session.execute(stmt)
 
         session.commit()
         return True

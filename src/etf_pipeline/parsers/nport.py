@@ -10,10 +10,11 @@ from edgar import Company
 from edgar.funds.reports import FundReport
 from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import and_, or_, select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import Derivative, ETF, Holding
+from etf_pipeline.models import Derivative, ETF, Holding, ProcessingLog
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ def _get_latest_filings_per_series(filings):
         filings: EntityFilings collection from edgartools
 
     Returns:
-        dict: Mapping of series_id -> (fund_report, report_date)
+        dict: Mapping of series_id -> (fund_report, report_date, filing_date)
     """
     if not filings or (hasattr(filings, 'empty') and filings.empty):
         return {}
@@ -143,7 +144,13 @@ def _get_latest_filings_per_series(filings):
             if isinstance(report_date, str):
                 report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
 
-            series_map[series_id] = (fund_report, report_date)
+            raw_filing_date = filing.filing_date
+            # Convert to date if it's a datetime
+            if isinstance(raw_filing_date, datetime):
+                filing_date = raw_filing_date.date()
+            else:
+                filing_date = raw_filing_date
+            series_map[series_id] = (fund_report, report_date, filing_date)
 
         except Exception as e:
             logger.warning(f"Failed to parse filing: {e} (filing_date={filing.filing_date})")
@@ -174,6 +181,9 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
 
     logger.info(f"CIK {cik}: Parsed {len(series_map)} series from latest filings")
 
+    # Track the latest filing date seen across all filings processed
+    latest_filing_date = max(filing_date for _, _, filing_date in series_map.values()) if series_map else None
+
     with session_factory() as session:
         stmt = select(ETF).where(ETF.cik == cik)
         etfs = session.execute(stmt).scalars().all()
@@ -182,7 +192,7 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
         etf_report_pairs = []
         for etf in etfs:
             if etf.series_id in series_map:
-                _, report_date = series_map[etf.series_id]
+                _, report_date, _ = series_map[etf.series_id]
                 etf_report_pairs.append((etf.id, report_date))
 
         # Batch query: find ETFs that already have holdings for their report_date
@@ -203,9 +213,29 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
             if etf.id in existing_etf_ids:
                 logger.info(f"ETF {etf.ticker}: Holdings already exist, skipping")
                 continue
-            fund_report, report_date = series_map[etf.series_id]
-            _process_etf(session, etf, fund_report, report_date)
+            fund_report, report_date, filing_date = series_map[etf.series_id]
+            _process_etf(session, etf, fund_report, report_date, filing_date)
             processed += 1
+
+        # Update processing log after successful processing
+        if latest_filing_date is not None:
+            # Ensure latest_filing_date is a date object
+            if isinstance(latest_filing_date, datetime):
+                latest_filing_date = latest_filing_date.date()
+
+            stmt = insert(ProcessingLog).values(
+                cik=cik,
+                parser_type="nport",
+                last_run_at=datetime.now(),
+                latest_filing_date_seen=latest_filing_date,
+            ).on_conflict_do_update(
+                index_elements=["cik", "parser_type"],
+                set_={
+                    "last_run_at": datetime.now(),
+                    "latest_filing_date_seen": latest_filing_date,
+                },
+            )
+            session.execute(stmt)
 
         session.commit()
 
@@ -213,18 +243,18 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
 
 
 def _process_etf(
-    session: Session, etf: ETF, fund_report: FundReport, report_date
+    session: Session, etf: ETF, fund_report: FundReport, report_date, filing_date
 ) -> None:
     """Process a single ETF: extract and insert holdings and derivatives."""
     holdings_count = 0
     for investment in fund_report.non_derivatives:
-        holding = _map_investment_to_holding(etf, investment, report_date)
+        holding = _map_investment_to_holding(etf, investment, report_date, filing_date)
         session.add(holding)
         holdings_count += 1
 
     derivatives_count = 0
     for investment in fund_report.derivatives:
-        derivative = _map_investment_to_derivative(etf, investment, report_date)
+        derivative = _map_investment_to_derivative(etf, investment, report_date, filing_date)
         if derivative:
             session.add(derivative)
             derivatives_count += 1
@@ -236,7 +266,7 @@ def _process_etf(
     )
 
 
-def _map_investment_to_holding(etf: ETF, investment, report_date) -> Holding:
+def _map_investment_to_holding(etf: ETF, investment, report_date, filing_date) -> Holding:
     """Map an InvestmentOrSecurity to a Holding model instance."""
     identifiers = investment.identifiers
 
@@ -272,6 +302,7 @@ def _map_investment_to_holding(etf: ETF, investment, report_date) -> Holding:
     return Holding(
         etf_id=etf.id,
         report_date=report_date,
+        filing_date=filing_date,
         name=_clean_str(investment.name) or "",
         cusip=_clean_str(investment.cusip),
         isin=_clean_str(isin),
@@ -291,7 +322,7 @@ def _map_investment_to_holding(etf: ETF, investment, report_date) -> Holding:
 
 
 def _map_investment_to_derivative(
-    etf: ETF, investment, report_date
+    etf: ETF, investment, report_date, filing_date
 ) -> Optional[Derivative]:
     """Map an InvestmentOrSecurity with derivative_info to a Derivative model instance."""
     if not investment.derivative_info:
@@ -362,6 +393,7 @@ def _map_investment_to_derivative(
     return Derivative(
         etf_id=etf.id,
         report_date=report_date,
+        filing_date=filing_date,
         derivative_type=derivative_type,
         underlying_name=_clean_str(underlying_name),
         underlying_cusip=_clean_str(underlying_cusip),

@@ -1,5 +1,6 @@
 """Tests for Financial Highlights parser."""
 
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -303,6 +304,7 @@ class TestProcessCikFinhigh:
         # Mock edgartools Company and Filing
         with patch('etf_pipeline.parsers.finhigh.Company') as mock_company:
             mock_filing = MagicMock()
+            mock_filing.filing_date = date(2024, 12, 31)
             mock_filing.html.return_value = full_html
             mock_header = MagicMock()
             mock_header.text = sgml_header
@@ -393,6 +395,7 @@ class TestProcessCikFinhigh:
         # Mock edgartools
         with patch('etf_pipeline.parsers.finhigh.Company') as mock_company:
             mock_filing = MagicMock()
+            mock_filing.filing_date = date(2024, 12, 31)
             mock_filing.html.return_value = full_html
             mock_header = MagicMock()
             mock_header.text = sgml_header
@@ -435,6 +438,7 @@ class TestProcessCikFinhigh:
         old_operating = PerShareOperating(
             etf_id=etf.id,
             fiscal_year_end=date(2024, 12, 31),
+            filing_date=date(2024, 12, 31),
             nav_beginning=Decimal("100.00"),
             nav_end=Decimal("110.00"),
             math_validated=False
@@ -477,6 +481,7 @@ class TestProcessCikFinhigh:
         # Mock edgartools
         with patch('etf_pipeline.parsers.finhigh.Company') as mock_company:
             mock_filing = MagicMock()
+            mock_filing.filing_date = date(2024, 12, 31)
             mock_filing.html.return_value = full_html
             mock_header = MagicMock()
             mock_header.text = sgml_header

@@ -238,6 +238,7 @@ class TestNCSRParser:
 
             # Mock filing
             mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
             mock_filing.is_inline_xbrl = True
 
             # Mock XBRL object
@@ -303,6 +304,7 @@ class TestNCSRParser:
             mock_class.return_value = mock_instance
 
             mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
             mock_filing.is_inline_xbrl = False
             mock_filings = Mock()
             mock_filings.__iter__ = Mock(return_value=iter([mock_filing]))
@@ -348,6 +350,7 @@ class TestNCSRParser:
             mock_class.return_value = mock_instance
 
             mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
             mock_filing.is_inline_xbrl = True
             mock_xbrl = Mock()
             mock_facts = Mock()
@@ -398,6 +401,7 @@ class TestNCSRParser:
             mock_class.return_value = mock_instance
 
             mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
             mock_filing.is_inline_xbrl = True
             mock_xbrl = Mock()
             mock_facts = Mock()
@@ -463,6 +467,7 @@ class TestNCSRParser:
             mock_class.return_value = mock_instance
 
             mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
             mock_filing.is_inline_xbrl = True
             mock_xbrl = Mock()
             mock_facts = Mock()
@@ -527,6 +532,7 @@ class TestNCSRParser:
             mock_class.return_value = mock_instance
 
             mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
             mock_filing.is_inline_xbrl = True
             mock_xbrl = Mock()
             mock_facts = Mock()
@@ -593,6 +599,7 @@ class TestNCSRParser:
 
         def _make_mock_filing(df):
             mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
             mock_filing.is_inline_xbrl = True
             mock_xbrl = Mock()
             mock_facts = Mock()
@@ -662,6 +669,7 @@ class TestNCSRParser:
 
         def _make_mock_filing(df):
             mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
             mock_filing.is_inline_xbrl = True
             mock_xbrl = Mock()
             mock_facts = Mock()
@@ -702,6 +710,7 @@ class TestNCSRParser:
         # Filing 1: XBRL fails
         mock_filing1 = Mock()
         mock_filing1.is_inline_xbrl = True
+        mock_filing1.filing_date = date(2024, 12, 1)
         mock_filing1.xbrl.side_effect = Exception("XBRL parse error")
 
         # Filing 2: succeeds with C000131291 data
@@ -715,6 +724,7 @@ class TestNCSRParser:
         })
         mock_filing2 = Mock()
         mock_filing2.is_inline_xbrl = True
+        mock_filing2.filing_date = date(2024, 12, 1)
         mock_xbrl2 = Mock()
         mock_facts2 = Mock()
         mock_facts2.to_dataframe.return_value = df_filing2

@@ -335,8 +335,10 @@ def _process_cik_prospectus(session, cik: str) -> bool:
         True if successful, False otherwise
     """
     from edgar import Company
-    from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample
+    from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample, ProcessingLog
     from sqlalchemy import select
+    from sqlalchemy.dialects.sqlite import insert
+    from datetime import datetime
 
     try:
         # Build class_id -> ETF and series_id -> list[ETF] mappings from database
@@ -359,6 +361,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
 
         needed_class_ids = set(class_id_to_etf.keys())
         satisfied = set()
+        latest_filing_date = None
 
         # Fetch 485BPOS filings
         company = Company(cik)
@@ -383,7 +386,16 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 break
 
             filing = filings[filing_idx]
-            filing_date = filing.filing_date if hasattr(filing, 'filing_date') else date.today()
+            raw_filing_date = filing.filing_date if hasattr(filing, 'filing_date') else date.today()
+            # Convert to date if it's a datetime
+            if isinstance(raw_filing_date, datetime):
+                filing_date = raw_filing_date.date()
+            else:
+                filing_date = raw_filing_date
+
+            # Track the latest filing date
+            if latest_filing_date is None or filing_date > latest_filing_date:
+                latest_filing_date = filing_date
 
             # Stop if filing is outside 18-month window
             if filing_date < cutoff_date:
@@ -463,6 +475,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 fee_data = {
                     'etf_id': etf.id,
                     'effective_date': effective_date,
+                    'filing_date': filing_date,
                     'management_fee': extract_tag_value(tag_index, f'{tag_prefix}:ManagementFeesOverAssets', context_id),
                     'distribution_12b1': extract_tag_value(tag_index, f'{tag_prefix}:DistributionAndService12b1FeesOverAssets', context_id),
                     'other_expenses': extract_tag_value(tag_index, f'{tag_prefix}:OtherExpensesOverAssets', context_id),
@@ -473,17 +486,18 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 }
 
                 # Upsert FeeExpense (if any data present)
-                if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date')):
+                if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date', 'filing_date')):
                     stmt = select(FeeExpense).where(
                         FeeExpense.etf_id == etf.id,
-                        FeeExpense.effective_date == effective_date
+                        FeeExpense.effective_date == effective_date,
+                        FeeExpense.filing_date == filing_date
                     )
                     existing = session.execute(stmt).scalar_one_or_none()
 
                     if existing:
                         # Update existing record
                         for field, value in fee_data.items():
-                            if field not in ('etf_id', 'effective_date') and value is not None:
+                            if field not in ('etf_id', 'effective_date', 'filing_date') and value is not None:
                                 setattr(existing, field, value)
                         logger.debug(f"CIK {cik}: Updated fee data for {etf.ticker}")
                     else:
@@ -498,6 +512,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 shareholder_fee_data = {
                     'etf_id': etf.id,
                     'effective_date': effective_date,
+                    'filing_date': filing_date,
                     'front_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeImposedOnPurchasesOverOfferingPrice', context_id),
                     'deferred_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumDeferredSalesChargeOverOther', context_id),
                     'reinvestment_charge': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeOnReinvestedDividendsAndDistributionsOverOther', context_id),
@@ -506,17 +521,18 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 }
 
                 # Upsert ShareholderFee (if any data present)
-                if any(shareholder_fee_data[k] is not None for k in shareholder_fee_data if k not in ('etf_id', 'effective_date')):
+                if any(shareholder_fee_data[k] is not None for k in shareholder_fee_data if k not in ('etf_id', 'effective_date', 'filing_date')):
                     stmt = select(ShareholderFee).where(
                         ShareholderFee.etf_id == etf.id,
-                        ShareholderFee.effective_date == effective_date
+                        ShareholderFee.effective_date == effective_date,
+                        ShareholderFee.filing_date == filing_date
                     )
                     existing = session.execute(stmt).scalar_one_or_none()
 
                     if existing:
                         # Update existing record
                         for field, value in shareholder_fee_data.items():
-                            if field not in ('etf_id', 'effective_date') and value is not None:
+                            if field not in ('etf_id', 'effective_date', 'filing_date') and value is not None:
                                 setattr(existing, field, value)
                         logger.debug(f"CIK {cik}: Updated shareholder fees for {etf.ticker}")
                     else:
@@ -529,6 +545,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 expense_example_data = {
                     'etf_id': etf.id,
                     'effective_date': effective_date,
+                    'filing_date': filing_date,
                     'year_01': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear01', context_id),
                     'year_03': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear03', context_id),
                     'year_05': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear05', context_id),
@@ -541,17 +558,18 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                         expense_example_data[key] = int(expense_example_data[key])
 
                 # Upsert ExpenseExample (if any data present)
-                if any(expense_example_data[k] is not None for k in expense_example_data if k not in ('etf_id', 'effective_date')):
+                if any(expense_example_data[k] is not None for k in expense_example_data if k not in ('etf_id', 'effective_date', 'filing_date')):
                     stmt = select(ExpenseExample).where(
                         ExpenseExample.etf_id == etf.id,
-                        ExpenseExample.effective_date == effective_date
+                        ExpenseExample.effective_date == effective_date,
+                        ExpenseExample.filing_date == filing_date
                     )
                     existing = session.execute(stmt).scalar_one_or_none()
 
                     if existing:
                         # Update existing record
                         for field, value in expense_example_data.items():
-                            if field not in ('etf_id', 'effective_date') and value is not None:
+                            if field not in ('etf_id', 'effective_date', 'filing_date') and value is not None:
                                 setattr(existing, field, value)
                         logger.debug(f"CIK {cik}: Updated expense examples for {etf.ticker}")
                     else:
@@ -596,6 +614,26 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                     if etf:
                         etf.filing_url = filing_url
                         logger.debug(f"CIK {cik}: Updated filing_url for {etf.ticker}")
+
+        # Update processing log after successful processing
+        if latest_filing_date is not None:
+            # Ensure latest_filing_date is a date object
+            if isinstance(latest_filing_date, datetime):
+                latest_filing_date = latest_filing_date.date()
+
+            stmt = insert(ProcessingLog).values(
+                cik=cik,
+                parser_type="prospectus",
+                last_run_at=datetime.now(),
+                latest_filing_date_seen=latest_filing_date,
+            ).on_conflict_do_update(
+                index_elements=["cik", "parser_type"],
+                set_={
+                    "last_run_at": datetime.now(),
+                    "latest_filing_date_seen": latest_filing_date,
+                },
+            )
+            session.execute(stmt)
 
         session.commit()
         logger.info(f"CIK {cik}: Successfully processed 485BPOS filing")

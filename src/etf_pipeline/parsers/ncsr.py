@@ -9,10 +9,11 @@ import pandas as pd
 from edgar import Company
 from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import ETF, Performance
+from etf_pipeline.models import ETF, Performance, ProcessingLog
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +180,7 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
 
         processed_etfs = 0
         skipped_etfs = 0
+        latest_filing_date = None
 
         num_filings = min(len(filings), MAX_FILINGS)
         for filing_idx in range(num_filings):
@@ -188,6 +190,16 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                 break
 
             filing = filings[filing_idx]
+            raw_filing_date = filing.filing_date
+            # Convert to date if it's a datetime
+            if isinstance(raw_filing_date, datetime):
+                filing_date = raw_filing_date.date()
+            else:
+                filing_date = raw_filing_date
+
+            # Track the latest filing date
+            if latest_filing_date is None or filing_date > latest_filing_date:
+                latest_filing_date = filing_date
 
             # Check if it's inline XBRL
             if not filing.is_inline_xbrl:
@@ -260,6 +272,8 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                         first_period_end = period_ends.iloc[0]
                         if isinstance(first_period_end, str):
                             fiscal_year_end = datetime.strptime(first_period_end, "%Y-%m-%d").date()
+                        elif isinstance(first_period_end, datetime):
+                            fiscal_year_end = first_period_end.date()
                         elif hasattr(first_period_end, 'date'):
                             fiscal_year_end = first_period_end.date()
                         else:
@@ -269,6 +283,10 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                     logger.warning(f"CIK {cik}: No fiscal_year_end found for class_id {class_id}")
                     skipped_etfs += 1
                     continue
+
+                # Final sanity check: ensure fiscal_year_end is a date object
+                if isinstance(fiscal_year_end, datetime):
+                    fiscal_year_end = fiscal_year_end.date()
 
                 # Skip if this (class_id, fiscal_year_end) was already processed
                 key = (class_id, fiscal_year_end)
@@ -294,11 +312,15 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                             # Convert to date objects if needed
                             if isinstance(period_start, str):
                                 period_start = datetime.strptime(period_start, "%Y-%m-%d").date()
+                            elif isinstance(period_start, datetime):
+                                period_start = period_start.date()
                             elif hasattr(period_start, 'date'):
                                 period_start = period_start.date()
 
                             if isinstance(period_end, str):
                                 period_end = datetime.strptime(period_end, "%Y-%m-%d").date()
+                            elif isinstance(period_end, datetime):
+                                period_end = period_end.date()
                             elif hasattr(period_end, 'date'):
                                 period_end = period_end.date()
 
@@ -335,11 +357,15 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                                 # Convert to date objects if needed
                                 if isinstance(period_start, str):
                                     period_start = datetime.strptime(period_start, "%Y-%m-%d").date()
+                                elif isinstance(period_start, datetime):
+                                    period_start = period_start.date()
                                 elif hasattr(period_start, 'date'):
                                     period_start = period_start.date()
 
                                 if isinstance(period_end, str):
                                     period_end = datetime.strptime(period_end, "%Y-%m-%d").date()
+                                elif isinstance(period_end, datetime):
+                                    period_end = period_end.date()
                                 elif hasattr(period_end, 'date'):
                                     period_end = period_end.date()
 
@@ -353,7 +379,8 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                 # Upsert Performance record
                 stmt = select(Performance).where(
                     Performance.etf_id == etf.id,
-                    Performance.fiscal_year_end == fiscal_year_end
+                    Performance.fiscal_year_end == fiscal_year_end,
+                    Performance.filing_date == filing_date
                 )
                 existing = session.execute(stmt).scalar_one_or_none()
 
@@ -366,12 +393,13 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                     existing.benchmark_name = benchmark_name
                     for field, value in benchmark_returns.items():
                         setattr(existing, field, value)
-                    logger.debug(f"CIK {cik}: Updated performance for {etf.ticker} (fiscal_year_end={fiscal_year_end})")
+                    logger.debug(f"CIK {cik}: Updated performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
                 else:
                     # Insert new record
                     new_perf = Performance(
                         etf_id=etf.id,
                         fiscal_year_end=fiscal_year_end,
+                        filing_date=filing_date,
                         return_1yr=returns_data.get('return_1yr'),
                         return_5yr=returns_data.get('return_5yr'),
                         return_10yr=returns_data.get('return_10yr'),
@@ -384,10 +412,30 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                         benchmark_return_10yr=benchmark_returns.get('benchmark_return_10yr'),
                     )
                     session.add(new_perf)
-                    logger.debug(f"CIK {cik}: Inserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end})")
+                    logger.debug(f"CIK {cik}: Inserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
 
                 satisfied.add(key)
                 processed_etfs += 1
+
+        # Update processing log after successful processing
+        if latest_filing_date is not None:
+            # Ensure latest_filing_date is a date object
+            if isinstance(latest_filing_date, datetime):
+                latest_filing_date = latest_filing_date.date()
+
+            stmt = insert(ProcessingLog).values(
+                cik=cik,
+                parser_type="ncsr",
+                last_run_at=datetime.now(),
+                latest_filing_date_seen=latest_filing_date,
+            ).on_conflict_do_update(
+                index_elements=["cik", "parser_type"],
+                set_={
+                    "last_run_at": datetime.now(),
+                    "latest_filing_date_seen": latest_filing_date,
+                },
+            )
+            session.execute(stmt)
 
         session.commit()
         logger.info(f"CIK {cik}: Processed {processed_etfs} ETF(s), skipped {skipped_etfs}")

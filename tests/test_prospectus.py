@@ -719,6 +719,7 @@ class TestIntegrationProcessCikProspectus:
         existing_fee = FeeExpense(
             etf_id=etf.id,
             effective_date=date(2022, 11, 3),
+            filing_date=date(2022, 11, 3),
             management_fee=Decimal('0.0050'),  # Old value
             distribution_12b1=Decimal('0.0020'),  # Old value
         )

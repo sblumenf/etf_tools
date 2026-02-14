@@ -183,6 +183,7 @@ def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_
     existing_holding = Holding(
         etf_id=voo.id,
         report_date=date(2024, 12, 31),
+        filing_date=date(2024, 12, 31),
         name="Existing Holding",
         cusip="123456789",
         value_usd=Decimal("1000"),
@@ -554,6 +555,7 @@ def test_parse_nport_skips_derivatives_when_holdings_exist(session, engine, samp
     existing_holding = Holding(
         etf_id=voo.id,
         report_date=date(2024, 12, 31),
+        filing_date=date(2024, 12, 31),
         name="Existing Holding",
         cusip="123456789",
         value_usd=Decimal("1000"),
