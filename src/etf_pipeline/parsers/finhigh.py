@@ -24,6 +24,7 @@ from etf_pipeline.models import (
     PerShareOperating,
     PerShareRatios,
 )
+from etf_pipeline.sgml import parse_series_class_info
 
 logger = logging.getLogger(__name__)
 
@@ -112,67 +113,6 @@ def _parse_date(value: str) -> Optional[date]:
             continue
 
     return None
-
-
-def _parse_series_class_mapping(header_text: str) -> dict:
-    """Parse SGML header to extract series/class mapping.
-
-    Args:
-        header_text: SGML header text from filing.header.text
-
-    Returns:
-        Dictionary with two keys:
-        - 'by_name': {(normalized_series_name, normalized_class_name): class_id}
-        - 'by_ticker': {ticker: class_id}
-    """
-    result = {
-        'by_name': {},
-        'by_ticker': {}
-    }
-
-    if not header_text:
-        return result
-
-    # Extract all SERIES blocks
-    series_blocks = re.findall(r'<SERIES>(.*?)</SERIES>', header_text, re.DOTALL)
-
-    for series_block in series_blocks:
-        # Extract series name
-        series_match = re.search(r'<SERIES-NAME>(.*?)(?:\n|<)', series_block)
-        if not series_match:
-            continue
-
-        series_name = series_match.group(1).strip()
-        normalized_series = series_name.lower()
-
-        # Extract all CLASS-CONTRACT blocks within this series
-        class_blocks = re.findall(r'<CLASS-CONTRACT>(.*?)</CLASS-CONTRACT>', series_block, re.DOTALL)
-
-        for class_block in class_blocks:
-            # Extract class contract ID
-            class_id_match = re.search(r'<CLASS-CONTRACT-ID>(.*?)(?:\n|<)', class_block)
-            if not class_id_match:
-                continue
-
-            class_id = class_id_match.group(1).strip()
-
-            # Extract class contract name
-            class_name_match = re.search(r'<CLASS-CONTRACT-NAME>(.*?)(?:\n|<)', class_block)
-            if class_name_match:
-                class_name = class_name_match.group(1).strip()
-                normalized_class = class_name.lower()
-
-                # Store by name tuple
-                result['by_name'][(normalized_series, normalized_class)] = class_id
-
-            # Extract ticker
-            ticker_match = re.search(r'<CLASS-CONTRACT-TICKER-SYMBOL>(.*?)(?:\n|<)', class_block)
-            if ticker_match:
-                ticker = ticker_match.group(1).strip()
-                if ticker:
-                    result['by_ticker'][ticker] = class_id
-
-    return result
 
 
 def _find_table_context(table) -> tuple[Optional[str], Optional[str]]:
@@ -492,10 +432,10 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
             # Parse SGML header to build series/class mapping
             try:
                 header_text = filing.header.text if hasattr(filing, 'header') and hasattr(filing.header, 'text') else ""
-                series_class_mapping = _parse_series_class_mapping(header_text)
+                series_class_mapping = parse_series_class_info(header_text)
             except Exception as e:
                 logger.warning(f"CIK {cik}: Failed to parse SGML header: {e}")
-                series_class_mapping = {'by_name': {}, 'by_ticker': {}}
+                series_class_mapping = {'classes': {}, 'tickers': {}}
 
             # Parse HTML to find Financial Highlights tables
             soup = BeautifulSoup(html, 'html.parser')
@@ -531,7 +471,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                     class_name_norm = class_name.lower()
 
                     # Try substring match (bidirectional: HTML may truncate or SGML may prefix)
-                    for (series_norm, class_norm), class_id in series_class_mapping['by_name'].items():
+                    for (series_norm, class_norm), class_id in series_class_mapping['classes'].items():
                         series_match = series_norm in fund_name_norm or fund_name_norm in series_norm
                         class_match = class_norm in class_name_norm or class_name_norm in class_norm
                         if series_match and class_match:
@@ -540,7 +480,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
 
                     # If no match by name, try ticker fallback (extract from context)
                     if not matched_class_id:
-                        for ticker, class_id in series_class_mapping['by_ticker'].items():
+                        for ticker, class_id in series_class_mapping['tickers'].items():
                             if ticker.lower() in fund_name_norm or ticker.lower() in class_name_norm:
                                 matched_class_id = class_id
                                 break
