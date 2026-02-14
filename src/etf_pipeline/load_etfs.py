@@ -82,18 +82,31 @@ def _process_cik(session_factory, cik_int: int, entries: list[dict]) -> None:
     company = Company(cik_padded)
     issuer_name = company.name
 
-    # Extract series_id -> series_name mapping from a recent filing
+    # Extract series_id -> series_name mapping from recent filings
+    # Try filing types in priority order (issuer-wide forms first)
+    needed_series_ids = {entry.get("series_id") for entry in entries if entry.get("series_id")}
     series_mapping = {}
-    try:
-        filings = company.get_filings(form=["NPORT-P", "N-CSR", "485BPOS", "24F-2NT"])
-        if filings and len(filings) > 0:
-            filing = filings[0]
-            if hasattr(filing, 'header') and hasattr(filing.header, 'text'):
-                header_text = filing.header.text
-                series_mapping = parse_series_class_info(header_text)['series']
-                logger.info(f"CIK {cik_padded}: Extracted {len(series_mapping)} series names from filing")
-    except Exception as e:
-        logger.warning(f"CIK {cik_padded}: Failed to extract series mapping: {e}")
+    filing_types = ["24F-2NT", "485BPOS", "N-CSR", "NPORT-P"]
+
+    for filing_type in filing_types:
+        if needed_series_ids and needed_series_ids.issubset(series_mapping.keys()):
+            logger.info(f"CIK {cik_padded}: All {len(needed_series_ids)} needed series covered, stopping early")
+            break
+
+        try:
+            filings = company.get_filings(form=filing_type)
+            if filings and len(filings) > 0:
+                filing = filings[0]
+                if hasattr(filing, 'header') and hasattr(filing.header, 'text'):
+                    header_text = filing.header.text
+                    new_series = parse_series_class_info(header_text)['series']
+                    # Merge new series, don't overwrite existing entries
+                    for series_id, series_name in new_series.items():
+                        if series_id not in series_mapping:
+                            series_mapping[series_id] = series_name
+                    logger.info(f"CIK {cik_padded}: Extracted {len(new_series)} series from {filing_type} (total: {len(series_mapping)})")
+        except Exception as e:
+            logger.warning(f"CIK {cik_padded}: Failed to extract series mapping from {filing_type}: {e}")
 
     logger.info(f"CIK {cik_padded}: issuer_name = {issuer_name}")
 

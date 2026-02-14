@@ -33,9 +33,12 @@ def mock_company():
             company = Mock()
             if cik == "0000036405":
                 company.name = "Vanguard Group Inc"
-                # Mock filings with SGML header
-                filing = Mock()
-                filing.header.text = """
+                # Mock get_filings to handle individual filing type requests
+                def get_filings_vanguard(form):
+                    filing = Mock()
+                    # Return issuer-wide filing for 24F-2NT with both series
+                    if form == "24F-2NT":
+                        filing.header.text = """
 <SERIES>
 <SERIES-ID>S000002839
 <SERIES-NAME>Vanguard 500 Index Fund
@@ -45,29 +48,41 @@ def mock_company():
 <SERIES-NAME>Vanguard Value Index Fund
 </SERIES>
 """
-                company.get_filings.return_value = [filing]
+                        return [filing]
+                    return []
+                company.get_filings.side_effect = get_filings_vanguard
             elif cik == "0001064641":
                 company.name = "SPDR S&P 500 ETF Trust"
-                # Mock filings with SGML header
-                filing = Mock()
-                filing.header.text = """
+                # Mock get_filings to handle individual filing type requests
+                def get_filings_spdr(form):
+                    filing = Mock()
+                    # Return filing for 24F-2NT
+                    if form == "24F-2NT":
+                        filing.header.text = """
 <SERIES>
 <SERIES-ID>S000002753
 <SERIES-NAME>SPDR S&P 500 ETF Trust
 </SERIES>
 """
-                company.get_filings.return_value = [filing]
+                        return [filing]
+                    return []
+                company.get_filings.side_effect = get_filings_spdr
             elif cik == "0001100663":
                 company.name = "iShares Trust"
-                # Mock filings with SGML header
-                filing = Mock()
-                filing.header.text = """
+                # Mock get_filings to handle individual filing type requests
+                def get_filings_ishares(form):
+                    filing = Mock()
+                    # Return filing for 24F-2NT
+                    if form == "24F-2NT":
+                        filing.header.text = """
 <SERIES>
 <SERIES-ID>S000002824
 <SERIES-NAME>iShares Core S&P 500 ETF
 </SERIES>
 """
-                company.get_filings.return_value = [filing]
+                        return [filing]
+                    return []
+                company.get_filings.side_effect = get_filings_ishares
             else:
                 company.name = f"Unknown Company {cik}"
                 company.get_filings.return_value = []
@@ -193,3 +208,64 @@ def test_load_etfs_company_error(session, engine, sample_tickers_file, mock_load
     stmt = select(ETF)
     etfs = session.execute(stmt).scalars().all()
     assert len(etfs) == 0
+
+
+def test_load_etfs_filing_type_priority(session, engine, tmp_path, mock_load_etfs_db):
+    """Test that filing types are tried in priority order and issuer-wide forms are preferred.
+
+    This test validates the fix for the bug where NPORT-P (fund-specific) would only
+    populate 1 series name for a multi-series CIK, while 24F-2NT (issuer-wide) has all series.
+    """
+    # Create a CIK with 2 series
+    data = [
+        {"ticker": "MULTI1", "cik": 12345, "series_id": "S000001", "class_id": "C000001"},
+        {"ticker": "MULTI2", "cik": 12345, "series_id": "S000002", "class_id": "C000002"},
+    ]
+    tickers_file = tmp_path / "multi_series.json"
+    tickers_file.write_text(json.dumps(data, indent=2))
+
+    with patch("etf_pipeline.load_etfs.TICKERS_FILE", tickers_file):
+        with patch("etf_pipeline.load_etfs.Company") as mock_company_cls:
+            company = Mock()
+            company.name = "Multi-Series Trust"
+
+            def get_filings_priority(form):
+                filing = Mock()
+                # 24F-2NT has all series (issuer-wide)
+                if form == "24F-2NT":
+                    filing.header.text = """
+<SERIES>
+<SERIES-ID>S000001
+<SERIES-NAME>Multi Fund One
+</SERIES>
+<SERIES>
+<SERIES-ID>S000002
+<SERIES-NAME>Multi Fund Two
+</SERIES>
+"""
+                    return [filing]
+                # NPORT-P only has 1 series (fund-specific)
+                elif form == "NPORT-P":
+                    filing.header.text = """
+<SERIES>
+<SERIES-ID>S000001
+<SERIES-NAME>Multi Fund One
+</SERIES>
+"""
+                    return [filing]
+                return []
+
+            company.get_filings.side_effect = get_filings_priority
+            mock_company_cls.return_value = company
+
+            load_etfs()
+
+    stmt = select(ETF).order_by(ETF.ticker)
+    etfs = session.execute(stmt).scalars().all()
+
+    # Both series should have proper fund names (not issuer name fallback)
+    assert len(etfs) == 2
+    assert etfs[0].ticker == "MULTI1"
+    assert etfs[0].fund_name == "Multi Fund One"
+    assert etfs[1].ticker == "MULTI2"
+    assert etfs[1].fund_name == "Multi Fund Two"  # This would fail with old code
