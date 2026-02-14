@@ -506,3 +506,171 @@ class TestProcessCikFinhigh:
             assert operating.nav_beginning == Decimal("102.18")  # Updated value
             assert operating.nav_end == Decimal("115.15")  # Updated value
             assert operating.math_validated is True  # Updated value
+
+    def test_process_cik_finhigh_writes_processing_log(self, session):
+        """Test that finhigh parser writes ProcessingLog row."""
+        from unittest.mock import MagicMock, patch
+        from etf_pipeline.models import ETF, ProcessingLog
+        from etf_pipeline.parsers.finhigh import _process_cik_finhigh
+        from sqlalchemy import select
+
+        # Setup: Create test ETF in database
+        etf = ETF(
+            cik='0000036405',
+            ticker='VFIAX',
+            fund_name='Vanguard 500 Index Fund Investor Shares',
+            class_id='C000123456',
+            issuer_name='Vanguard'
+        )
+        session.add(etf)
+        session.commit()
+
+        # Load fixture HTML
+        fixture_path = FIXTURES_DIR / "vanguard_sample.html"
+        with open(fixture_path, "r") as f:
+            sample_html = f.read()
+
+        # Create full HTML document with heading and share class
+        full_html = f"""
+        <html>
+        <body>
+        <h2>Vanguard 500 Index Fund</h2>
+        <h3>Investor Shares</h3>
+        <h4>Financial Highlights</h4>
+        {sample_html}
+        </body>
+        </html>
+        """
+
+        # Create SGML header with series/class mapping
+        sgml_header = """
+        <SERIES-AND-CLASSES-CONTRACTS-DATA>
+        <EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        <SERIES>
+        <SERIES-NAME>Vanguard 500 Index Fund
+        <CLASS-CONTRACT>
+        <CLASS-CONTRACT-ID>C000123456
+        <CLASS-CONTRACT-NAME>Investor Shares
+        <CLASS-CONTRACT-TICKER-SYMBOL>VFIAX
+        </CLASS-CONTRACT>
+        </SERIES>
+        </EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        </SERIES-AND-CLASSES-CONTRACTS-DATA>
+        """
+
+        # Mock edgartools Company and Filing
+        with patch('etf_pipeline.parsers.finhigh.Company') as mock_company:
+            mock_filing = MagicMock()
+            mock_filing.filing_date = date(2024, 12, 31)
+            mock_filing.html.return_value = full_html
+            mock_header = MagicMock()
+            mock_header.text = sgml_header
+            mock_filing.header = mock_header
+
+            mock_filings = [mock_filing]
+            mock_company_instance = MagicMock()
+            mock_company_instance.get_filings.return_value = mock_filings
+            mock_company.return_value = mock_company_instance
+
+            # Execute
+            result = _process_cik_finhigh(session, '0000036405')
+
+            # Verify success
+            assert result is True
+
+            # Verify ProcessingLog was created
+            stmt = select(ProcessingLog).where(
+                ProcessingLog.cik == "0000036405",
+                ProcessingLog.parser_type == "finhigh"
+            )
+            log = session.execute(stmt).scalar_one_or_none()
+
+            assert log is not None
+            assert log.cik == "0000036405"
+            assert log.parser_type == "finhigh"
+            assert log.latest_filing_date_seen == date(2024, 12, 31)
+            assert log.last_run_at is not None
+
+    def test_process_cik_finhigh_sets_filing_date(self, session):
+        """Test that finhigh parser sets filing_date on inserted rows."""
+        from unittest.mock import MagicMock, patch
+        from etf_pipeline.models import ETF, PerShareOperating, PerShareDistribution, PerShareRatios
+        from etf_pipeline.parsers.finhigh import _process_cik_finhigh
+        from sqlalchemy import select
+
+        # Setup: Create test ETF in database
+        etf = ETF(
+            cik='0000036405',
+            ticker='VFIAX',
+            fund_name='Vanguard 500 Index Fund Investor Shares',
+            class_id='C000123456',
+            issuer_name='Vanguard'
+        )
+        session.add(etf)
+        session.commit()
+
+        # Load fixture HTML
+        fixture_path = FIXTURES_DIR / "vanguard_sample.html"
+        with open(fixture_path, "r") as f:
+            sample_html = f.read()
+
+        # Create full HTML document
+        full_html = f"""
+        <html>
+        <body>
+        <h2>Vanguard 500 Index Fund</h2>
+        <h3>Investor Shares</h3>
+        <h4>Financial Highlights</h4>
+        {sample_html}
+        </body>
+        </html>
+        """
+
+        # Create SGML header
+        sgml_header = """
+        <SERIES-AND-CLASSES-CONTRACTS-DATA>
+        <EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        <SERIES>
+        <SERIES-NAME>Vanguard 500 Index Fund
+        <CLASS-CONTRACT>
+        <CLASS-CONTRACT-ID>C000123456
+        <CLASS-CONTRACT-NAME>Investor Shares
+        <CLASS-CONTRACT-TICKER-SYMBOL>VFIAX
+        </CLASS-CONTRACT>
+        </SERIES>
+        </EXISTING-SERIES-AND-CLASSES-CONTRACTS>
+        </SERIES-AND-CLASSES-CONTRACTS-DATA>
+        """
+
+        # Mock edgartools
+        with patch('etf_pipeline.parsers.finhigh.Company') as mock_company:
+            mock_filing = MagicMock()
+            mock_filing.filing_date = date(2024, 12, 31)
+            mock_filing.html.return_value = full_html
+            mock_header = MagicMock()
+            mock_header.text = sgml_header
+            mock_filing.header = mock_header
+
+            mock_filings = [mock_filing]
+            mock_company_instance = MagicMock()
+            mock_company_instance.get_filings.return_value = mock_filings
+            mock_company.return_value = mock_company_instance
+
+            # Execute
+            result = _process_cik_finhigh(session, '0000036405')
+            assert result is True
+
+            # Verify PerShareOperating has filing_date
+            stmt = select(PerShareOperating).where(PerShareOperating.etf_id == etf.id)
+            operating = session.execute(stmt).scalar_one()
+            assert operating.filing_date == date(2024, 12, 31)
+
+            # Verify PerShareDistribution has filing_date
+            stmt = select(PerShareDistribution).where(PerShareDistribution.etf_id == etf.id)
+            distribution = session.execute(stmt).scalar_one()
+            assert distribution.filing_date == date(2024, 12, 31)
+
+            # Verify PerShareRatios has filing_date
+            stmt = select(PerShareRatios).where(PerShareRatios.etf_id == etf.id)
+            ratios = session.execute(stmt).scalar_one()
+            assert ratios.filing_date == date(2024, 12, 31)

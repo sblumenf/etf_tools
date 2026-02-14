@@ -871,3 +871,98 @@ def test_parse_nport_ciks_invalid_ciks(session, engine, sample_etfs, mock_edgar_
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
     assert len(holdings) == 0
+
+
+def test_parse_nport_writes_processing_log(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
+    """Test that parse_nport writes ProcessingLog row with correct data."""
+    from etf_pipeline.models import ProcessingLog
+
+    parse_nport(cik="36405")
+
+    # Verify ProcessingLog was created
+    stmt = select(ProcessingLog).where(
+        ProcessingLog.cik == "0000036405",
+        ProcessingLog.parser_type == "nport"
+    )
+    log = session.execute(stmt).scalar_one_or_none()
+
+    assert log is not None
+    assert log.cik == "0000036405"
+    assert log.parser_type == "nport"
+    assert log.latest_filing_date_seen == date(2025, 1, 15)
+    assert log.last_run_at is not None
+
+
+def test_parse_nport_sets_filing_date(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
+    """Test that parse_nport sets filing_date on inserted holdings and derivatives."""
+    parse_nport(cik="36405")
+
+    # Verify Holdings have filing_date
+    stmt = select(Holding).order_by(Holding.name).limit(1)
+    holding = session.execute(stmt).scalar_one()
+    assert holding.filing_date == date(2025, 1, 15)
+
+    # Add derivative to mock to test derivatives
+    def create_mock_derivative():
+        inv = Mock()
+        inv.name = "Test Derivative"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "FUT"
+
+        fut = Mock()
+        fut.counterparty_name = "Test Counter"
+        fut.counterparty_lei = "123456789012345678AA"
+        fut.reference_entity_name = "Test Entity"
+        fut.reference_entity_cusip = "12345678X"
+        fut.notional_amount = Decimal("100000.00")
+        fut.expiration_date = "2025-06-30"
+        inv.derivative_info.future_derivative = fut
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+        return inv
+
+    # Run again with derivatives
+    from sqlalchemy import delete
+    session.execute(delete(Holding))
+    session.commit()
+
+    def create_report_with_derivatives(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_derivative()]
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing2 = Mock()
+        filing2.filing_date = date(2025, 1, 15)
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=2)
+        filings.__getitem__ = Mock(side_effect=[filing1, filing2])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        call_count = [0]
+        def fund_report_side_effect(filing):
+            series_ids = ["S000002839", "S000002840"]
+            series_id = series_ids[call_count[0]]
+            call_count[0] += 1
+            return create_report_with_derivatives(series_id)
+
+        with patch("etf_pipeline.parsers.nport.FundReport.from_filing", side_effect=fund_report_side_effect):
+            parse_nport(cik="36405")
+
+    # Verify Derivative has filing_date
+    stmt = select(Derivative).limit(1)
+    derivative = session.execute(stmt).scalar_one()
+    assert derivative.filing_date == date(2025, 1, 15)

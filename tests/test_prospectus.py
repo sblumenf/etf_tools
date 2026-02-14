@@ -929,3 +929,119 @@ class TestOEFNamespace:
         assert etf_a.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
         assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+
+
+class TestProspectusProcessingLog:
+    """Tests for ProcessingLog and filing_date in prospectus parser."""
+
+    def test_parse_prospectus_writes_processing_log(self, session, sample_filing_path):
+        """Test that prospectus parser writes ProcessingLog row."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, ProcessingLog
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF record
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A', issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+
+        # Read fixture HTML
+        with open(sample_filing_path) as f:
+            html_content = f.read()
+
+        # Mock edgartools objects
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Verify ProcessingLog was created
+        from sqlalchemy import select
+        stmt = select(ProcessingLog).where(
+            ProcessingLog.cik == "0001314612",
+            ProcessingLog.parser_type == "prospectus"
+        )
+        log = session.execute(stmt).scalar_one_or_none()
+
+        assert log is not None
+        assert log.cik == "0001314612"
+        assert log.parser_type == "prospectus"
+        assert log.latest_filing_date_seen == date(2022, 11, 3)
+        assert log.last_run_at is not None
+
+    def test_parse_prospectus_sets_filing_date(self, session, sample_filing_path):
+        """Test that prospectus parser sets filing_date on inserted rows."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+        from sqlalchemy import select
+
+        # Create ETF record
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A', issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+
+        # Read fixture HTML
+        with open(sample_filing_path) as f:
+            html_content = f.read()
+
+        # Mock edgartools objects
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Verify FeeExpense has filing_date
+        stmt = select(FeeExpense).where(FeeExpense.etf_id == etf.id)
+        fee_expense = session.execute(stmt).scalar_one()
+        assert fee_expense.filing_date == date(2022, 11, 3)
+
+        # Verify ShareholderFee has filing_date
+        stmt = select(ShareholderFee).where(ShareholderFee.etf_id == etf.id)
+        shareholder_fee = session.execute(stmt).scalar_one()
+        assert shareholder_fee.filing_date == date(2022, 11, 3)
+
+        # Verify ExpenseExample has filing_date
+        stmt = select(ExpenseExample).where(ExpenseExample.etf_id == etf.id)
+        expense_example = session.execute(stmt).scalar_one()
+        assert expense_example.filing_date == date(2022, 11, 3)

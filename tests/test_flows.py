@@ -408,3 +408,51 @@ def test_parse_flows_keeps_cache_when_flag_set(session, sample_etfs, mock_flows_
             parse_flows(cik="1100663", clear_cache=False)
 
             mock_clear.assert_not_called()
+
+
+def test_parse_flows_writes_processing_log(session, sample_etfs, mock_flows_db):
+    """Test that parse_flows writes ProcessingLog row with correct data."""
+    from etf_pipeline.models import ProcessingLog
+
+    with patch("etf_pipeline.parsers.flows.Company") as mock_company_class:
+        mock_company = Mock()
+        mock_filings = [create_mock_filing(SAMPLE_XML_VALID)]
+        mock_company.get_filings.return_value = mock_filings
+        mock_company_class.return_value = mock_company
+
+        parse_flows(cik="1100663", clear_cache=False)
+
+        # Verify ProcessingLog was created
+        stmt = select(ProcessingLog).where(
+            ProcessingLog.cik == "0001100663",
+            ProcessingLog.parser_type == "flows"
+        )
+        log = session.execute(stmt).scalar_one_or_none()
+
+        assert log is not None
+        assert log.cik == "0001100663"
+        assert log.parser_type == "flows"
+        # The fixture has no explicit filing_date in XML, should use latest from filings
+        assert log.latest_filing_date_seen is not None
+        assert log.last_run_at is not None
+
+
+def test_parse_flows_sets_filing_date(session, sample_etfs, mock_flows_db):
+    """Test that parse_flows sets filing_date on inserted FlowData row."""
+    # Create a mock filing with an explicit filing_date
+    mock_filing = Mock()
+    mock_filing.filing_date = date(2024, 10, 28)
+    mock_filing.xml.return_value = SAMPLE_XML_VALID
+
+    with patch("etf_pipeline.parsers.flows.Company") as mock_company_class:
+        mock_company = Mock()
+        mock_filings = [mock_filing]
+        mock_company.get_filings.return_value = mock_filings
+        mock_company_class.return_value = mock_company
+
+        parse_flows(cik="1100663", clear_cache=False)
+
+        # Verify FlowData has filing_date
+        stmt = select(FlowData).where(FlowData.cik == "0001100663")
+        flow = session.execute(stmt).scalar_one()
+        assert flow.filing_date == date(2024, 10, 28)

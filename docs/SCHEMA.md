@@ -58,6 +58,7 @@ Individual portfolio holdings from NPORT-P filings.
 | `id` | Integer | PK | |
 | `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
 | `report_date` | Date | NOT NULL | Filing report date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `name` | String(500) | NOT NULL | Security name |
 | `cusip` | String(9) | INDEXED | CUSIP identifier |
 | `isin` | String(12) | | ISIN identifier |
@@ -74,6 +75,7 @@ Individual portfolio holdings from NPORT-P filings.
 | `fair_value_level` | Integer | | Fair value hierarchy (1/2/3) |
 | `is_restricted` | Boolean | NOT NULL, default=False | Restricted security flag |
 
+**Unique:** `(etf_id, report_date, cusip, filing_date)`
 **Indexes:** `(etf_id, report_date)`, `(cusip)`, `(report_date)`
 
 ---
@@ -87,6 +89,7 @@ Derivative positions from NPORT-P filings.
 | `id` | Integer | PK | |
 | `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
 | `report_date` | Date | NOT NULL | Filing report date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `derivative_type` | String(20) | NOT NULL | Type (FWD, SWP, FUT, OPT, etc.) |
 | `underlying_name` | String(500) | | Underlying instrument name |
 | `underlying_cusip` | String(9) | | Underlying CUSIP |
@@ -96,6 +99,7 @@ Derivative positions from NPORT-P filings.
 | `delta` | Numeric(10,6) | | Option delta |
 | `expiration_date` | Date | | Contract expiration |
 
+**Unique:** `(etf_id, report_date, derivative_type, underlying_name, filing_date)`
 **Indexes:** `(etf_id, report_date)`, `(report_date)`
 
 ---
@@ -109,6 +113,7 @@ Annual return and benchmark data from N-CSR filings.
 | `id` | Integer | PK | |
 | `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
 | `fiscal_year_end` | Date | NOT NULL | Fiscal year end date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `return_1yr` | Numeric(8,5) | | 1-year return |
 | `return_5yr` | Numeric(8,5) | | 5-year annualized return |
 | `return_10yr` | Numeric(8,5) | | 10-year annualized return |
@@ -120,7 +125,7 @@ Annual return and benchmark data from N-CSR filings.
 | `portfolio_turnover` | Numeric(8,5) | | Portfolio turnover rate |
 | `expense_ratio_actual` | Numeric(6,5) | | Actual expense ratio |
 
-**Unique:** `(etf_id, fiscal_year_end)`
+**Unique:** `(etf_id, fiscal_year_end, filing_date)`
 
 ---
 
@@ -133,6 +138,7 @@ Annual fee table data from 485BPOS prospectus filings.
 | `id` | Integer | PK | |
 | `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
 | `effective_date` | Date | NOT NULL | Prospectus effective date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `management_fee` | Numeric(6,5) | | Management fee rate |
 | `distribution_12b1` | Numeric(6,5) | | 12b-1 distribution fee |
 | `other_expenses` | Numeric(6,5) | | Other expenses rate |
@@ -141,7 +147,7 @@ Annual fee table data from 485BPOS prospectus filings.
 | `total_expense_net` | Numeric(6,5) | | Net total expense ratio |
 | `acquired_fund_fees` | Numeric(6,5) | | Acquired fund fees and expenses |
 
-**Unique:** `(etf_id, effective_date)`
+**Unique:** `(etf_id, effective_date, filing_date)`
 
 ---
 
@@ -154,13 +160,14 @@ Shareholder-level fees from 485BPOS prospectus filings.
 | `id` | Integer | PK | |
 | `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
 | `effective_date` | Date | NOT NULL | Prospectus effective date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `front_load` | Numeric(6,5) | | Front-end sales load |
 | `deferred_load` | Numeric(6,5) | | Deferred sales load |
 | `reinvestment_charge` | Numeric(6,5) | | Dividend reinvestment charge |
 | `redemption_fee` | Numeric(6,5) | | Redemption fee |
 | `exchange_fee` | Numeric(6,5) | | Exchange fee |
 
-**Unique:** `(etf_id, effective_date)`
+**Unique:** `(etf_id, effective_date, filing_date)`
 
 ---
 
@@ -173,12 +180,13 @@ Dollar-cost examples from 485BPOS prospectus filings ($10,000 investment).
 | `id` | Integer | PK | |
 | `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
 | `effective_date` | Date | NOT NULL | Prospectus effective date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `year_01` | Integer | | Cost after 1 year ($) |
 | `year_03` | Integer | | Cost after 3 years ($) |
 | `year_05` | Integer | | Cost after 5 years ($) |
 | `year_10` | Integer | | Cost after 10 years ($) |
 
-**Unique:** `(etf_id, effective_date)`
+**Unique:** `(etf_id, effective_date, filing_date)`
 
 ---
 
@@ -191,11 +199,12 @@ Fund-level sales and redemption flows from 24F-2NT filings.
 | `id` | Integer | PK | |
 | `cik` | String(10) | NOT NULL | SEC CIK (issuer-level, not per-ETF) |
 | `fiscal_year_end` | Date | NOT NULL, INDEXED | Fiscal year end date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `sales_value` | Numeric(20,4) | | Aggregate sales |
 | `redemptions_value` | Numeric(20,4) | | Aggregate redemptions |
 | `net_sales` | Numeric(20,4) | | Net sales (sales - redemptions) |
 
-**Unique:** `(cik, fiscal_year_end)`
+**Unique:** `(cik, fiscal_year_end, filing_date)`
 
 > Note: `flow_data` is keyed by CIK, not `etf_id`. 24F-2NT filings report at the issuer level, not per share class.
 
@@ -210,6 +219,7 @@ Per-share operating performance from N-CSR financial highlights.
 | `id` | Integer | PK | |
 | `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
 | `fiscal_year_end` | Date | NOT NULL | Fiscal year end date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `nav_beginning` | Numeric(10,4) | | NAV at start of period |
 | `net_investment_income` | Numeric(10,4) | | Per-share net investment income |
 | `net_realized_unrealized_gain` | Numeric(10,4) | | Per-share realized + unrealized gains |
@@ -219,7 +229,7 @@ Per-share operating performance from N-CSR financial highlights.
 | `total_return` | Numeric(8,5) | | Total return for the period |
 | `math_validated` | Boolean | NOT NULL | Whether NAV math checks out |
 
-**Unique:** `(etf_id, fiscal_year_end)`
+**Unique:** `(etf_id, fiscal_year_end, filing_date)`
 
 ---
 
@@ -232,12 +242,13 @@ Per-share distributions from N-CSR financial highlights.
 | `id` | Integer | PK | |
 | `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
 | `fiscal_year_end` | Date | NOT NULL | Fiscal year end date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `dist_net_investment_income` | Numeric(10,4) | | Distributions from net investment income |
 | `dist_realized_gains` | Numeric(10,4) | | Distributions from realized gains |
 | `dist_return_of_capital` | Numeric(10,4) | | Return of capital distributions |
 | `dist_total` | Numeric(10,4) | | Total distributions |
 
-**Unique:** `(etf_id, fiscal_year_end)`
+**Unique:** `(etf_id, fiscal_year_end, filing_date)`
 
 ---
 
@@ -250,11 +261,30 @@ Per-share supplemental ratios from N-CSR financial highlights.
 | `id` | Integer | PK | |
 | `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
 | `fiscal_year_end` | Date | NOT NULL | Fiscal year end date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
 | `expense_ratio` | Numeric(6,5) | | Expense ratio |
 | `portfolio_turnover` | Numeric(8,5) | | Portfolio turnover rate |
 | `net_assets_end` | Numeric(20,2) | | Net assets at period end |
 
-**Unique:** `(etf_id, fiscal_year_end)`
+**Unique:** `(etf_id, fiscal_year_end, filing_date)`
+
+---
+
+### `processing_log`
+
+Tracks when each parser was last run for each CIK, enabling incremental pipeline processing.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `cik` | String(10) | NOT NULL | SEC CIK |
+| `parser_type` | String(20) | NOT NULL | Parser identifier (nport, ncsr, prospectus, finhigh, flows) |
+| `last_run_at` | DateTime | NOT NULL | Timestamp of last successful parser run |
+| `latest_filing_date_seen` | Date | NOT NULL | Most recent filing date processed |
+
+**Unique:** `(cik, parser_type)`
+
+> Note: Used by the `run-all` command to detect when new SEC filings are available and skip CIKs with no updates.
 
 ---
 
@@ -265,20 +295,23 @@ Per-share supplemental ratios from N-CSR financial highlights.
 | etf | — | UNIQUE | `ticker` |
 | etf | — | INDEX | `cik` |
 | etf | — | INDEX | `class_id` |
+| holding | `holding_etf_report_cusip_filing_uniq` | UNIQUE | `etf_id, report_date, cusip, filing_date` |
 | holding | `holding_etf_report_idx` | INDEX | `etf_id, report_date` |
 | holding | `holding_cusip_idx` | INDEX | `cusip` |
 | holding | `holding_report_date_idx` | INDEX | `report_date` |
+| derivative | `derivative_etf_report_type_name_filing_uniq` | UNIQUE | `etf_id, report_date, derivative_type, underlying_name, filing_date` |
 | derivative | `derivative_etf_report_idx` | INDEX | `etf_id, report_date` |
 | derivative | `derivative_report_date_idx` | INDEX | `report_date` |
-| performance | `performance_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
-| fee_expense | `fee_expense_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
-| shareholder_fee | `shareholder_fee_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
-| expense_example | `expense_example_etf_date_uniq` | UNIQUE | `etf_id, effective_date` |
-| flow_data | `flow_data_cik_fy_uniq` | UNIQUE | `cik, fiscal_year_end` |
+| performance | `performance_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
+| fee_expense | `fee_expense_etf_date_filing_uniq` | UNIQUE | `etf_id, effective_date, filing_date` |
+| shareholder_fee | `shareholder_fee_etf_date_filing_uniq` | UNIQUE | `etf_id, effective_date, filing_date` |
+| expense_example | `expense_example_etf_date_filing_uniq` | UNIQUE | `etf_id, effective_date, filing_date` |
+| flow_data | `flow_data_cik_fy_filing_uniq` | UNIQUE | `cik, fiscal_year_end, filing_date` |
 | flow_data | `flow_data_fy_idx` | INDEX | `fiscal_year_end` |
-| per_share_operating | `per_share_operating_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
-| per_share_distribution | `per_share_distribution_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
-| per_share_ratios | `per_share_ratios_etf_fy_uniq` | UNIQUE | `etf_id, fiscal_year_end` |
+| per_share_operating | `per_share_operating_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
+| per_share_distribution | `per_share_distribution_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
+| per_share_ratios | `per_share_ratios_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
+| processing_log | `processing_log_cik_parser_uniq` | UNIQUE | `cik, parser_type` |
 
 ---
 

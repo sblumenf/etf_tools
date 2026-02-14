@@ -752,3 +752,37 @@ class TestNCSRParser:
         perf = session.execute(stmt).scalar_one_or_none()
         assert perf is not None
         assert perf.return_1yr == Decimal('0.0777')
+
+    def test_parse_ncsr_writes_processing_log(
+        self, session, sample_etfs_with_class_id, mock_edgar_ncsr, mock_ncsr_db
+    ):
+        """Test that parse_ncsr writes ProcessingLog row with correct data."""
+        from etf_pipeline.models import ProcessingLog
+
+        parse_ncsr(cik="0001100663", clear_cache=False)
+
+        # Verify ProcessingLog was created
+        stmt = select(ProcessingLog).where(
+            ProcessingLog.cik == "0001100663",
+            ProcessingLog.parser_type == "ncsr"
+        )
+        log = session.execute(stmt).scalar_one_or_none()
+
+        assert log is not None
+        assert log.cik == "0001100663"
+        assert log.parser_type == "ncsr"
+        assert log.latest_filing_date_seen == date(2024, 12, 1)
+        assert log.last_run_at is not None
+
+    def test_parse_ncsr_sets_filing_date(
+        self, session, sample_etfs_with_class_id, mock_edgar_ncsr, mock_ncsr_db
+    ):
+        """Test that parse_ncsr sets filing_date on inserted Performance rows."""
+        parse_ncsr(cik="0001100663", clear_cache=False)
+
+        # Verify Performance has filing_date
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one()
+        assert perf.filing_date == date(2024, 12, 1)
