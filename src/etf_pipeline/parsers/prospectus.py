@@ -15,6 +15,8 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
+LOOKBACK_DAYS = 547  # 18-month window for prospectus filings
+
 
 def parse_contexts(soup: BeautifulSoup) -> dict[str, dict[str, Optional[str]]]:
     """Extract context map: context_id → {cik, series_id, class_id}.
@@ -335,10 +337,9 @@ def _process_cik_prospectus(session, cik: str) -> bool:
         True if successful, False otherwise
     """
     from edgar import Company
-    from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample, ProcessingLog
+    from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample
+    from etf_pipeline.parser_utils import ensure_date, update_processing_log
     from sqlalchemy import select
-    from sqlalchemy.dialects.sqlite import insert
-    from datetime import datetime
 
     try:
         # Build class_id -> ETF and series_id -> list[ETF] mappings from database
@@ -375,8 +376,8 @@ def _process_cik_prospectus(session, cik: str) -> bool:
         most_recent_filing = filings[0]
         most_recent_date = most_recent_filing.filing_date if hasattr(most_recent_filing, 'filing_date') else date.today()
 
-        # Calculate cutoff date: 18 months = 547 days (18 * 365.25 / 12)
-        cutoff_date = most_recent_date - timedelta(days=547)
+        # Calculate cutoff date
+        cutoff_date = most_recent_date - timedelta(days=LOOKBACK_DAYS)
 
         # Iterate through filings in reverse chronological order
         for filing_idx in range(len(filings)):
@@ -386,12 +387,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 break
 
             filing = filings[filing_idx]
-            raw_filing_date = filing.filing_date if hasattr(filing, 'filing_date') else date.today()
-            # Convert to date if it's a datetime
-            if isinstance(raw_filing_date, datetime):
-                filing_date = raw_filing_date.date()
-            else:
-                filing_date = raw_filing_date
+            filing_date = ensure_date(filing.filing_date)
 
             # Track the latest filing date
             if latest_filing_date is None or filing_date > latest_filing_date:
@@ -617,23 +613,8 @@ def _process_cik_prospectus(session, cik: str) -> bool:
 
         # Update processing log after successful processing
         if latest_filing_date is not None:
-            # Ensure latest_filing_date is a date object
-            if isinstance(latest_filing_date, datetime):
-                latest_filing_date = latest_filing_date.date()
-
-            stmt = insert(ProcessingLog).values(
-                cik=cik,
-                parser_type="prospectus",
-                last_run_at=datetime.now(),
-                latest_filing_date_seen=latest_filing_date,
-            ).on_conflict_do_update(
-                index_elements=["cik", "parser_type"],
-                set_={
-                    "last_run_at": datetime.now(),
-                    "latest_filing_date_seen": latest_filing_date,
-                },
-            )
-            session.execute(stmt)
+            latest_filing_date = ensure_date(latest_filing_date)
+            update_processing_log(session, cik, "prospectus", latest_filing_date)
 
         session.commit()
         logger.info(f"CIK {cik}: Successfully processed 485BPOS filing")

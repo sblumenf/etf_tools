@@ -9,11 +9,11 @@ import pandas as pd
 from edgar import Company
 from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import select
-from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import ETF, Performance, ProcessingLog
+from etf_pipeline.models import ETF, Performance
+from etf_pipeline.parser_utils import ensure_date, update_processing_log
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def _map_return_period(period_start: date, period_end: date) -> Optional[str]:
     if years is None:
         return None
 
-    # Tolerance: 30 days = ~0.082 years
+    # Allow +/- 30 days when matching return periods (1yr, 5yr, 10yr)
     tolerance = 30 / 365.25
 
     if abs(years - 1) <= tolerance:
@@ -151,7 +151,7 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    MAX_FILINGS = 10
+    MAX_FILINGS = 10  # Limit scan to 10 most recent filings per CIK
 
     try:
         # Build class_id -> ETF mapping from database first
@@ -190,12 +190,7 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                 break
 
             filing = filings[filing_idx]
-            raw_filing_date = filing.filing_date
-            # Convert to date if it's a datetime
-            if isinstance(raw_filing_date, datetime):
-                filing_date = raw_filing_date.date()
-            else:
-                filing_date = raw_filing_date
+            filing_date = ensure_date(filing.filing_date)
 
             # Track the latest filing date
             if latest_filing_date is None or filing_date > latest_filing_date:
@@ -419,23 +414,8 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
 
         # Update processing log after successful processing
         if latest_filing_date is not None:
-            # Ensure latest_filing_date is a date object
-            if isinstance(latest_filing_date, datetime):
-                latest_filing_date = latest_filing_date.date()
-
-            stmt = insert(ProcessingLog).values(
-                cik=cik,
-                parser_type="ncsr",
-                last_run_at=datetime.now(),
-                latest_filing_date_seen=latest_filing_date,
-            ).on_conflict_do_update(
-                index_elements=["cik", "parser_type"],
-                set_={
-                    "last_run_at": datetime.now(),
-                    "latest_filing_date_seen": latest_filing_date,
-                },
-            )
-            session.execute(stmt)
+            latest_filing_date = ensure_date(latest_filing_date)
+            update_processing_log(session, cik, "ncsr", latest_filing_date)
 
         session.commit()
         logger.info(f"CIK {cik}: Processed {processed_etfs} ETF(s), skipped {skipped_etfs}")

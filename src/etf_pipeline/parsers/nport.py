@@ -10,11 +10,11 @@ from edgar import Company
 from edgar.funds.reports import FundReport
 from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import and_, or_, select
-from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import Derivative, ETF, Holding, ProcessingLog
+from etf_pipeline.models import Derivative, ETF, Holding
+from etf_pipeline.parser_utils import ensure_date, update_processing_log
 
 logger = logging.getLogger(__name__)
 
@@ -144,12 +144,7 @@ def _get_latest_filings_per_series(filings):
             if isinstance(report_date, str):
                 report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
 
-            raw_filing_date = filing.filing_date
-            # Convert to date if it's a datetime
-            if isinstance(raw_filing_date, datetime):
-                filing_date = raw_filing_date.date()
-            else:
-                filing_date = raw_filing_date
+            filing_date = ensure_date(filing.filing_date)
             series_map[series_id] = (fund_report, report_date, filing_date)
 
         except Exception as e:
@@ -219,23 +214,8 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
 
         # Update processing log after successful processing
         if latest_filing_date is not None:
-            # Ensure latest_filing_date is a date object
-            if isinstance(latest_filing_date, datetime):
-                latest_filing_date = latest_filing_date.date()
-
-            stmt = insert(ProcessingLog).values(
-                cik=cik,
-                parser_type="nport",
-                last_run_at=datetime.now(),
-                latest_filing_date_seen=latest_filing_date,
-            ).on_conflict_do_update(
-                index_elements=["cik", "parser_type"],
-                set_={
-                    "last_run_at": datetime.now(),
-                    "latest_filing_date_seen": latest_filing_date,
-                },
-            )
-            session.execute(stmt)
+            latest_filing_date = ensure_date(latest_filing_date)
+            update_processing_log(session, cik, "nport", latest_filing_date)
 
         session.commit()
 

@@ -1,4 +1,10 @@
+import gc
+import logging
+from datetime import date
+
 import click
+
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -142,26 +148,30 @@ def get_all_ciks(session, limit):
     return ciks
 
 
-def check_sec_filing_dates(cik):
-    """Check SEC for latest filing date per form type.
-
-    Returns dict: {form_type: date | None}
-    """
+def check_sec_filing_dates(cik: str) -> dict[str, date | None]:
+    """Check SEC for latest filing date per form type using a single API call."""
     from edgar import Company
+    from etf_pipeline.parser_utils import ensure_date
 
-    result = {}
-    form_types = set(PARSER_FORM_MAP.values())
+    form_types = {"NPORT-P", "N-CSR", "485BPOS", "24F-2NT"}
+    result = {ft: None for ft in form_types}
 
-    for form_type in form_types:
-        try:
-            company = Company(cik)
-            filings = company.get_filings(form=form_type)
-            if len(filings) > 0:
-                result[form_type] = filings[0].filing_date
-            else:
-                result[form_type] = None
-        except Exception:
-            result[form_type] = None
+    try:
+        company = Company(cik)
+        filings = company.get_filings()
+
+        for filing in filings:
+            form = filing.form
+            if form in form_types and result[form] is None:
+                result[form] = ensure_date(filing.filing_date)
+                if all(v is not None for v in result.values()):
+                    break
+
+        del filings
+        del company
+
+    except Exception as e:
+        logger.warning("CIK %s: Failed to check SEC filing dates: %s", cik, e)
 
     return result
 
@@ -291,6 +301,7 @@ def run_all(limit):
                             raise
 
                 edgar_clear_cache(dry_run=False)
+                gc.collect()
                 processed += 1
 
         except Exception as e:

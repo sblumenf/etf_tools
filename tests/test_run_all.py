@@ -392,35 +392,20 @@ def test_run_all_respects_limit(
 @patch("edgar.Company")
 def test_check_sec_filing_dates_success(mock_company_class):
     """Test check_sec_filing_dates returns filing dates from SEC."""
-    mock_filings_nport = MagicMock()
-    mock_filings_nport.__len__ = MagicMock(return_value=1)
-    mock_filings_nport.__getitem__ = MagicMock(
-        return_value=MagicMock(filing_date=date(2026, 1, 15))
-    )
+    mock_filing_nport = MagicMock(form="NPORT-P", filing_date=date(2026, 1, 15))
+    mock_filing_ncsr = MagicMock(form="N-CSR", filing_date=date(2026, 1, 10))
+    mock_filing_24f2nt = MagicMock(form="24F-2NT", filing_date=date(2026, 1, 1))
+    mock_filing_other = MagicMock(form="OTHER", filing_date=date(2026, 1, 20))
 
-    mock_filings_ncsr = MagicMock()
-    mock_filings_ncsr.__len__ = MagicMock(return_value=1)
-    mock_filings_ncsr.__getitem__ = MagicMock(
-        return_value=MagicMock(filing_date=date(2026, 1, 10))
-    )
-
-    mock_filings_485bpos = MagicMock()
-    mock_filings_485bpos.__len__ = MagicMock(return_value=0)
-
-    mock_filings_24f2nt = MagicMock()
-    mock_filings_24f2nt.__len__ = MagicMock(return_value=1)
-    mock_filings_24f2nt.__getitem__ = MagicMock(
-        return_value=MagicMock(filing_date=date(2026, 1, 1))
-    )
+    mock_filings = [
+        mock_filing_nport,
+        mock_filing_ncsr,
+        mock_filing_24f2nt,
+        mock_filing_other,
+    ]
 
     mock_company = MagicMock()
-    mock_company.get_filings.side_effect = lambda form: {
-        "NPORT-P": mock_filings_nport,
-        "N-CSR": mock_filings_ncsr,
-        "485BPOS": mock_filings_485bpos,
-        "24F-2NT": mock_filings_24f2nt,
-    }[form]
-
+    mock_company.get_filings.return_value = mock_filings
     mock_company_class.return_value = mock_company
 
     result = check_sec_filing_dates("0000001234")

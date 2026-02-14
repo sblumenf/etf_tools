@@ -9,11 +9,11 @@ from typing import Optional
 from edgar import Company
 from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import select
-from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import ETF, FlowData, ProcessingLog
+from etf_pipeline.models import ETF, FlowData
+from etf_pipeline.parser_utils import ensure_date, update_processing_log
 
 logger = logging.getLogger(__name__)
 
@@ -160,14 +160,7 @@ def _process_cik_flows(session: Session, cik: str) -> bool:
 
         # Get the latest filing
         filing = filings[0]
-        raw_filing_date = filing.filing_date if hasattr(filing, 'filing_date') else date.today()
-        # Convert to date if it's a datetime
-        if isinstance(raw_filing_date, datetime):
-            filing_date = raw_filing_date.date()
-        elif isinstance(raw_filing_date, date):
-            filing_date = raw_filing_date
-        else:
-            filing_date = date.today()
+        filing_date = ensure_date(filing.filing_date)
 
         # Get XML content
         xml_content = filing.xml()
@@ -208,19 +201,7 @@ def _process_cik_flows(session: Session, cik: str) -> bool:
             logger.info(f"CIK {cik}: Inserted flow data for fiscal year {flow_data['fiscal_year_end']}, filing_date {filing_date}")
 
         # Update processing log after successful processing
-        stmt = insert(ProcessingLog).values(
-            cik=cik,
-            parser_type="flows",
-            last_run_at=datetime.now(),
-            latest_filing_date_seen=filing_date,
-        ).on_conflict_do_update(
-            index_elements=["cik", "parser_type"],
-            set_={
-                "last_run_at": datetime.now(),
-                "latest_filing_date_seen": filing_date,
-            },
-        )
-        session.execute(stmt)
+        update_processing_log(session, cik, "flows", filing_date)
 
         session.commit()
         return True

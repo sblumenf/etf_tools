@@ -146,6 +146,7 @@ def create_mock_filing(xml_content):
     """Create a mock Filing object that returns the given XML."""
     mock_filing = Mock()
     mock_filing.xml.return_value = xml_content if xml_content else None
+    mock_filing.filing_date = date(2024, 12, 31)
     return mock_filing
 
 
