@@ -7,7 +7,7 @@ inline XBRL (iXBRL) tags.
 
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
@@ -357,7 +357,10 @@ def _process_cik_prospectus(session, cik: str) -> bool:
             logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
             return True
 
-        # Fetch most recent 485BPOS filing
+        needed_class_ids = set(class_id_to_etf.keys())
+        satisfied = set()
+
+        # Fetch 485BPOS filings
         company = Company(cik)
         filings = company.get_filings(form='485BPOS')
 
@@ -365,205 +368,234 @@ def _process_cik_prospectus(session, cik: str) -> bool:
             logger.info(f"CIK {cik}: No 485BPOS filings found")
             return True  # Not an error, just no data
 
-        filing = filings[0]
-        filing_url = filing.document.url if hasattr(filing, 'document') else None
+        # Get most recent filing date and filter to 18-month window
+        most_recent_filing = filings[0]
+        most_recent_date = most_recent_filing.filing_date if hasattr(most_recent_filing, 'filing_date') else date.today()
 
-        # Get HTML content
-        html = filing.html()
-        if not html:
-            logger.warning(f"CIK {cik}: Failed to fetch HTML content")
-            return False
+        # Calculate cutoff date: 18 months = 547 days (18 * 365.25 / 12)
+        cutoff_date = most_recent_date - timedelta(days=547)
 
-        # Parse iXBRL
-        soup = BeautifulSoup(html, 'html.parser')
-
-        # Extract contexts
-        context_map = parse_contexts(soup)
-
-        # Detect which namespace prefix is in use (rr: or oef:)
-        rr_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('rr:'))
-        oef_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('oef:'))
-
-        if rr_tags:
-            tag_prefix = 'rr'
-        elif oef_tags:
-            tag_prefix = 'oef'
-        else:
-            logger.warning(f"CIK {cik}: No RR or OEF iXBRL tags found in filing")
-            return True
-
-        # Build tag index for O(1) lookups (performance optimization)
-        tag_index = build_tag_index(soup)
-
-        # Find the base context (no dimensions) for effective_date
-        base_context_id = None
-        for ctx_id, ctx_data in context_map.items():
-            if ctx_data['series_id'] is None and ctx_data['class_id'] is None:
-                base_context_id = ctx_id
+        # Iterate through filings in reverse chronological order
+        for filing_idx in range(len(filings)):
+            # Stop if all class_ids satisfied
+            if not (needed_class_ids - satisfied):
+                logger.debug(f"CIK {cik}: All class_ids satisfied after {filing_idx} filing(s)")
                 break
 
-        # If no base context, try to find one with just CIK
-        if not base_context_id and context_map:
-            base_context_id = list(context_map.keys())[0]
+            filing = filings[filing_idx]
+            filing_date = filing.filing_date if hasattr(filing, 'filing_date') else date.today()
 
-        # Extract effective_date from DocumentPeriodEndDate
-        effective_date = None
-        if base_context_id:
-            effective_date = parse_date_tag(tag_index, 'dei:DocumentPeriodEndDate', base_context_id)
+            # Stop if filing is outside 18-month window
+            if filing_date < cutoff_date:
+                logger.debug(f"CIK {cik}: Filing {filing_idx} outside 18-month window, stopping")
+                break
 
-        if not effective_date:
-            logger.warning(f"CIK {cik}: No effective_date found, using filing date")
-            effective_date = filing.filing_date if hasattr(filing, 'filing_date') else date.today()
+            filing_url = filing.document.url if hasattr(filing, 'document') else None
 
-        # Track which ETFs had data extracted
-        etfs_with_data = set()
-
-        # Process each context that has a class_id
-        for context_id, context_data in context_map.items():
-            class_id = context_data.get('class_id')
-            if not class_id:
+            # Get HTML content
+            html = filing.html()
+            if not html:
+                logger.warning(f"CIK {cik}: Filing {filing_idx} failed to fetch HTML content, skipping")
                 continue
 
-            # Match class_id to ETF
-            etf = class_id_to_etf.get(class_id)
-            if not etf:
-                logger.debug(f"CIK {cik}: class_id {class_id} not found in database, skipping")
+            # Parse iXBRL
+            soup = BeautifulSoup(html, 'html.parser')
+
+            # Extract contexts
+            context_map = parse_contexts(soup)
+
+            # Detect which namespace prefix is in use (rr: or oef:)
+            rr_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('rr:'))
+            oef_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('oef:'))
+
+            if rr_tags:
+                tag_prefix = 'rr'
+            elif oef_tags:
+                tag_prefix = 'oef'
+            else:
+                logger.warning(f"CIK {cik}: Filing {filing_idx} has no RR or OEF iXBRL tags, skipping")
                 continue
 
-            # Extract fee data
-            fee_data = {
-                'etf_id': etf.id,
-                'effective_date': effective_date,
-                'management_fee': extract_tag_value(tag_index, f'{tag_prefix}:ManagementFeesOverAssets', context_id),
-                'distribution_12b1': extract_tag_value(tag_index, f'{tag_prefix}:DistributionAndService12b1FeesOverAssets', context_id),
-                'other_expenses': extract_tag_value(tag_index, f'{tag_prefix}:OtherExpensesOverAssets', context_id),
-                'total_expense_gross': extract_tag_value(tag_index, f'{tag_prefix}:ExpensesOverAssets', context_id),
-                'fee_waiver': extract_tag_value(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssets', context_id, negate_to_positive=True),
-                'total_expense_net': extract_tag_value(tag_index, f'{tag_prefix}:NetExpensesOverAssets', context_id),
-                'acquired_fund_fees': extract_tag_value(tag_index, f'{tag_prefix}:AcquiredFundFeesAndExpensesOverAssets', context_id),
-            }
+            # Build tag index for O(1) lookups (performance optimization)
+            tag_index = build_tag_index(soup)
 
-            # Upsert FeeExpense (if any data present)
-            if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date')):
-                stmt = select(FeeExpense).where(
-                    FeeExpense.etf_id == etf.id,
-                    FeeExpense.effective_date == effective_date
-                )
-                existing = session.execute(stmt).scalar_one_or_none()
+            # Find the base context (no dimensions) for effective_date
+            base_context_id = None
+            for ctx_id, ctx_data in context_map.items():
+                if ctx_data['series_id'] is None and ctx_data['class_id'] is None:
+                    base_context_id = ctx_id
+                    break
 
-                if existing:
-                    # Update existing record
-                    for field, value in fee_data.items():
-                        if field not in ('etf_id', 'effective_date') and value is not None:
-                            setattr(existing, field, value)
-                    logger.debug(f"CIK {cik}: Updated fee data for {etf.ticker}")
-                else:
-                    # Insert new record
-                    new_fee = FeeExpense(**fee_data)
-                    session.add(new_fee)
-                    logger.debug(f"CIK {cik}: Inserted fee data for {etf.ticker}")
+            # If no base context, try to find one with just CIK
+            if not base_context_id and context_map:
+                base_context_id = list(context_map.keys())[0]
 
-                etfs_with_data.add(etf.id)
+            # Extract effective_date from DocumentPeriodEndDate
+            effective_date = None
+            if base_context_id:
+                effective_date = parse_date_tag(tag_index, 'dei:DocumentPeriodEndDate', base_context_id)
 
-            # Extract shareholder fees
-            shareholder_fee_data = {
-                'etf_id': etf.id,
-                'effective_date': effective_date,
-                'front_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeImposedOnPurchasesOverOfferingPrice', context_id),
-                'deferred_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumDeferredSalesChargeOverOther', context_id),
-                'reinvestment_charge': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeOnReinvestedDividendsAndDistributionsOverOther', context_id),
-                'redemption_fee': extract_tag_value(tag_index, f'{tag_prefix}:RedemptionFeeOverRedemption', context_id, negate_to_positive=True),
-                'exchange_fee': extract_tag_value(tag_index, f'{tag_prefix}:ExchangeFeeOverRedemption', context_id),
-            }
+            if not effective_date:
+                logger.warning(f"CIK {cik}: Filing {filing_idx} has no effective_date, using filing date")
+                effective_date = filing_date
 
-            # Upsert ShareholderFee (if any data present)
-            if any(shareholder_fee_data[k] is not None for k in shareholder_fee_data if k not in ('etf_id', 'effective_date')):
-                stmt = select(ShareholderFee).where(
-                    ShareholderFee.etf_id == etf.id,
-                    ShareholderFee.effective_date == effective_date
-                )
-                existing = session.execute(stmt).scalar_one_or_none()
+            # Track which ETFs had data extracted in this filing
+            etfs_with_data_this_filing = set()
 
-                if existing:
-                    # Update existing record
-                    for field, value in shareholder_fee_data.items():
-                        if field not in ('etf_id', 'effective_date') and value is not None:
-                            setattr(existing, field, value)
-                    logger.debug(f"CIK {cik}: Updated shareholder fees for {etf.ticker}")
-                else:
-                    # Insert new record
-                    new_shareholder_fee = ShareholderFee(**shareholder_fee_data)
-                    session.add(new_shareholder_fee)
-                    logger.debug(f"CIK {cik}: Inserted shareholder fees for {etf.ticker}")
-
-            # Extract expense examples
-            expense_example_data = {
-                'etf_id': etf.id,
-                'effective_date': effective_date,
-                'year_01': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear01', context_id),
-                'year_03': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear03', context_id),
-                'year_05': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear05', context_id),
-                'year_10': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear10', context_id),
-            }
-
-            # Convert Decimal to int for expense examples (they're dollar amounts)
-            for key in ['year_01', 'year_03', 'year_05', 'year_10']:
-                if expense_example_data[key] is not None:
-                    expense_example_data[key] = int(expense_example_data[key])
-
-            # Upsert ExpenseExample (if any data present)
-            if any(expense_example_data[k] is not None for k in expense_example_data if k not in ('etf_id', 'effective_date')):
-                stmt = select(ExpenseExample).where(
-                    ExpenseExample.etf_id == etf.id,
-                    ExpenseExample.effective_date == effective_date
-                )
-                existing = session.execute(stmt).scalar_one_or_none()
-
-                if existing:
-                    # Update existing record
-                    for field, value in expense_example_data.items():
-                        if field not in ('etf_id', 'effective_date') and value is not None:
-                            setattr(existing, field, value)
-                    logger.debug(f"CIK {cik}: Updated expense examples for {etf.ticker}")
-                else:
-                    # Insert new record
-                    new_expense_example = ExpenseExample(**expense_example_data)
-                    session.add(new_expense_example)
-                    logger.debug(f"CIK {cik}: Inserted expense examples for {etf.ticker}")
-
-        # Extract narrative text (series-level, not class-level)
-        for context_id, context_data in context_map.items():
-            series_id = context_data.get('series_id')
-            class_id = context_data.get('class_id')
-
-            # Series-level context (no class dimension)
-            if series_id and not class_id:
-                etf_list = series_id_to_etfs.get(series_id)
-                if not etf_list:
-                    logger.debug(f"CIK {cik}: series_id {series_id} not found in database, skipping narrative text")
+            # Process each context that has a class_id
+            for context_id, context_data in context_map.items():
+                class_id = context_data.get('class_id')
+                if not class_id:
                     continue
 
-                # Extract objective and strategy text
-                objective_text = extract_tag_value(tag_index, f'{tag_prefix}:ObjectivePrimaryTextBlock', context_id)
-                strategy_text = extract_tag_value(tag_index, f'{tag_prefix}:StrategyNarrativeTextBlock', context_id)
+                # Skip if already satisfied
+                if class_id in satisfied:
+                    logger.debug(f"CIK {cik}: class_id {class_id} already satisfied, skipping")
+                    continue
 
-                # Update all ETFs with this series_id (multiple share classes can belong to same series)
-                for etf in etf_list:
-                    if objective_text:
-                        etf.objective_text = objective_text
-                        logger.debug(f"CIK {cik}: Updated objective_text for {etf.ticker}")
+                # Match class_id to ETF
+                etf = class_id_to_etf.get(class_id)
+                if not etf:
+                    logger.debug(f"CIK {cik}: class_id {class_id} not found in database, skipping")
+                    continue
 
-                    if strategy_text:
-                        etf.strategy_text = strategy_text
-                        logger.debug(f"CIK {cik}: Updated strategy_text for {etf.ticker}")
+                # Extract fee data
+                fee_data = {
+                    'etf_id': etf.id,
+                    'effective_date': effective_date,
+                    'management_fee': extract_tag_value(tag_index, f'{tag_prefix}:ManagementFeesOverAssets', context_id),
+                    'distribution_12b1': extract_tag_value(tag_index, f'{tag_prefix}:DistributionAndService12b1FeesOverAssets', context_id),
+                    'other_expenses': extract_tag_value(tag_index, f'{tag_prefix}:OtherExpensesOverAssets', context_id),
+                    'total_expense_gross': extract_tag_value(tag_index, f'{tag_prefix}:ExpensesOverAssets', context_id),
+                    'fee_waiver': extract_tag_value(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssets', context_id, negate_to_positive=True),
+                    'total_expense_net': extract_tag_value(tag_index, f'{tag_prefix}:NetExpensesOverAssets', context_id),
+                    'acquired_fund_fees': extract_tag_value(tag_index, f'{tag_prefix}:AcquiredFundFeesAndExpensesOverAssets', context_id),
+                }
 
-        # Update filing_url for all ETFs that had data extracted
-        if filing_url:
-            for etf_id in etfs_with_data:
-                etf = session.get(ETF, etf_id)
-                if etf:
-                    etf.filing_url = filing_url
-                    logger.debug(f"CIK {cik}: Updated filing_url for {etf.ticker}")
+                # Upsert FeeExpense (if any data present)
+                if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date')):
+                    stmt = select(FeeExpense).where(
+                        FeeExpense.etf_id == etf.id,
+                        FeeExpense.effective_date == effective_date
+                    )
+                    existing = session.execute(stmt).scalar_one_or_none()
+
+                    if existing:
+                        # Update existing record
+                        for field, value in fee_data.items():
+                            if field not in ('etf_id', 'effective_date') and value is not None:
+                                setattr(existing, field, value)
+                        logger.debug(f"CIK {cik}: Updated fee data for {etf.ticker}")
+                    else:
+                        # Insert new record
+                        new_fee = FeeExpense(**fee_data)
+                        session.add(new_fee)
+                        logger.debug(f"CIK {cik}: Inserted fee data for {etf.ticker}")
+
+                    etfs_with_data_this_filing.add(etf.id)
+
+                # Extract shareholder fees
+                shareholder_fee_data = {
+                    'etf_id': etf.id,
+                    'effective_date': effective_date,
+                    'front_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeImposedOnPurchasesOverOfferingPrice', context_id),
+                    'deferred_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumDeferredSalesChargeOverOther', context_id),
+                    'reinvestment_charge': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeOnReinvestedDividendsAndDistributionsOverOther', context_id),
+                    'redemption_fee': extract_tag_value(tag_index, f'{tag_prefix}:RedemptionFeeOverRedemption', context_id, negate_to_positive=True),
+                    'exchange_fee': extract_tag_value(tag_index, f'{tag_prefix}:ExchangeFeeOverRedemption', context_id),
+                }
+
+                # Upsert ShareholderFee (if any data present)
+                if any(shareholder_fee_data[k] is not None for k in shareholder_fee_data if k not in ('etf_id', 'effective_date')):
+                    stmt = select(ShareholderFee).where(
+                        ShareholderFee.etf_id == etf.id,
+                        ShareholderFee.effective_date == effective_date
+                    )
+                    existing = session.execute(stmt).scalar_one_or_none()
+
+                    if existing:
+                        # Update existing record
+                        for field, value in shareholder_fee_data.items():
+                            if field not in ('etf_id', 'effective_date') and value is not None:
+                                setattr(existing, field, value)
+                        logger.debug(f"CIK {cik}: Updated shareholder fees for {etf.ticker}")
+                    else:
+                        # Insert new record
+                        new_shareholder_fee = ShareholderFee(**shareholder_fee_data)
+                        session.add(new_shareholder_fee)
+                        logger.debug(f"CIK {cik}: Inserted shareholder fees for {etf.ticker}")
+
+                # Extract expense examples
+                expense_example_data = {
+                    'etf_id': etf.id,
+                    'effective_date': effective_date,
+                    'year_01': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear01', context_id),
+                    'year_03': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear03', context_id),
+                    'year_05': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear05', context_id),
+                    'year_10': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear10', context_id),
+                }
+
+                # Convert Decimal to int for expense examples (they're dollar amounts)
+                for key in ['year_01', 'year_03', 'year_05', 'year_10']:
+                    if expense_example_data[key] is not None:
+                        expense_example_data[key] = int(expense_example_data[key])
+
+                # Upsert ExpenseExample (if any data present)
+                if any(expense_example_data[k] is not None for k in expense_example_data if k not in ('etf_id', 'effective_date')):
+                    stmt = select(ExpenseExample).where(
+                        ExpenseExample.etf_id == etf.id,
+                        ExpenseExample.effective_date == effective_date
+                    )
+                    existing = session.execute(stmt).scalar_one_or_none()
+
+                    if existing:
+                        # Update existing record
+                        for field, value in expense_example_data.items():
+                            if field not in ('etf_id', 'effective_date') and value is not None:
+                                setattr(existing, field, value)
+                        logger.debug(f"CIK {cik}: Updated expense examples for {etf.ticker}")
+                    else:
+                        # Insert new record
+                        new_expense_example = ExpenseExample(**expense_example_data)
+                        session.add(new_expense_example)
+                        logger.debug(f"CIK {cik}: Inserted expense examples for {etf.ticker}")
+
+                # Mark this class_id as satisfied
+                satisfied.add(class_id)
+
+            # Extract narrative text (series-level, not class-level)
+            for context_id, context_data in context_map.items():
+                series_id = context_data.get('series_id')
+                class_id = context_data.get('class_id')
+
+                # Series-level context (no class dimension)
+                if series_id and not class_id:
+                    etf_list = series_id_to_etfs.get(series_id)
+                    if not etf_list:
+                        logger.debug(f"CIK {cik}: series_id {series_id} not found in database, skipping narrative text")
+                        continue
+
+                    # Extract objective and strategy text
+                    objective_text = extract_tag_value(tag_index, f'{tag_prefix}:ObjectivePrimaryTextBlock', context_id)
+                    strategy_text = extract_tag_value(tag_index, f'{tag_prefix}:StrategyNarrativeTextBlock', context_id)
+
+                    # Update all ETFs with this series_id (multiple share classes can belong to same series)
+                    for etf in etf_list:
+                        if objective_text:
+                            etf.objective_text = objective_text
+                            logger.debug(f"CIK {cik}: Updated objective_text for {etf.ticker}")
+
+                        if strategy_text:
+                            etf.strategy_text = strategy_text
+                            logger.debug(f"CIK {cik}: Updated strategy_text for {etf.ticker}")
+
+            # Update filing_url for ETFs processed in this filing
+            if filing_url:
+                for etf_id in etfs_with_data_this_filing:
+                    etf = session.get(ETF, etf_id)
+                    if etf:
+                        etf.filing_url = filing_url
+                        logger.debug(f"CIK {cik}: Updated filing_url for {etf.ticker}")
 
         session.commit()
         logger.info(f"CIK {cik}: Successfully processed 485BPOS filing")

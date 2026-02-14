@@ -1,0 +1,57 @@
+{
+  "feature": "End-to-End Run Pipeline Command",
+  "slug": "end-to-end-run-pipeline-comman-based-on-this-discussion",
+  "created": "2026-02-14",
+  "phases": [
+    {
+      "id": 1,
+      "name": "Schema Changes",
+      "stories": [
+        {
+          "id": "US-1",
+          "title": "Add processing_log table",
+          "files": ["src/etf_pipeline/models.py", "docs/SCHEMA.md", "tests/test_models.py"]
+        },
+        {
+          "id": "US-2",
+          "title": "Add filing_date column to all data tables and update unique constraints",
+          "files": ["src/etf_pipeline/models.py", "docs/SCHEMA.md", "tests/test_models.py", "tests/test_nport.py", "tests/test_ncsr.py", "tests/test_prospectus.py", "tests/test_finhigh.py", "tests/conftest.py"]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Parser Changes",
+      "stories": [
+        {
+          "id": "US-3",
+          "title": "Update all parsers to set filing_date and log to processing_log",
+          "files": [
+            "src/etf_pipeline/parsers/nport.py",
+            "src/etf_pipeline/parsers/ncsr.py",
+            "src/etf_pipeline/parsers/prospectus.py",
+            "src/etf_pipeline/parsers/finhigh.py",
+            "src/etf_pipeline/parsers/flows.py",
+            "tests/test_nport.py",
+            "tests/test_ncsr.py",
+            "tests/test_prospectus.py",
+            "tests/test_finhigh.py"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Intelligent run-all Command",
+      "stories": [
+        {
+          "id": "US-4",
+          "title": "Per-CIK orchestration with freshness detection",
+          "files": ["src/etf_pipeline/cli.py", "tests/test_run_all.py"]
+        }
+      ]
+    }
+  ],
+  "verification": "python -m pytest tests/ -q",
+  "out_of_scope": ["PostgreSQL support", "parallel processing", "backward compatibility", "extra CLI flags"]
+}

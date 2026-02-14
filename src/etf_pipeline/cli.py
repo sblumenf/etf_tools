@@ -118,6 +118,48 @@ def finhigh(cik, limit, keep_cache):
 
 
 @main.command()
-def run_all():
+@click.option("--limit", type=int, help="Process only the first N CIKs")
+def run_all(limit):
     """Run the full pipeline: discover + all parsers."""
-    click.echo("run-all: not yet implemented")
+    import logging
+
+    from etf_pipeline.db import get_engine
+    from etf_pipeline.models import Base
+    from etf_pipeline.discover import fetch
+    from etf_pipeline.load_etfs import load_etfs
+    from etf_pipeline.parsers.nport import parse_nport
+    from etf_pipeline.parsers.ncsr import parse_ncsr
+    from etf_pipeline.parsers.prospectus import parse_prospectus
+    from etf_pipeline.parsers.finhigh import parse_finhigh
+    from etf_pipeline.parsers.flows import parse_flows
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    click.echo("--- Step 0/8: Ensuring database tables exist ---")
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+
+    click.echo("--- Step 1/8: Discovering ETF tickers ---")
+    fetch()
+
+    click.echo("--- Step 2/8: Loading ETFs into database ---")
+    load_etfs(limit=limit)
+
+    click.echo("--- Step 3/8: Parsing NPORT filings ---")
+    parse_nport(limit=limit, clear_cache=False)
+
+    click.echo("--- Step 4/8: Parsing N-CSR filings ---")
+    parse_ncsr(limit=limit, clear_cache=False)
+
+    click.echo("--- Step 5/8: Parsing prospectus filings ---")
+    parse_prospectus(limit=limit, clear_cache=False)
+
+    click.echo("--- Step 6/8: Parsing financial highlights ---")
+    parse_finhigh(limit=limit, clear_cache=False)
+
+    click.echo("--- Step 7/8: Parsing fund flows ---")
+    parse_flows(limit=limit, clear_cache=True)
+
+    click.echo("--- Step 8/8: Pipeline complete ---")

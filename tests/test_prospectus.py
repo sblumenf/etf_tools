@@ -475,6 +475,7 @@ class TestIntegrationProcessCikProspectus:
 
         mock_filings = Mock()
         mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -529,6 +530,76 @@ class TestIntegrationProcessCikProspectus:
         assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
 
+    def test_process_cik_multi_filing(self, session, sample_filing_path):
+        """Test processing multiple filings - verifies loop can handle multiple files."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF records matching the fixture
+        etf_a = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A', issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        etf_i = ETF(
+            cik='0001314612',
+            ticker='TESTI',
+            fund_name='Test Fund - Class I', issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014546',
+        )
+        session.add_all([etf_a, etf_i])
+        session.commit()
+
+        # Read fixture HTML (contains both classes)
+        with open(sample_filing_path) as f:
+            html_content = f.read()
+
+        # Mock multiple filings available
+        mock_filing_0 = Mock()
+        mock_filing_0.html.return_value = html_content
+        mock_filing_0.filing_date = date(2022, 11, 3)
+        mock_filing_0.document.url = 'https://www.sec.gov/test/filing0.htm'
+
+        mock_filing_1 = Mock()
+        mock_filing_1.html.return_value = html_content
+        mock_filing_1.filing_date = date(2022, 5, 3)
+        mock_filing_1.document.url = 'https://www.sec.gov/test/filing1.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(side_effect=[mock_filing_0, mock_filing_1])
+        mock_filings.__len__ = Mock(return_value=2)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        # Patch Company class
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Both ETFs should have data
+        fee_a = session.query(FeeExpense).filter_by(etf_id=etf_a.id).one()
+        assert fee_a.management_fee == pytest.approx(Decimal('0.0070'))
+        assert fee_a.effective_date == date(2022, 11, 3)
+
+        fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i.id).one()
+        assert fee_i.management_fee == pytest.approx(Decimal('0.0070'))
+        assert fee_i.effective_date == date(2022, 11, 3)
+
+        # Verify both ETFs have filing URLs (from whichever filing processed them)
+        session.refresh(etf_a)
+        assert etf_a.filing_url is not None
+
+        session.refresh(etf_i)
+        assert etf_i.filing_url is not None
+
     def test_process_cik_no_filings(self, session):
         """Test CIK with no 485BPOS filings."""
         from unittest.mock import Mock, patch
@@ -574,6 +645,7 @@ class TestIntegrationProcessCikProspectus:
 
         mock_filings = Mock()
         mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -613,6 +685,7 @@ class TestIntegrationProcessCikProspectus:
 
         mock_filings = Mock()
         mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -664,6 +737,7 @@ class TestIntegrationProcessCikProspectus:
 
         mock_filings = Mock()
         mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -712,6 +786,7 @@ class TestIntegrationParseProspectus:
 
         mock_filings = Mock()
         mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
         mock_filings.empty = False
 
         mock_company = Mock()
@@ -807,6 +882,7 @@ class TestOEFNamespace:
 
         mock_filings = Mock()
         mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
         mock_filings.empty = False
 
         mock_company = Mock()

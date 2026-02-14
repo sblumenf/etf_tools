@@ -1,63 +1,92 @@
-# Specification Draft: implement the 485BPOS parser
+# Draft: End-to-End Run Pipeline Command
 
-*Interview in progress - Started: 2026-02-13*
+## Core Concept
+Intelligent, incremental pipeline that builds an over-time record of ETF data.
 
-## Overview
-Parse 485BPOS (post-effective amendment / prospectus) filings from SEC EDGAR to extract fee schedules and investment strategy text. Data is iXBRL-tagged using the Risk/Return Summary (RR) XBRL taxonomy.
+## CLI Interface
+```
+etf-pipeline run-all           # process all CIKs (new + stale)
+etf-pipeline run-all --limit 5 # process 5 CIKs (new + stale)
+```
+No other flags. Simple.
 
-## Decisions Made
+## Execution Flow
 
-### D1: Class scope — Only known classes
-Only extract fee data for class_ids already in the ETF table. Skip unknown classes. Consistent with ncsr/finhigh parsers.
+### Step 0: Ensure DB + tables exist
+- `Base.metadata.create_all(engine)` (idempotent)
 
-### D2: Net vs Gross — Leave NULL
-If no `NetExpensesOverAssets` tag exists, leave `total_expense_net` as NULL. Don't infer.
+### Step 1: Discover
+- Always re-run `fetch()` to get latest ETF universe from SEC
+- Produces `etf_tickers.json`
 
-### D3: Strategy field — Two separate fields
-Add two fields to ETF table:
-- `objective_text` — from `rr:ObjectivePrimaryTextBlock` (investment objective, 1-2 sentences)
-- `strategy_text` — from `rr:StrategyNarrativeTextBlock` (principal strategies, detailed)
+### Step 2: Load ETFs
+- Run `load_etfs()` to populate/update ETF table with fund_name, issuer_name
+- Pass `limit` if provided
 
-### D4: AFFE column — Add it
-Add `acquired_fund_fees` Numeric(6,5) to FeeExpense model.
+### Step 3: Per-CIK Processing
+For each CIK (alphabetical order, limited by --limit if set):
+1. Check SEC for latest filing dates per form type (NPORT-P, N-CSR, 485BPOS, 24F-2NT)
+2. Compare against processing_log table
+3. Run ONLY parsers that have new filings since last run
+4. For never-processed CIKs: run ALL parsers
+5. Update processing_log with (cik, parser_type, last_run_at, latest_filing_date_seen)
+6. Clear edgartools cache after each CIK
 
-## Data Model Changes
+### Error Handling
+- Continue on per-CIK failure, log error
+- Report summary at end: N succeeded, N failed, N skipped (no new data)
 
-### ETF table additions
-- `objective_text` (Text, nullable) — Investment objective from RR ObjectivePrimaryTextBlock
+## Tracking: processing_log Table
+```
+processing_log:
+  id: Integer (PK)
+  cik: String(10), NOT NULL
+  parser_type: String(20), NOT NULL  (nport, ncsr, prospectus, finhigh, flows)
+  last_run_at: DateTime, NOT NULL
+  latest_filing_date_seen: Date, NOT NULL
+  UNIQUE(cik, parser_type)
+```
 
-### FeeExpense table additions
-- `acquired_fund_fees` (Numeric(6,5), nullable) — Acquired fund fees and expenses
+## Data History: filing_date Column
+- Add `filing_date` (Date) column to ALL data tables
+- Include `filing_date` in unique constraints
+- New filings = new rows (different report_date)
+- Amended filings = also new rows (same report_date, different filing_date)
+- Never overwrite — always insert
 
-## RR Taxonomy Tag Mapping
+### Tables needing filing_date:
+- Holding (currently unique on etf_id, cusip, report_date)
+- Derivative (currently unique on etf_id, name, report_date)
+- Performance (currently unique on etf_id, class_id, fiscal_year_end)
+- FeeExpense (currently unique on etf_id, effective_date)
+- ShareholderFee (currently unique on etf_id, effective_date)
+- ExpenseExample (currently unique on etf_id, effective_date)
+- FlowData (currently unique on cik, fiscal_year_end)
+- PerShareOperating (currently unique on etf_id, fiscal_year_end)
+- PerShareDistribution (currently unique on etf_id, fiscal_year_end)
+- PerShareRatio (currently unique on etf_id, fiscal_year_end)
 
-| DB Field | RR Tag | Notes |
-|----------|--------|-------|
-| management_fee | `rr:ManagementFeesOverAssets` | Per share class |
-| distribution_12b1 | `rr:DistributionAndService12b1FeesOverAssets` | Per share class |
-| other_expenses | `rr:OtherExpensesOverAssets` | Per share class |
-| total_expense_gross | `rr:ExpensesOverAssets` | Per share class |
-| fee_waiver | `rr:FeeWaiverOrReimbursementOverAssets` | Per share class, negative value |
-| total_expense_net | `rr:NetExpensesOverAssets` | Per share class, NULL if absent |
-| acquired_fund_fees | `rr:AcquiredFundFeesAndExpensesOverAssets` | Per share class |
-| objective_text | `rr:ObjectivePrimaryTextBlock` | Per series (LegalEntityAxis) |
-| strategy_text | `rr:StrategyNarrativeTextBlock` | Per series (LegalEntityAxis) |
-| filing_url | Filing metadata | URL to source 485BPOS filing |
-| effective_date | `dei:DocumentPeriodEndDate` or filing date | TBD |
+## Orchestration: Per-CIK (not bulk)
+- Iterate CIK by CIK
+- For each CIK, run only needed parsers
+- Clear cache after each CIK completes
+- DB is source of truth; cached filings are disposable
 
-## XBRL Context Structure
-- CIK in `xbrli:identifier`
-- Series via `dei:LegalEntityAxis` → `S{number}Member`
-- Share class via `rr:ProspectusShareClassAxis` → `C{number}Member`
-- Fee tags are per share class (series + class context)
-- Strategy/objective tags are per series (series-only context)
+## Phasing (3 phases, separation of concerns)
+### Phase 1: Schema changes
+- Add processing_log table
+- Add filing_date column to all data tables
+- Update unique constraints to include filing_date
+- Update SCHEMA.md
+- All existing tests must still pass
 
-## Open Questions
-- Effective date: use `dei:DocumentPeriodEndDate` from filing, or filing date from EDGAR index?
-- HTML stripping: should strategy_text/objective_text be stored as plain text or raw HTML?
-- How to handle multiple 485BPOS filings per CIK — most recent only, or iterate?
+### Phase 2: Parser changes
+- Each parser: INSERT instead of upsert
+- Each parser: set filing_date on every row
+- Each parser: log to processing_log after success
+- Extract per-CIK processing functions for reuse by run-all
 
----
-*Interview notes will be accumulated below as the interview progresses*
----
-
+### Phase 3: run-all intelligence
+- Per-CIK orchestration with freshness detection
+- Cache cleanup per CIK
+- Summary reporting

@@ -14,6 +14,7 @@ from etf_pipeline.models import (
     PerShareDistribution,
     PerShareOperating,
     PerShareRatios,
+    ProcessingLog,
 )
 
 
@@ -66,6 +67,7 @@ class TestHolding:
         holding = Holding(
             etf_id=etf.id,
             report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
             name="Apple Inc",
             cusip="037833100",
             value_usd=Decimal("150000000.00"),
@@ -84,6 +86,7 @@ class TestHolding:
         holding = Holding(
             etf_id=9999,
             report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
             name="Orphan",
         )
         session.add(holding)
@@ -95,8 +98,18 @@ class TestHolding:
         session.add(etf)
         session.flush()
 
-        h1 = Holding(etf_id=etf.id, report_date=date(2024, 3, 31), name="AAPL")
-        h2 = Holding(etf_id=etf.id, report_date=date(2024, 3, 31), name="MSFT")
+        h1 = Holding(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            name="AAPL",
+        )
+        h2 = Holding(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            name="MSFT",
+        )
         session.add_all([h1, h2])
         session.commit()
 
@@ -113,6 +126,7 @@ class TestDerivative:
         deriv = Derivative(
             etf_id=etf.id,
             report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
             derivative_type="future",
             underlying_name="S&P 500 Index",
             notional_value=Decimal("50000000.00"),
@@ -134,6 +148,7 @@ class TestPerformance:
         perf = Performance(
             etf_id=etf.id,
             fiscal_year_end=date(2024, 1, 31),
+            filing_date=date(2024, 3, 1),
             return_1yr=Decimal("0.12340"),
             portfolio_turnover=Decimal("0.50000"),
             expense_ratio_actual=Decimal("0.00090"),
@@ -149,10 +164,22 @@ class TestPerformance:
         session.add(etf)
         session.flush()
 
-        session.add(Performance(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)))
+        session.add(
+            Performance(
+                etf_id=etf.id,
+                fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
+            )
+        )
         session.commit()
 
-        session.add(Performance(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)))
+        session.add(
+            Performance(
+                etf_id=etf.id,
+                fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
+            )
+        )
         with pytest.raises(IntegrityError):
             session.commit()
 
@@ -166,6 +193,7 @@ class TestFeeExpense:
         fee = FeeExpense(
             etf_id=etf.id,
             effective_date=date(2024, 3, 1),
+            filing_date=date(2024, 3, 1),
             management_fee=Decimal("0.00045"),
             total_expense_net=Decimal("0.00093"),
         )
@@ -180,10 +208,22 @@ class TestFeeExpense:
         session.add(etf)
         session.flush()
 
-        session.add(FeeExpense(etf_id=etf.id, effective_date=date(2024, 3, 1)))
+        session.add(
+            FeeExpense(
+                etf_id=etf.id,
+                effective_date=date(2024, 3, 1),
+                filing_date=date(2024, 3, 1),
+            )
+        )
         session.commit()
 
-        session.add(FeeExpense(etf_id=etf.id, effective_date=date(2024, 3, 1)))
+        session.add(
+            FeeExpense(
+                etf_id=etf.id,
+                effective_date=date(2024, 3, 1),
+                filing_date=date(2024, 3, 1),
+            )
+        )
         with pytest.raises(IntegrityError):
             session.commit()
 
@@ -193,6 +233,7 @@ class TestFlowData:
         flow = FlowData(
             cik="0001100663",
             fiscal_year_end=date(2024, 1, 31),
+            filing_date=date(2024, 3, 1),
             sales_value=Decimal("5000000000.0000"),
             redemptions_value=Decimal("4500000000.0000"),
             net_sales=Decimal("500000000.0000"),
@@ -205,10 +246,22 @@ class TestFlowData:
         assert result.cik == "0001100663"
 
     def test_flow_unique_constraint(self, session):
-        session.add(FlowData(cik="0001100663", fiscal_year_end=date(2024, 1, 31)))
+        session.add(
+            FlowData(
+                cik="0001100663",
+                fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
+            )
+        )
         session.commit()
 
-        session.add(FlowData(cik="0001100663", fiscal_year_end=date(2024, 1, 31)))
+        session.add(
+            FlowData(
+                cik="0001100663",
+                fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
+            )
+        )
         with pytest.raises(IntegrityError):
             session.commit()
 
@@ -222,6 +275,7 @@ class TestPerShareOperating:
         pso = PerShareOperating(
             etf_id=etf.id,
             fiscal_year_end=date(2024, 1, 31),
+            filing_date=date(2024, 3, 1),
             nav_beginning=Decimal("100.0000"),
             net_investment_income=Decimal("2.5000"),
             net_realized_unrealized_gain=Decimal("12.0000"),
@@ -247,6 +301,7 @@ class TestPerShareOperating:
             PerShareOperating(
                 etf_id=etf.id,
                 fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
                 math_validated=True,
             )
         )
@@ -256,6 +311,7 @@ class TestPerShareOperating:
             PerShareOperating(
                 etf_id=etf.id,
                 fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
                 math_validated=False,
             )
         )
@@ -270,6 +326,7 @@ class TestPerShareOperating:
         pso = PerShareOperating(
             etf_id=etf.id,
             fiscal_year_end=date(2024, 1, 31),
+            filing_date=date(2024, 3, 1),
             math_validated=True,
         )
         session.add(pso)
@@ -288,6 +345,7 @@ class TestPerShareDistribution:
         psd = PerShareDistribution(
             etf_id=etf.id,
             fiscal_year_end=date(2024, 1, 31),
+            filing_date=date(2024, 3, 1),
             dist_net_investment_income=Decimal("-2.5000"),
             dist_realized_gains=Decimal("-0.5000"),
             dist_return_of_capital=Decimal("-0.1000"),
@@ -307,14 +365,18 @@ class TestPerShareDistribution:
 
         session.add(
             PerShareDistribution(
-                etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)
+                etf_id=etf.id,
+                fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
             )
         )
         session.commit()
 
         session.add(
             PerShareDistribution(
-                etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)
+                etf_id=etf.id,
+                fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
             )
         )
         with pytest.raises(IntegrityError):
@@ -326,7 +388,9 @@ class TestPerShareDistribution:
         session.flush()
 
         psd = PerShareDistribution(
-            etf_id=etf.id, fiscal_year_end=date(2024, 1, 31)
+            etf_id=etf.id,
+            fiscal_year_end=date(2024, 1, 31),
+            filing_date=date(2024, 3, 1),
         )
         session.add(psd)
         session.commit()
@@ -344,6 +408,7 @@ class TestPerShareRatios:
         psr = PerShareRatios(
             etf_id=etf.id,
             fiscal_year_end=date(2024, 1, 31),
+            filing_date=date(2024, 3, 1),
             expense_ratio=Decimal("0.00090"),
             portfolio_turnover=Decimal("0.50000"),
             net_assets_end=Decimal("1000000000.00"),
@@ -361,12 +426,20 @@ class TestPerShareRatios:
         session.flush()
 
         session.add(
-            PerShareRatios(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31))
+            PerShareRatios(
+                etf_id=etf.id,
+                fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
+            )
         )
         session.commit()
 
         session.add(
-            PerShareRatios(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31))
+            PerShareRatios(
+                etf_id=etf.id,
+                fiscal_year_end=date(2024, 1, 31),
+                filing_date=date(2024, 3, 1),
+            )
         )
         with pytest.raises(IntegrityError):
             session.commit()
@@ -376,9 +449,74 @@ class TestPerShareRatios:
         session.add(etf)
         session.flush()
 
-        psr = PerShareRatios(etf_id=etf.id, fiscal_year_end=date(2024, 1, 31))
+        psr = PerShareRatios(
+            etf_id=etf.id,
+            fiscal_year_end=date(2024, 1, 31),
+            filing_date=date(2024, 3, 1),
+        )
         session.add(psr)
         session.commit()
 
         session.refresh(etf)
         assert len(etf.per_share_ratios) == 1
+
+
+class TestProcessingLog:
+    def test_create_processing_log(self, session):
+        log = ProcessingLog(
+            cik="0001100663",
+            parser_type="nport",
+            last_run_at=datetime(2024, 2, 14, 10, 30, 0),
+            latest_filing_date_seen=date(2024, 1, 31),
+        )
+        session.add(log)
+        session.commit()
+
+        result = session.query(ProcessingLog).one()
+        assert result.cik == "0001100663"
+        assert result.parser_type == "nport"
+        assert result.latest_filing_date_seen == date(2024, 1, 31)
+
+    def test_processing_log_unique_constraint(self, session):
+        session.add(
+            ProcessingLog(
+                cik="0001100663",
+                parser_type="nport",
+                last_run_at=datetime(2024, 2, 14, 10, 30, 0),
+                latest_filing_date_seen=date(2024, 1, 31),
+            )
+        )
+        session.commit()
+
+        session.add(
+            ProcessingLog(
+                cik="0001100663",
+                parser_type="nport",
+                last_run_at=datetime(2024, 2, 14, 11, 0, 0),
+                latest_filing_date_seen=date(2024, 2, 28),
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+    def test_processing_log_allows_different_parsers(self, session):
+        session.add(
+            ProcessingLog(
+                cik="0001100663",
+                parser_type="nport",
+                last_run_at=datetime(2024, 2, 14, 10, 30, 0),
+                latest_filing_date_seen=date(2024, 1, 31),
+            )
+        )
+        session.add(
+            ProcessingLog(
+                cik="0001100663",
+                parser_type="ncsr",
+                last_run_at=datetime(2024, 2, 14, 10, 35, 0),
+                latest_filing_date_seen=date(2024, 1, 31),
+            )
+        )
+        session.commit()
+
+        result = session.query(ProcessingLog).all()
+        assert len(result) == 2

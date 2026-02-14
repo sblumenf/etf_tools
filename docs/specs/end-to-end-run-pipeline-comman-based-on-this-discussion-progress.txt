@@ -1,0 +1,7 @@
+Phase 1: Schema Changes [PENDING]
+  US-1: Add processing_log table [PENDING]
+  US-2: Add filing_date column to all data tables [PENDING]
+Phase 2: Parser Changes [PENDING]
+  US-3: Update all parsers to set filing_date and log to processing_log [PENDING]
+Phase 3: Intelligent run-all Command [PENDING]
+  US-4: Per-CIK orchestration with freshness detection [PENDING]

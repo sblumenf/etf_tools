@@ -68,6 +68,9 @@ class ETF(Base):
 class Holding(Base):
     __tablename__ = "holding"
     __table_args__ = (
+        UniqueConstraint(
+            "etf_id", "report_date", "cusip", "filing_date", name="holding_uniq"
+        ),
         Index("holding_etf_report_idx", "etf_id", "report_date"),
         Index("holding_cusip_idx", "cusip"),
         Index("holding_report_date_idx", "report_date"),
@@ -76,6 +79,7 @@ class Holding(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
     report_date: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     cusip: Mapped[Optional[str]] = mapped_column(String(9))
     isin: Mapped[Optional[str]] = mapped_column(String(12))
@@ -98,6 +102,14 @@ class Holding(Base):
 class Derivative(Base):
     __tablename__ = "derivative"
     __table_args__ = (
+        UniqueConstraint(
+            "etf_id",
+            "report_date",
+            "derivative_type",
+            "underlying_name",
+            "filing_date",
+            name="derivative_uniq",
+        ),
         Index("derivative_etf_report_idx", "etf_id", "report_date"),
         Index("derivative_report_date_idx", "report_date"),
     )
@@ -105,6 +117,7 @@ class Derivative(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
     report_date: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     derivative_type: Mapped[str] = mapped_column(String(20), nullable=False)
     underlying_name: Mapped[Optional[str]] = mapped_column(String(500))
     underlying_cusip: Mapped[Optional[str]] = mapped_column(String(9))
@@ -120,12 +133,15 @@ class Derivative(Base):
 class Performance(Base):
     __tablename__ = "performance"
     __table_args__ = (
-        UniqueConstraint("etf_id", "fiscal_year_end", name="performance_etf_fy_uniq"),
+        UniqueConstraint(
+            "etf_id", "fiscal_year_end", "filing_date", name="performance_etf_fy_uniq"
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
     fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     return_1yr: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
     return_5yr: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
     return_10yr: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
@@ -144,13 +160,14 @@ class FeeExpense(Base):
     __tablename__ = "fee_expense"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "effective_date", name="fee_expense_etf_date_uniq"
+            "etf_id", "effective_date", "filing_date", name="fee_expense_etf_date_uniq"
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
     effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     management_fee: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
     distribution_12b1: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
     other_expenses: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
@@ -166,13 +183,17 @@ class ShareholderFee(Base):
     __tablename__ = "shareholder_fee"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "effective_date", name="shareholder_fee_etf_date_uniq"
+            "etf_id",
+            "effective_date",
+            "filing_date",
+            name="shareholder_fee_etf_date_uniq",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
     effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     front_load: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
     deferred_load: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
     reinvestment_charge: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
@@ -186,13 +207,17 @@ class ExpenseExample(Base):
     __tablename__ = "expense_example"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "effective_date", name="expense_example_etf_date_uniq"
+            "etf_id",
+            "effective_date",
+            "filing_date",
+            name="expense_example_etf_date_uniq",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
     effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     year_01: Mapped[Optional[int]] = mapped_column(Integer)
     year_03: Mapped[Optional[int]] = mapped_column(Integer)
     year_05: Mapped[Optional[int]] = mapped_column(Integer)
@@ -204,13 +229,16 @@ class ExpenseExample(Base):
 class FlowData(Base):
     __tablename__ = "flow_data"
     __table_args__ = (
-        UniqueConstraint("cik", "fiscal_year_end", name="flow_data_cik_fy_uniq"),
+        UniqueConstraint(
+            "cik", "fiscal_year_end", "filing_date", name="flow_data_cik_fy_uniq"
+        ),
         Index("flow_data_fy_idx", "fiscal_year_end"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cik: Mapped[str] = mapped_column(String(10), nullable=False)
     fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     sales_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
     redemptions_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
     net_sales: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
@@ -220,13 +248,17 @@ class PerShareOperating(Base):
     __tablename__ = "per_share_operating"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "fiscal_year_end", name="per_share_operating_etf_fy_uniq"
+            "etf_id",
+            "fiscal_year_end",
+            "filing_date",
+            name="per_share_operating_etf_fy_uniq",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
     fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     nav_beginning: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
     net_investment_income: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
     net_realized_unrealized_gain: Mapped[Optional[Decimal]] = mapped_column(
@@ -245,13 +277,17 @@ class PerShareDistribution(Base):
     __tablename__ = "per_share_distribution"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "fiscal_year_end", name="per_share_distribution_etf_fy_uniq"
+            "etf_id",
+            "fiscal_year_end",
+            "filing_date",
+            name="per_share_distribution_etf_fy_uniq",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
     fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     dist_net_investment_income: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(10, 4)
     )
@@ -266,15 +302,32 @@ class PerShareRatios(Base):
     __tablename__ = "per_share_ratios"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "fiscal_year_end", name="per_share_ratios_etf_fy_uniq"
+            "etf_id",
+            "fiscal_year_end",
+            "filing_date",
+            name="per_share_ratios_etf_fy_uniq",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
     fiscal_year_end: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     expense_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
     portfolio_turnover: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
     net_assets_end: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
 
     etf: Mapped["ETF"] = relationship(back_populates="per_share_ratios")
+
+
+class ProcessingLog(Base):
+    __tablename__ = "processing_log"
+    __table_args__ = (
+        UniqueConstraint("cik", "parser_type", name="processing_log_cik_parser_uniq"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cik: Mapped[str] = mapped_column(String(10), nullable=False)
+    parser_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    last_run_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    latest_filing_date_seen: Mapped[date] = mapped_column(Date, nullable=False)
