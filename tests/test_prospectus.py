@@ -24,6 +24,12 @@ def sample_filing():
     return BeautifulSoup(html, 'html.parser')
 
 
+@pytest.fixture
+def sample_filing_path():
+    """Return path to sample 485BPOS fixture."""
+    return Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos.html"
+
+
 class TestParseContexts:
     """Test context parsing (CIK, series_id, class_id extraction)."""
 
@@ -288,7 +294,7 @@ class TestExtractTagValue:
     def test_extract_redemption_fee_class_a(self, sample_filing):
         """Test extracting redemption fee for Class A (with sign=- and negate_to_positive)."""
         context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
-        value = extract_tag_value(sample_filing, "rr:RedemptionFee", context_id, negate_to_positive=True)
+        value = extract_tag_value(sample_filing, "rr:RedemptionFeeOverRedemption", context_id, negate_to_positive=True)
 
         # Displayed: 2.00%, scale=-2, sign="-" → -0.0200, then negate_to_positive → 0.0200
         assert value == Decimal('0.0200')
@@ -412,3 +418,302 @@ class TestEdgeCases:
         # Context should be found even if CIK is missing
         assert "NoIdentifier" in context_map
         assert context_map["NoIdentifier"]["cik"] is None
+
+
+class TestIntegrationProcessCikProspectus:
+    """Integration tests for _process_cik_prospectus()."""
+
+    def test_process_cik_full_flow(self, session, sample_filing_path):
+        """Test full CIK processing flow with mocked filing."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF records matching the fixture
+        etf_a = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A', issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        etf_i = ETF(
+            cik='0001314612',
+            ticker='TESTI',
+            fund_name='Test Fund - Class I', issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014546',
+        )
+        session.add_all([etf_a, etf_i])
+        session.commit()
+
+        # Read fixture HTML
+        with open(sample_filing_path) as f:
+            html_content = f.read()
+
+        # Mock edgartools objects
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        # Patch Company class
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Verify FeeExpense data for Class A (values from fixture: 0.70 → 0.0070, etc.)
+        fee_a = session.query(FeeExpense).filter_by(etf_id=etf_a.id).one()
+        assert fee_a.management_fee == pytest.approx(Decimal('0.0070'))
+        assert fee_a.distribution_12b1 == pytest.approx(Decimal('0.0025'))
+        assert fee_a.other_expenses == pytest.approx(Decimal('0.0030'))
+        assert fee_a.total_expense_gross == pytest.approx(Decimal('0.0125'))
+        assert fee_a.fee_waiver == pytest.approx(Decimal('0.0010'))  # Negated from source -0.10
+        assert fee_a.total_expense_net == pytest.approx(Decimal('0.0115'))
+        assert fee_a.acquired_fund_fees is None  # Not in fixture
+        assert fee_a.effective_date == date(2022, 11, 3)
+
+        # Verify FeeExpense data for Class I (values from fixture)
+        fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i.id).one()
+        assert fee_i.management_fee == pytest.approx(Decimal('0.0070'))
+        assert fee_i.distribution_12b1 == Decimal('0')  # zerodash "—"
+        assert fee_i.other_expenses == pytest.approx(Decimal('0.0024'))  # 0.24 with scale -2
+        assert fee_i.total_expense_gross == pytest.approx(Decimal('0.0094'))  # 0.94 with scale -2
+
+        # Verify ShareholderFee data
+        sh_fee_a = session.query(ShareholderFee).filter_by(etf_id=etf_a.id).one()
+        assert sh_fee_a.front_load == pytest.approx(Decimal('0.0575'))
+        assert sh_fee_a.deferred_load == pytest.approx(Decimal('0.0100'))
+        assert sh_fee_a.redemption_fee == pytest.approx(Decimal('0.0200'))  # Negated from source -2.00
+        assert sh_fee_a.effective_date == date(2022, 11, 3)
+
+        # Verify ExpenseExample data (values from fixture)
+        exp_a = session.query(ExpenseExample).filter_by(etf_id=etf_a.id).one()
+        assert exp_a.year_01 == 695
+        assert exp_a.year_03 == 949
+        assert exp_a.year_05 == 1223
+        assert exp_a.year_10 == 2019
+        assert exp_a.effective_date == date(2022, 11, 3)
+
+        # Verify ETF updates (narrative text from series-level context)
+        session.refresh(etf_a)
+        session.refresh(etf_i)
+        assert etf_a.objective_text == 'The fund seeks long-term capital growth.'
+        assert etf_a.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        assert etf_a.filing_url == 'https://www.sec.gov/test/filing.htm'
+        # Both classes share the same series-level text (both have series_id S000014796)
+        assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
+        assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+
+    def test_process_cik_no_filings(self, session):
+        """Test CIK with no 485BPOS filings."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+
+        # Create ETF record
+        etf = ETF(cik='0001314612', ticker='TEST', fund_name='Test', issuer_name='Test Issuer', class_id='C000014542')
+        session.add(etf)
+        session.commit()
+
+        # Mock Company with empty filings
+        mock_filings = Mock()
+        mock_filings.empty = True
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        # Should succeed but do nothing
+        assert result is True
+
+    def test_process_cik_no_rr_tags(self, session):
+        """Test filing with no RR tags."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF record
+        etf = ETF(cik='0001314612', ticker='TEST', fund_name='Test', issuer_name='Test Issuer', class_id='C000014542')
+        session.add(etf)
+        session.commit()
+
+        # Mock filing with no RR tags
+        html_no_rr = '<html><body>Plain HTML, no iXBRL</body></html>'
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_no_rr
+        mock_filing.filing_date = date(2022, 11, 3)
+
+        mock_filings = Mock()
+        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        # Should succeed but do nothing
+        assert result is True
+
+    def test_process_cik_unmatched_class_ids(self, session, sample_filing_path):
+        """Test filing with class_ids not in database."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF with different class_id than fixture
+        etf = ETF(
+            cik='0001314612',
+            ticker='TEST',
+            fund_name='Test', issuer_name='Test Issuer',
+            class_id='C999999999',  # Not in fixture
+        )
+        session.add(etf)
+        session.commit()
+
+        # Read fixture HTML
+        with open(sample_filing_path) as f:
+            html_content = f.read()
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        # Should succeed but not create any FeeExpense records
+        assert result is True
+        assert session.query(FeeExpense).count() == 0
+
+    def test_process_cik_upsert_update_existing(self, session, sample_filing_path):
+        """Test upsert updates existing records."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF record
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test', issuer_name='Test Issuer',
+            class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+
+        # Create existing FeeExpense record with different values
+        existing_fee = FeeExpense(
+            etf_id=etf.id,
+            effective_date=date(2022, 11, 3),
+            management_fee=Decimal('0.0050'),  # Old value
+            distribution_12b1=Decimal('0.0020'),  # Old value
+        )
+        session.add(existing_fee)
+        session.commit()
+        existing_id = existing_fee.id
+
+        # Read fixture HTML
+        with open(sample_filing_path) as f:
+            html_content = f.read()
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Should update existing record, not create new one
+        assert session.query(FeeExpense).count() == 1
+        updated_fee = session.query(FeeExpense).filter_by(id=existing_id).one()
+        assert updated_fee.management_fee == pytest.approx(Decimal('0.0070'))  # Updated
+        assert updated_fee.distribution_12b1 == pytest.approx(Decimal('0.0025'))  # Updated
+
+
+class TestIntegrationParseProspectus:
+    """Integration tests for parse_prospectus() entry point."""
+
+    def test_parse_prospectus_single_cik(self, session, sample_filing_path):
+        """Test parse_prospectus with single CIK."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import parse_prospectus
+        from datetime import date
+
+        # Create ETF record
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test', issuer_name='Test Issuer',
+            class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+
+        # Read fixture HTML
+        with open(sample_filing_path) as f:
+            html_content = f.read()
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.latest.return_value = [mock_filing]
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        # Patch both Company and get_engine
+        with patch('edgar.Company', return_value=mock_company):
+            with patch('etf_pipeline.db.get_engine') as mock_get_engine:
+                # Return the test session's engine
+                mock_get_engine.return_value = session.bind
+
+                # Mock clear_cache to avoid actual cache operations
+                with patch('edgar.clear_cache') as mock_clear:
+                    mock_clear.return_value = {'files_deleted': 0, 'bytes_freed': 0}
+
+                    parse_prospectus(cik='1314612', limit=None, clear_cache=False)
+
+        # Verify data was inserted
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.management_fee == pytest.approx(Decimal('0.0070'))

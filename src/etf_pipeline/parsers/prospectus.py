@@ -303,17 +303,19 @@ def _process_cik_prospectus(session, cik: str) -> bool:
     from sqlalchemy import select
 
     try:
-        # Build class_id -> ETF and series_id -> ETF mappings from database
+        # Build class_id -> ETF and series_id -> list[ETF] mappings from database
         stmt = select(ETF).where(ETF.cik == cik)
         etfs = session.execute(stmt).scalars().all()
 
         class_id_to_etf = {}
-        series_id_to_etf = {}
+        series_id_to_etfs = {}  # Map series_id to list of ETFs (multiple classes can share one series)
         for etf in etfs:
             if etf.class_id:
                 class_id_to_etf[etf.class_id] = etf
             if etf.series_id:
-                series_id_to_etf[etf.series_id] = etf
+                if etf.series_id not in series_id_to_etfs:
+                    series_id_to_etfs[etf.series_id] = []
+                series_id_to_etfs[etf.series_id].append(etf)
 
         if not class_id_to_etf:
             logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
@@ -491,8 +493,8 @@ def _process_cik_prospectus(session, cik: str) -> bool:
 
             # Series-level context (no class dimension)
             if series_id and not class_id:
-                etf = series_id_to_etf.get(series_id)
-                if not etf:
+                etf_list = series_id_to_etfs.get(series_id)
+                if not etf_list:
                     logger.debug(f"CIK {cik}: series_id {series_id} not found in database, skipping narrative text")
                     continue
 
@@ -500,14 +502,15 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 objective_text = extract_tag_value(soup, 'rr:ObjectivePrimaryTextBlock', context_id)
                 strategy_text = extract_tag_value(soup, 'rr:StrategyNarrativeTextBlock', context_id)
 
-                # Update ETF record
-                if objective_text:
-                    etf.objective_text = objective_text
-                    logger.debug(f"CIK {cik}: Updated objective_text for {etf.ticker}")
+                # Update all ETFs with this series_id (multiple share classes can belong to same series)
+                for etf in etf_list:
+                    if objective_text:
+                        etf.objective_text = objective_text
+                        logger.debug(f"CIK {cik}: Updated objective_text for {etf.ticker}")
 
-                if strategy_text:
-                    etf.strategy_text = strategy_text
-                    logger.debug(f"CIK {cik}: Updated strategy_text for {etf.ticker}")
+                    if strategy_text:
+                        etf.strategy_text = strategy_text
+                        logger.debug(f"CIK {cik}: Updated strategy_text for {etf.ticker}")
 
         # Update filing_url for all ETFs that had data extracted
         if filing_url:
