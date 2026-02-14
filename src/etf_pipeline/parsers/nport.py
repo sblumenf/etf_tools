@@ -91,7 +91,7 @@ def parse_nport(
             succeeded += 1
         except Exception as e:
             failed += 1
-            logger.warning(f"Failed to process CIK {cik_str}: {e}")
+            logger.error(f"Failed to process CIK {cik_str}: {e}", exc_info=True)
 
     print(f"\nSummary: {succeeded} CIKs succeeded, {failed} CIKs failed")
     logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
@@ -227,15 +227,28 @@ def _process_etf(
 ) -> None:
     """Process a single ETF: extract and insert holdings and derivatives."""
     holdings_count = 0
+    seen_cusips = set()
     for investment in fund_report.non_derivatives:
         holding = _map_investment_to_holding(etf, investment, report_date, filing_date)
+        if holding.cusip is not None and holding.cusip in seen_cusips:
+            logger.warning(f"ETF {etf.ticker}: Skipping duplicate CUSIP {holding.cusip} in NPORT filing")
+            continue
+        if holding.cusip is not None:
+            seen_cusips.add(holding.cusip)
         session.add(holding)
         holdings_count += 1
 
     derivatives_count = 0
+    seen_derivative_keys = set()
     for investment in fund_report.derivatives:
         derivative = _map_investment_to_derivative(etf, investment, report_date, filing_date)
         if derivative:
+            deriv_key = (derivative.derivative_type, derivative.underlying_name)
+            if deriv_key != (None, None) and deriv_key in seen_derivative_keys:
+                logger.warning(f"ETF {etf.ticker}: Skipping duplicate derivative {deriv_key} in NPORT filing")
+                continue
+            if deriv_key != (None, None):
+                seen_derivative_keys.add(deriv_key)
             session.add(derivative)
             derivatives_count += 1
 

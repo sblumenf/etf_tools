@@ -335,6 +335,254 @@ def test_parse_nport_handles_na_values(session, engine, sample_etfs, mock_nport_
     assert holding.is_restricted is False
 
 
+def test_parse_nport_deduplicates_holdings_with_same_cusip(session, engine, sample_etfs, mock_nport_db, caplog):
+    """Test that parse_nport deduplicates holdings with duplicate CUSIPs and logs a warning."""
+    import logging
+    caplog.set_level(logging.WARNING)
+
+    def create_mock_investment_with_cusip(name, cusip, value_usd):
+        inv = Mock()
+        inv.name = name
+        inv.lei = "N/A"
+        inv.title = "N/A"
+        inv.cusip = cusip
+        inv.balance = Decimal("100.0")
+        inv.units = "NS"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal(str(value_usd))
+        inv.pct_value = Decimal("5.0")
+        inv.asset_category = "EC"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "1"
+        inv.ticker = name[:4]
+
+        identifiers = Mock()
+        identifiers.isin = f"{cusip}XX"
+        identifiers.ticker = name[:4]
+        inv.identifiers = identifiers
+
+        return inv
+
+    def create_report_with_duplicates(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        # Create two holdings with the same CUSIP
+        mock_report.non_derivatives = [
+            create_mock_investment_with_cusip("Apple Inc", "037833100", "1000000"),
+            create_mock_investment_with_cusip("Apple Inc Duplicate", "037833100", "500000"),
+            create_mock_investment_with_cusip("Microsoft Corp", "594918104", "800000"),
+        ]
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_duplicates("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # Verify only 2 holdings were inserted (duplicate was skipped)
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 2
+
+    # Verify the non-duplicate holdings were inserted
+    cusips = [h.cusip for h in holdings]
+    assert "037833100" in cusips
+    assert "594918104" in cusips
+    assert cusips.count("037833100") == 1  # Only one instance of the duplicate CUSIP
+
+    # Verify warning was logged about the duplicate
+    assert "Skipping duplicate CUSIP 037833100" in caplog.text
+
+    # Verify processing_log was still updated (no constraint violation crash)
+    from etf_pipeline.models import ProcessingLog
+    stmt = select(ProcessingLog).where(
+        ProcessingLog.cik == "0000036405",
+        ProcessingLog.parser_type == "nport"
+    )
+    log = session.execute(stmt).scalar_one_or_none()
+    assert log is not None
+    assert log.latest_filing_date_seen == date(2025, 1, 15)
+
+
+def test_parse_nport_does_not_deduplicate_none_cusip_holdings(session, engine, sample_etfs, mock_nport_db, caplog):
+    """Test that parse_nport does not deduplicate holdings with cusip = None."""
+    import logging
+    caplog.set_level(logging.WARNING)
+
+    def create_mock_investment_without_cusip(name):
+        inv = Mock()
+        inv.name = name
+        inv.lei = "N/A"
+        inv.title = "N/A"
+        inv.cusip = None
+        inv.balance = Decimal("100.0")
+        inv.units = "NS"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("1000000")
+        inv.pct_value = Decimal("5.0")
+        inv.asset_category = "EC"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "1"
+        inv.ticker = name[:4]
+
+        identifiers = Mock()
+        identifiers.isin = None
+        identifiers.ticker = name[:4]
+        inv.identifiers = identifiers
+
+        return inv
+
+    def create_report_with_none_cusips(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        # Create two holdings with cusip = None (different names)
+        mock_report.non_derivatives = [
+            create_mock_investment_without_cusip("Security A"),
+            create_mock_investment_without_cusip("Security B"),
+        ]
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_none_cusips("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # Verify both holdings were inserted (not deduplicated)
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 2
+
+    # Verify the holdings have different names
+    names = sorted([h.name for h in holdings])
+    assert names == ["Security A", "Security B"]
+
+    # Verify both have cusip = None
+    assert all(h.cusip is None for h in holdings)
+
+    # Verify no warning was logged about duplicates
+    assert "Skipping duplicate CUSIP" not in caplog.text
+
+
+def test_parse_nport_deduplicates_derivatives_with_same_key(session, engine, sample_etfs, mock_nport_db, caplog):
+    """Test that parse_nport deduplicates derivatives with same derivative_type and underlying_name."""
+    import logging
+    caplog.set_level(logging.WARNING)
+
+    def create_mock_derivative(deriv_type, underlying_name, underlying_cusip, counterparty):
+        """Create a mock InvestmentOrSecurity object with derivative_info."""
+        inv = Mock()
+        inv.name = "Derivative Investment"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = deriv_type
+
+        fut = Mock()
+        fut.counterparty_name = counterparty
+        fut.counterparty_lei = "123456789012345678AA"
+        fut.reference_entity_name = underlying_name
+        fut.reference_entity_cusip = underlying_cusip
+        fut.notional_amount = Decimal("100000.00")
+        fut.expiration_date = "2025-06-30"
+        inv.derivative_info.future_derivative = fut
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_duplicate_derivatives(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        # Create two derivatives with same type and underlying_name but different underlying_cusip
+        mock_report.derivatives = [
+            create_mock_derivative("FUT", "S&P 500 Index", "12345678X", "Goldman Sachs"),
+            create_mock_derivative("FUT", "S&P 500 Index", "87654321X", "Morgan Stanley"),
+            create_mock_derivative("FUT", "NASDAQ Index", "11111111X", "JP Morgan"),
+        ]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_duplicate_derivatives("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # Verify only 2 derivatives were inserted (duplicate was skipped)
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 2
+
+    # Verify the non-duplicate derivatives were inserted
+    underlying_names = sorted([d.underlying_name for d in derivatives])
+    assert underlying_names == ["NASDAQ Index", "S&P 500 Index"]
+
+    # Verify warning was logged about the duplicate
+    assert "Skipping duplicate derivative ('FUT', 'S&P 500 Index')" in caplog.text
+
+
 def test_parse_nport_fundreport_parse_error(session, engine, sample_etfs, mock_nport_db, caplog):
     """Test that parser handles FundReport.from_filing() errors gracefully."""
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
