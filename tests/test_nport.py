@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import select
 
 from etf_pipeline.models import (
+    CreditSpreadRisk,
     DebtSecurityDetail,
     Derivative,
     ETF,

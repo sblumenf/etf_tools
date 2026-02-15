@@ -69,6 +69,9 @@ class ETF(Base):
     interest_rate_risks: Mapped[list["InterestRateRisk"]] = relationship(
         back_populates="etf"
     )
+    credit_spread_risks: Mapped[list["CreditSpreadRisk"]] = relationship(
+        back_populates="etf"
+    )
 
 
 class Holding(Base):
@@ -448,6 +451,32 @@ class InterestRateRisk(Base):
     dv100_30y: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
 
     etf: Mapped["ETF"] = relationship(back_populates="interest_rate_risks")
+
+
+class CreditSpreadRisk(Base):
+    __tablename__ = "credit_spread_risk"
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_id", "report_date", "filing_date", name="credit_spread_risk_uniq"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
+    report_date: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
+    invst_grade_3m: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    invst_grade_1y: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    invst_grade_5y: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    invst_grade_10y: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    invst_grade_30y: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    non_invst_grade_3m: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    non_invst_grade_1y: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    non_invst_grade_5y: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    non_invst_grade_10y: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    non_invst_grade_30y: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+
+    etf: Mapped["ETF"] = relationship(back_populates="credit_spread_risks")
 
 
 class ProcessingLog(Base):

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
 from etf_pipeline.models import (
+    CreditSpreadRisk,
     DebtSecurityDetail,
     Derivative,
     ETF,
@@ -703,6 +704,100 @@ def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -
     return interest_rate_risks
 
 
+def _extract_credit_spread_risk(filing, etf_id: int, report_date, filing_date) -> Optional[CreditSpreadRisk]:
+    """Extract credit spread risk data from NPORT-P filing XML.
+
+    Args:
+        filing: Filing object from edgartools
+        etf_id: ETF ID to associate credit spread risk data with
+        report_date: Report date for the filing
+        filing_date: Filing date
+
+    Returns:
+        CreditSpreadRisk object if data found, None otherwise
+    """
+    try:
+        # Get raw XML content from filing
+        xml_content = filing.xml
+        if not xml_content:
+            logger.debug(f"No XML content found in filing for etf_id={etf_id}")
+            return None
+
+        # Parse XML
+        root = ET.fromstring(xml_content)
+
+        # Find credit spread risk elements
+        # Path: /edgarSubmission/formData/fundinfo/creditSprdRiskInvstGrade and creditSprdRiskNonInvstGrade
+        invst_grade_elem = root.find('.//creditSprdRiskInvstGrade')
+        non_invst_grade_elem = root.find('.//creditSprdRiskNonInvstGrade')
+
+        # Try full path if not found
+        if invst_grade_elem is None or non_invst_grade_elem is None:
+            for form_data in root.iter('formData'):
+                for fund_info in form_data.iter('fundinfo'):
+                    if invst_grade_elem is None:
+                        invst_grade_elem = fund_info.find('creditSprdRiskInvstGrade')
+                    if non_invst_grade_elem is None:
+                        non_invst_grade_elem = fund_info.find('creditSprdRiskNonInvstGrade')
+
+        # If neither element is found, return None
+        if invst_grade_elem is None and non_invst_grade_elem is None:
+            logger.debug(f"No credit spread risk elements found in NPORT XML for etf_id={etf_id}")
+            return None
+
+        # Extract investment grade metrics
+        invst_grade_3m = None
+        invst_grade_1y = None
+        invst_grade_5y = None
+        invst_grade_10y = None
+        invst_grade_30y = None
+
+        if invst_grade_elem is not None:
+            invst_grade_3m = _parse_decimal(invst_grade_elem.get('period3Mon'))
+            invst_grade_1y = _parse_decimal(invst_grade_elem.get('period1Yr'))
+            invst_grade_5y = _parse_decimal(invst_grade_elem.get('period5Yr'))
+            invst_grade_10y = _parse_decimal(invst_grade_elem.get('period10Yr'))
+            invst_grade_30y = _parse_decimal(invst_grade_elem.get('period30Yr'))
+
+        # Extract non-investment grade metrics
+        non_invst_grade_3m = None
+        non_invst_grade_1y = None
+        non_invst_grade_5y = None
+        non_invst_grade_10y = None
+        non_invst_grade_30y = None
+
+        if non_invst_grade_elem is not None:
+            non_invst_grade_3m = _parse_decimal(non_invst_grade_elem.get('period3Mon'))
+            non_invst_grade_1y = _parse_decimal(non_invst_grade_elem.get('period1Yr'))
+            non_invst_grade_5y = _parse_decimal(non_invst_grade_elem.get('period5Yr'))
+            non_invst_grade_10y = _parse_decimal(non_invst_grade_elem.get('period10Yr'))
+            non_invst_grade_30y = _parse_decimal(non_invst_grade_elem.get('period30Yr'))
+
+        # Create CreditSpreadRisk object
+        credit_spread_risk = CreditSpreadRisk(
+            etf_id=etf_id,
+            report_date=report_date,
+            filing_date=filing_date,
+            invst_grade_3m=invst_grade_3m,
+            invst_grade_1y=invst_grade_1y,
+            invst_grade_5y=invst_grade_5y,
+            invst_grade_10y=invst_grade_10y,
+            invst_grade_30y=invst_grade_30y,
+            non_invst_grade_3m=non_invst_grade_3m,
+            non_invst_grade_1y=non_invst_grade_1y,
+            non_invst_grade_5y=non_invst_grade_5y,
+            non_invst_grade_10y=non_invst_grade_10y,
+            non_invst_grade_30y=non_invst_grade_30y,
+        )
+
+        logger.info(f"Extracted credit spread risk data for etf_id={etf_id}")
+        return credit_spread_risk
+
+    except Exception as e:
+        logger.warning(f"Failed to extract credit spread risk for etf_id={etf_id}: {e}")
+        return None
+
+
 def _parse_decimal(val: Optional[str]) -> Optional[Decimal]:
     """Parse a string value to Decimal, handling N/A and None."""
     if val is None or val.strip().upper() == "N/A":
@@ -735,6 +830,11 @@ def _process_etf(
     interest_rate_risks = _extract_interest_rate_risk(filing, etf.id, report_date, filing_date)
     for interest_rate_risk in interest_rate_risks:
         session.add(interest_rate_risk)
+
+    # Extract credit spread risk
+    credit_spread_risk = _extract_credit_spread_risk(filing, etf.id, report_date, filing_date)
+    if credit_spread_risk:
+        session.add(credit_spread_risk)
 
     holdings_count = 0
     seen_holding_keys = set()

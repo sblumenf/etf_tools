@@ -335,6 +335,33 @@ Interest rate risk metrics (DV01 and DV100) by currency from NPORT-P filings.
 
 ---
 
+### `credit_spread_risk`
+
+Credit spread risk metrics (SDV01/CS01) for investment grade and non-investment grade securities from NPORT-P filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `report_date` | Date | NOT NULL | NPORT filing report date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
+| `invst_grade_3m` | Numeric(24,2) | | Investment grade CS01 for 3-month period |
+| `invst_grade_1y` | Numeric(24,2) | | Investment grade CS01 for 1-year period |
+| `invst_grade_5y` | Numeric(24,2) | | Investment grade CS01 for 5-year period |
+| `invst_grade_10y` | Numeric(24,2) | | Investment grade CS01 for 10-year period |
+| `invst_grade_30y` | Numeric(24,2) | | Investment grade CS01 for 30-year period |
+| `non_invst_grade_3m` | Numeric(24,2) | | Non-investment grade CS01 for 3-month period |
+| `non_invst_grade_1y` | Numeric(24,2) | | Non-investment grade CS01 for 1-year period |
+| `non_invst_grade_5y` | Numeric(24,2) | | Non-investment grade CS01 for 5-year period |
+| `non_invst_grade_10y` | Numeric(24,2) | | Non-investment grade CS01 for 10-year period |
+| `non_invst_grade_30y` | Numeric(24,2) | | Non-investment grade CS01 for 30-year period |
+
+**Unique:** `(etf_id, report_date, filing_date)`
+
+> Note: Credit spread risk metrics are extracted from the XML at `/edgarSubmission/formData/fundinfo/creditSprdRiskInvstGrade` and `creditSprdRiskNonInvstGrade`. CS01 (also known as SDV01 or CR01) measures the dollar value change for a 1 basis point (0.01%) move in credit spreads. Each metric has five period buckets: 3-month, 1-year, 5-year, 10-year, and 30-year. Unlike interest rate risk, credit spread risk is reported at the portfolio level (not per-currency) and separated into investment grade and non-investment grade categories.
+
+---
+
 ### `per_share_operating`
 
 Per-share operating performance from N-CSR financial highlights.
@@ -440,6 +467,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 | nport_monthly_return | `nport_monthly_return_uniq` | UNIQUE | `etf_id, report_date, class_id, filing_date` |
 | nport_monthly_flow | `nport_monthly_flow_uniq` | UNIQUE | `etf_id, report_date, class_id, filing_date` |
 | interest_rate_risk | `interest_rate_risk_uniq` | UNIQUE | `etf_id, report_date, currency_code, filing_date` |
+| credit_spread_risk | `credit_spread_risk_uniq` | UNIQUE | `etf_id, report_date, filing_date` |
 | processing_log | `processing_log_cik_parser_uniq` | UNIQUE | `cik, parser_type` |
 
 ---
@@ -448,7 +476,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 
 | Filing Type | Tables Populated |
 |---|---|
-| NPORT-P | `holding`, `debt_security_detail`, `security_lending`, `derivative`, `fund_snapshot`, `nport_monthly_return`, `nport_monthly_flow`, `interest_rate_risk` |
+| NPORT-P | `holding`, `debt_security_detail`, `security_lending`, `derivative`, `fund_snapshot`, `nport_monthly_return`, `nport_monthly_flow`, `interest_rate_risk`, `credit_spread_risk` |
 | N-CSR | `performance`, `per_share_operating`, `per_share_distribution`, `per_share_ratios` |
 | 485BPOS | `etf` (objective/strategy), `fee_expense` |
 | 24F-2NT | `flow_data` |
