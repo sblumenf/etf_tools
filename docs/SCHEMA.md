@@ -15,6 +15,7 @@ ETF (1) ──< PerShareOperating
 ETF (1) ──< PerShareDistribution
 ETF (1) ──< PerShareRatios
 ETF (1) ──< NPORTMonthlyReturn
+ETF (1) ──< NPORTMonthlyFlow
 
 FlowData (standalone, keyed by CIK)
 FundSnapshot (standalone, keyed by CIK)
@@ -278,6 +279,33 @@ Monthly total return data from NPORT-P filings.
 
 ---
 
+### `nport_monthly_flow`
+
+Monthly fund flow data from NPORT-P filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `report_date` | Date | NOT NULL | NPORT filing report date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
+| `class_id` | String(50) | | SEC class identifier (NULL = fund-level flows) |
+| `month_1_sales` | Numeric(18,2) | | Most recent month's sales (NULL if N/A in filing) |
+| `month_1_redemptions` | Numeric(18,2) | | Most recent month's redemptions (NULL if N/A in filing) |
+| `month_1_reinvestments` | Numeric(18,2) | | Most recent month's reinvestments (NULL if N/A in filing) |
+| `month_2_sales` | Numeric(18,2) | | Second most recent month's sales (NULL if N/A in filing) |
+| `month_2_redemptions` | Numeric(18,2) | | Second most recent month's redemptions (NULL if N/A in filing) |
+| `month_2_reinvestments` | Numeric(18,2) | | Second most recent month's reinvestments (NULL if N/A in filing) |
+| `month_3_sales` | Numeric(18,2) | | Third most recent month's sales (NULL if N/A in filing) |
+| `month_3_redemptions` | Numeric(18,2) | | Third most recent month's redemptions (NULL if N/A in filing) |
+| `month_3_reinvestments` | Numeric(18,2) | | Third most recent month's reinvestments (NULL if N/A in filing) |
+
+**Unique:** `(etf_id, report_date, class_id, filing_date)`
+
+> Note: Monthly flows are extracted from the XML at `/edgarSubmission/formData/fundinfo/returnInfo/monthlyTotReturns` (same location as returns data). The `class_id` field is NULL for fund-level flows or contains the class identifier when flows are reported separately by share class. Flow values of "N/A" in the XML are stored as NULL.
+
+---
+
 ### `per_share_operating`
 
 Per-share operating performance from N-CSR financial highlights.
@@ -380,6 +408,8 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 | per_share_operating | `per_share_operating_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
 | per_share_distribution | `per_share_distribution_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
 | per_share_ratios | `per_share_ratios_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
+| nport_monthly_return | `nport_monthly_return_uniq` | UNIQUE | `etf_id, report_date, class_id, filing_date` |
+| nport_monthly_flow | `nport_monthly_flow_uniq` | UNIQUE | `etf_id, report_date, class_id, filing_date` |
 | processing_log | `processing_log_cik_parser_uniq` | UNIQUE | `cik, parser_type` |
 
 ---
@@ -388,7 +418,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 
 | Filing Type | Tables Populated |
 |---|---|
-| NPORT-P | `holding`, `debt_security_detail`, `security_lending`, `derivative`, `fund_snapshot` |
+| NPORT-P | `holding`, `debt_security_detail`, `security_lending`, `derivative`, `fund_snapshot`, `nport_monthly_return`, `nport_monthly_flow` |
 | N-CSR | `performance`, `per_share_operating`, `per_share_distribution`, `per_share_ratios` |
 | 485BPOS | `etf` (objective/strategy), `fee_expense` |
 | 24F-2NT | `flow_data` |

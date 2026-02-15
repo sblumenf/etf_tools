@@ -63,6 +63,9 @@ class ETF(Base):
     monthly_returns: Mapped[list["NPORTMonthlyReturn"]] = relationship(
         back_populates="etf"
     )
+    monthly_flows: Mapped[list["NPORTMonthlyFlow"]] = relationship(
+        back_populates="etf"
+    )
 
 
 class Holding(Base):
@@ -389,6 +392,32 @@ class NPORTMonthlyReturn(Base):
     month_3_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
 
     etf: Mapped["ETF"] = relationship(back_populates="monthly_returns")
+
+
+class NPORTMonthlyFlow(Base):
+    __tablename__ = "nport_monthly_flow"
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_id", "report_date", "class_id", "filing_date", name="nport_monthly_flow_uniq"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
+    report_date: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
+    class_id: Mapped[Optional[str]] = mapped_column(String(50))
+    month_1_sales: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    month_1_redemptions: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    month_1_reinvestments: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    month_2_sales: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    month_2_redemptions: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    month_2_reinvestments: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    month_3_sales: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    month_3_redemptions: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    month_3_reinvestments: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+
+    etf: Mapped["ETF"] = relationship(back_populates="monthly_flows")
 
 
 class ProcessingLog(Base):

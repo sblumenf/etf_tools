@@ -20,6 +20,7 @@ from etf_pipeline.models import (
     ETF,
     FundSnapshot,
     Holding,
+    NPORTMonthlyFlow,
     NPORTMonthlyReturn,
     SecurityLending,
 )
@@ -483,6 +484,116 @@ def _extract_monthly_returns(filing, etf_id: int, report_date, filing_date) -> l
     return monthly_returns
 
 
+def _extract_monthly_flows(filing, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyFlow]:
+    """Extract monthly flow data from NPORT-P filing XML.
+
+    Args:
+        filing: Filing object from edgartools
+        etf_id: ETF ID to associate flows with
+        report_date: Report date for the filing
+        filing_date: Filing date
+
+    Returns:
+        List of NPORTMonthlyFlow objects
+    """
+    monthly_flows = []
+
+    try:
+        # Get raw XML content from filing
+        xml_content = filing.xml
+        if not xml_content:
+            logger.debug(f"No XML content found in filing for etf_id={etf_id}")
+            return monthly_flows
+
+        # Parse XML
+        root = ET.fromstring(xml_content)
+
+        # Find monthlyTotReturns element (same location as returns)
+        # Path: /edgarSubmission/formData/fundinfo/returnInfo/monthlyTotReturns
+        ns = {'edgar': 'http://www.sec.gov/edgar/nport'}
+
+        # Try without namespace first
+        monthly_tot_returns = root.find('.//monthlyTotReturns')
+
+        # If not found, try with namespace
+        if monthly_tot_returns is None:
+            monthly_tot_returns = root.find('.//edgar:monthlyTotReturns', ns)
+
+        # If still not found, try different path variations
+        if monthly_tot_returns is None:
+            # Try full path
+            for form_data in root.iter('formData'):
+                for fund_info in form_data.iter('fundinfo'):
+                    for return_info in fund_info.iter('returnInfo'):
+                        monthly_tot_returns = return_info.find('monthlyTotReturns')
+                        if monthly_tot_returns is not None:
+                            break
+
+        if monthly_tot_returns is None:
+            logger.debug(f"No monthlyTotReturns element found in NPORT XML for etf_id={etf_id}")
+            return monthly_flows
+
+        # Extract each monthlyTotReturn child element
+        for monthly_return_elem in monthly_tot_returns.findall('monthlyTotReturn'):
+            # Extract flow attributes
+            sales_amt_1 = monthly_return_elem.get('salesAmt1')
+            redemption_amt_1 = monthly_return_elem.get('redemptionAmt1')
+            reinvest_amt_1 = monthly_return_elem.get('reinvestAmt1')
+            sales_amt_2 = monthly_return_elem.get('salesAmt2')
+            redemption_amt_2 = monthly_return_elem.get('redemptionAmt2')
+            reinvest_amt_2 = monthly_return_elem.get('reinvestAmt2')
+            sales_amt_3 = monthly_return_elem.get('salesAmt3')
+            redemption_amt_3 = monthly_return_elem.get('redemptionAmt3')
+            reinvest_amt_3 = monthly_return_elem.get('reinvestAmt3')
+            class_id = monthly_return_elem.get('classId')
+
+            # Convert "N/A" to None, otherwise convert to Decimal
+            def parse_flow(val):
+                if val is None or val.strip().upper() == "N/A":
+                    return None
+                try:
+                    return Decimal(val)
+                except (ValueError, Exception) as e:
+                    logger.warning(f"Could not parse flow value '{val}': {e}")
+                    return None
+
+            month_1_sales = parse_flow(sales_amt_1)
+            month_1_redemptions = parse_flow(redemption_amt_1)
+            month_1_reinvestments = parse_flow(reinvest_amt_1)
+            month_2_sales = parse_flow(sales_amt_2)
+            month_2_redemptions = parse_flow(redemption_amt_2)
+            month_2_reinvestments = parse_flow(reinvest_amt_2)
+            month_3_sales = parse_flow(sales_amt_3)
+            month_3_redemptions = parse_flow(redemption_amt_3)
+            month_3_reinvestments = parse_flow(reinvest_amt_3)
+
+            # Create NPORTMonthlyFlow object
+            monthly_flow = NPORTMonthlyFlow(
+                etf_id=etf_id,
+                report_date=report_date,
+                filing_date=filing_date,
+                class_id=class_id if class_id else None,
+                month_1_sales=month_1_sales,
+                month_1_redemptions=month_1_redemptions,
+                month_1_reinvestments=month_1_reinvestments,
+                month_2_sales=month_2_sales,
+                month_2_redemptions=month_2_redemptions,
+                month_2_reinvestments=month_2_reinvestments,
+                month_3_sales=month_3_sales,
+                month_3_redemptions=month_3_redemptions,
+                month_3_reinvestments=month_3_reinvestments,
+            )
+            monthly_flows.append(monthly_flow)
+
+        if monthly_flows:
+            logger.info(f"Extracted {len(monthly_flows)} monthly flow entries for etf_id={etf_id}")
+
+    except Exception as e:
+        logger.warning(f"Failed to extract monthly flows for etf_id={etf_id}: {e}")
+
+    return monthly_flows
+
+
 def _process_etf(
     session: Session, etf: ETF, filing, fund_report: FundReport, report_date, filing_date
 ) -> None:
@@ -494,6 +605,11 @@ def _process_etf(
     monthly_returns = _extract_monthly_returns(filing, etf.id, report_date, filing_date)
     for monthly_return in monthly_returns:
         session.add(monthly_return)
+
+    # Extract monthly flows
+    monthly_flows = _extract_monthly_flows(filing, etf.id, report_date, filing_date)
+    for monthly_flow in monthly_flows:
+        session.add(monthly_flow)
 
     holdings_count = 0
     seen_holding_keys = set()

@@ -2521,3 +2521,292 @@ def test_monthly_returns_with_na_values(session, sample_etfs, mock_nport_db):
     assert ret.month_1_return == Decimal("2.50")
     assert ret.month_2_return is None
     assert ret.month_3_return == Decimal("3.20")
+
+
+def test_monthly_flows_single_class(session, sample_etfs, mock_nport_db):
+    """Test extracting monthly flows with single class entry."""
+    from etf_pipeline.models import NPORTMonthlyFlow
+    from etf_pipeline.parsers.nport import parse_nport
+
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+    <edgarSubmission>
+        <formData>
+            <fundinfo>
+                <returnInfo>
+                    <monthlyTotReturns>
+                        <monthlyTotReturn salesAmt1="1000000.50" redemptionAmt1="500000.25" reinvestAmt1="100000.00"
+                                          salesAmt2="1200000.75" redemptionAmt2="600000.50" reinvestAmt2="120000.25"
+                                          salesAmt3="1100000.00" redemptionAmt3="550000.00" reinvestAmt3="110000.00" />
+                    </monthlyTotReturns>
+                </returnInfo>
+            </fundinfo>
+        </formData>
+    </edgarSubmission>"""
+
+    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000001"
+        filing.xml = xml_content
+
+        filings_obj = Mock()
+        filings_obj.empty = False
+        filings_obj.__len__ = Mock(return_value=1)
+        filings_obj.__iter__ = Mock(return_value=iter([filing]))
+
+        company.get_filings = Mock(return_value=filings_obj)
+        mock_company.return_value = company
+
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = "S000002839"
+        mock_report.general_info = general_info
+
+        fund_info = Mock()
+        fund_info.total_assets = Decimal("10000000.00")
+        fund_info.total_liabilities = Decimal("500000.00")
+        fund_info.net_assets = Decimal("9500000.00")
+        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.assets_invested = Decimal("9800000.00")
+        fund_info.assets_misc_sec = Decimal("150000.00")
+        fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
+        fund_info.amt_pay_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_one_yr_other = Decimal("50000.00")
+        fund_info.amt_pay_aft_one_yr_banks_borr = Decimal("250000.00")
+        fund_info.amt_pay_aft_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
+        fund_info.delay_deliv = Decimal("0.00")
+        fund_info.stand_by_commit = Decimal("0.00")
+        fund_info.liquidity_pref = Decimal("0.00")
+        fund_info.is_non_cash_collateral = False
+        mock_report.fund_info = fund_info
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=mock_report,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(NPORTMonthlyFlow).where(NPORTMonthlyFlow.etf_id == voo.id)
+    monthly_flows = session.execute(stmt).scalars().all()
+
+    assert len(monthly_flows) == 1
+    flow = monthly_flows[0]
+    assert flow.etf_id == voo.id
+    assert flow.report_date == date(2024, 12, 31)
+    assert flow.filing_date == date(2025, 1, 15)
+    assert flow.class_id is None
+    assert flow.month_1_sales == Decimal("1000000.50")
+    assert flow.month_1_redemptions == Decimal("500000.25")
+    assert flow.month_1_reinvestments == Decimal("100000.00")
+    assert flow.month_2_sales == Decimal("1200000.75")
+    assert flow.month_2_redemptions == Decimal("600000.50")
+    assert flow.month_2_reinvestments == Decimal("120000.25")
+    assert flow.month_3_sales == Decimal("1100000.00")
+    assert flow.month_3_redemptions == Decimal("550000.00")
+    assert flow.month_3_reinvestments == Decimal("110000.00")
+
+
+def test_monthly_flows_multiple_classes(session, sample_etfs, mock_nport_db):
+    """Test extracting monthly flows with multiple class entries."""
+    from etf_pipeline.models import NPORTMonthlyFlow
+    from etf_pipeline.parsers.nport import parse_nport
+
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+    <edgarSubmission>
+        <formData>
+            <fundinfo>
+                <returnInfo>
+                    <monthlyTotReturns>
+                        <monthlyTotReturn salesAmt1="1000000.50" redemptionAmt1="500000.25" reinvestAmt1="100000.00"
+                                          salesAmt2="1200000.75" redemptionAmt2="600000.50" reinvestAmt2="120000.25"
+                                          salesAmt3="1100000.00" redemptionAmt3="550000.00" reinvestAmt3="110000.00"
+                                          classId="C000001" />
+                        <monthlyTotReturn salesAmt1="900000.00" redemptionAmt1="450000.00" reinvestAmt1="90000.00"
+                                          salesAmt2="1100000.00" redemptionAmt2="550000.00" reinvestAmt2="110000.00"
+                                          salesAmt3="1000000.00" redemptionAmt3="500000.00" reinvestAmt3="100000.00"
+                                          classId="C000002" />
+                    </monthlyTotReturns>
+                </returnInfo>
+            </fundinfo>
+        </formData>
+    </edgarSubmission>"""
+
+    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000001"
+        filing.xml = xml_content
+
+        filings_obj = Mock()
+        filings_obj.empty = False
+        filings_obj.__len__ = Mock(return_value=1)
+        filings_obj.__iter__ = Mock(return_value=iter([filing]))
+
+        company.get_filings = Mock(return_value=filings_obj)
+        mock_company.return_value = company
+
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = "S000002839"
+        mock_report.general_info = general_info
+
+        fund_info = Mock()
+        fund_info.total_assets = Decimal("10000000.00")
+        fund_info.total_liabilities = Decimal("500000.00")
+        fund_info.net_assets = Decimal("9500000.00")
+        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.assets_invested = Decimal("9800000.00")
+        fund_info.assets_misc_sec = Decimal("150000.00")
+        fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
+        fund_info.amt_pay_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_one_yr_other = Decimal("50000.00")
+        fund_info.amt_pay_aft_one_yr_banks_borr = Decimal("250000.00")
+        fund_info.amt_pay_aft_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
+        fund_info.delay_deliv = Decimal("0.00")
+        fund_info.stand_by_commit = Decimal("0.00")
+        fund_info.liquidity_pref = Decimal("0.00")
+        fund_info.is_non_cash_collateral = False
+        mock_report.fund_info = fund_info
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=mock_report,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(NPORTMonthlyFlow).where(NPORTMonthlyFlow.etf_id == voo.id).order_by(NPORTMonthlyFlow.class_id)
+    monthly_flows = session.execute(stmt).scalars().all()
+
+    assert len(monthly_flows) == 2
+    flow1 = monthly_flows[0]
+    assert flow1.class_id == "C000001"
+    assert flow1.month_1_sales == Decimal("1000000.50")
+    assert flow1.month_1_redemptions == Decimal("500000.25")
+    assert flow1.month_1_reinvestments == Decimal("100000.00")
+    assert flow1.month_2_sales == Decimal("1200000.75")
+    assert flow1.month_2_redemptions == Decimal("600000.50")
+    assert flow1.month_2_reinvestments == Decimal("120000.25")
+    assert flow1.month_3_sales == Decimal("1100000.00")
+    assert flow1.month_3_redemptions == Decimal("550000.00")
+    assert flow1.month_3_reinvestments == Decimal("110000.00")
+
+    flow2 = monthly_flows[1]
+    assert flow2.class_id == "C000002"
+    assert flow2.month_1_sales == Decimal("900000.00")
+    assert flow2.month_1_redemptions == Decimal("450000.00")
+    assert flow2.month_1_reinvestments == Decimal("90000.00")
+    assert flow2.month_2_sales == Decimal("1100000.00")
+    assert flow2.month_2_redemptions == Decimal("550000.00")
+    assert flow2.month_2_reinvestments == Decimal("110000.00")
+    assert flow2.month_3_sales == Decimal("1000000.00")
+    assert flow2.month_3_redemptions == Decimal("500000.00")
+    assert flow2.month_3_reinvestments == Decimal("100000.00")
+
+
+def test_monthly_flows_with_na_values(session, sample_etfs, mock_nport_db):
+    """Test extracting monthly flows with N/A values."""
+    from etf_pipeline.models import NPORTMonthlyFlow
+    from etf_pipeline.parsers.nport import parse_nport
+
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+    <edgarSubmission>
+        <formData>
+            <fundinfo>
+                <returnInfo>
+                    <monthlyTotReturns>
+                        <monthlyTotReturn salesAmt1="1000000.50" redemptionAmt1="N/A" reinvestAmt1="100000.00"
+                                          salesAmt2="N/A" redemptionAmt2="600000.50" reinvestAmt2="N/A"
+                                          salesAmt3="1100000.00" redemptionAmt3="550000.00" reinvestAmt3="110000.00" />
+                    </monthlyTotReturns>
+                </returnInfo>
+            </fundinfo>
+        </formData>
+    </edgarSubmission>"""
+
+    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000001"
+        filing.xml = xml_content
+
+        filings_obj = Mock()
+        filings_obj.empty = False
+        filings_obj.__len__ = Mock(return_value=1)
+        filings_obj.__iter__ = Mock(return_value=iter([filing]))
+
+        company.get_filings = Mock(return_value=filings_obj)
+        mock_company.return_value = company
+
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = "S000002839"
+        mock_report.general_info = general_info
+
+        fund_info = Mock()
+        fund_info.total_assets = Decimal("10000000.00")
+        fund_info.total_liabilities = Decimal("500000.00")
+        fund_info.net_assets = Decimal("9500000.00")
+        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.assets_invested = Decimal("9800000.00")
+        fund_info.assets_misc_sec = Decimal("150000.00")
+        fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
+        fund_info.amt_pay_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_one_yr_other = Decimal("50000.00")
+        fund_info.amt_pay_aft_one_yr_banks_borr = Decimal("250000.00")
+        fund_info.amt_pay_aft_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
+        fund_info.delay_deliv = Decimal("0.00")
+        fund_info.stand_by_commit = Decimal("0.00")
+        fund_info.liquidity_pref = Decimal("0.00")
+        fund_info.is_non_cash_collateral = False
+        mock_report.fund_info = fund_info
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=mock_report,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(NPORTMonthlyFlow).where(NPORTMonthlyFlow.etf_id == voo.id)
+    monthly_flows = session.execute(stmt).scalars().all()
+
+    assert len(monthly_flows) == 1
+    flow = monthly_flows[0]
+    assert flow.month_1_sales == Decimal("1000000.50")
+    assert flow.month_1_redemptions is None
+    assert flow.month_1_reinvestments == Decimal("100000.00")
+    assert flow.month_2_sales is None
+    assert flow.month_2_redemptions == Decimal("600000.50")
+    assert flow.month_2_reinvestments is None
+    assert flow.month_3_sales == Decimal("1100000.00")
+    assert flow.month_3_redemptions == Decimal("550000.00")
+    assert flow.month_3_reinvestments == Decimal("110000.00")
