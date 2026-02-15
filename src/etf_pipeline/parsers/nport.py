@@ -18,6 +18,8 @@ from etf_pipeline.models import (
     CreditSpreadRisk,
     DebtSecurityDetail,
     Derivative,
+    DerivativeForward,
+    DerivativeOption,
     DerivativeSwap,
     DerivativeSwapLeg,
     ETF,
@@ -925,6 +927,97 @@ def _build_swap_legs(swp, swap_id: int) -> list[DerivativeSwapLeg]:
     return legs
 
 
+def _build_derivative_option(opt, derivative_id: int) -> DerivativeOption:
+    """Build a DerivativeOption instance from an OptionDerivative object.
+    
+    Handles regular options, swaptions, and warrants. Flattens any nested
+    derivative info (swaption-on-swap) into the nested_deriv_* columns.
+
+    Args:
+        opt: OptionDerivative object from edgartools
+        derivative_id: Foreign key to parent Derivative row
+
+    Returns:
+        DerivativeOption instance
+    """
+    put_or_call = _clean_str(opt.put_or_call) if hasattr(opt, 'put_or_call') else None
+    written_or_purchased = _clean_str(opt.written_or_purchased) if hasattr(opt, 'written_or_purchased') else None
+    share_number = _safe_numeric(opt.share_number) if hasattr(opt, 'share_number') else None
+    exercise_price = _safe_numeric(opt.exercise_price) if hasattr(opt, 'exercise_price') else None
+    exercise_price_currency = _clean_str(opt.exercise_price_currency) if hasattr(opt, 'exercise_price_currency') else None
+    index_name = _clean_str(opt.index_name) if hasattr(opt, 'index_name') else None
+    index_identifier = _clean_str(opt.index_identifier) if hasattr(opt, 'index_identifier') else None
+
+    # Handle nested derivative info (e.g., swaption-on-swap)
+    nested_deriv_type = None
+    nested_deriv_notional = None
+    nested_deriv_counterparty = None
+    nested_deriv_currency = None
+
+    # Check for nested swap (swaption case)
+    if hasattr(opt, 'swap_derivative') and opt.swap_derivative:
+        nested_swap = opt.swap_derivative
+        nested_deriv_type = "SWP"
+        nested_deriv_notional = _safe_numeric(nested_swap.notional_amount) if hasattr(nested_swap, 'notional_amount') else None
+        nested_deriv_counterparty = _clean_str(nested_swap.counterparty) if hasattr(nested_swap, 'counterparty') else None
+        nested_deriv_currency = _clean_str(nested_swap.currency) if hasattr(nested_swap, 'currency') else None
+    # Check for nested forward
+    elif hasattr(opt, 'forward_derivative') and opt.forward_derivative:
+        nested_fwd = opt.forward_derivative
+        nested_deriv_type = "FWD"
+        nested_deriv_notional = _safe_numeric(nested_fwd.notional_amount) if hasattr(nested_fwd, 'notional_amount') else None
+        nested_deriv_counterparty = _clean_str(nested_fwd.counterparty) if hasattr(nested_fwd, 'counterparty') else None
+        nested_deriv_currency = _clean_str(nested_fwd.currency) if hasattr(nested_fwd, 'currency') else None
+    # Check for nested future
+    elif hasattr(opt, 'future_derivative') and opt.future_derivative:
+        nested_fut = opt.future_derivative
+        nested_deriv_type = "FUT"
+        nested_deriv_notional = _safe_numeric(nested_fut.notional_amount) if hasattr(nested_fut, 'notional_amount') else None
+        nested_deriv_counterparty = _clean_str(nested_fut.counterparty) if hasattr(nested_fut, 'counterparty') else None
+        nested_deriv_currency = _clean_str(nested_fut.currency) if hasattr(nested_fut, 'currency') else None
+
+    return DerivativeOption(
+        derivative_id=derivative_id,
+        put_or_call=put_or_call,
+        written_or_purchased=written_or_purchased,
+        share_number=share_number,
+        exercise_price=exercise_price,
+        exercise_price_currency=exercise_price_currency,
+        index_name=index_name,
+        index_identifier=index_identifier,
+        nested_deriv_type=nested_deriv_type,
+        nested_deriv_notional=nested_deriv_notional,
+        nested_deriv_counterparty=nested_deriv_counterparty,
+        nested_deriv_currency=nested_deriv_currency,
+    )
+
+
+def _build_derivative_forward(fwd, derivative_id: int) -> DerivativeForward:
+    """Build a DerivativeForward instance from a ForwardDerivative object.
+
+    Args:
+        fwd: ForwardDerivative object from edgartools
+        derivative_id: Foreign key to parent Derivative row
+
+    Returns:
+        DerivativeForward instance
+    """
+    currency_sold = _clean_str(fwd.currency_sold) if hasattr(fwd, 'currency_sold') else None
+    amount_sold = _safe_numeric(fwd.amount_sold) if hasattr(fwd, 'amount_sold') else None
+    currency_purchased = _clean_str(fwd.currency_purchased) if hasattr(fwd, 'currency_purchased') else None
+    amount_purchased = _safe_numeric(fwd.amount_purchased) if hasattr(fwd, 'amount_purchased') else None
+    settlement_date = _parse_date(fwd.settlement_date) if hasattr(fwd, 'settlement_date') and fwd.settlement_date else None
+
+    return DerivativeForward(
+        derivative_id=derivative_id,
+        currency_sold=currency_sold,
+        amount_sold=amount_sold,
+        currency_purchased=currency_purchased,
+        amount_purchased=amount_purchased,
+        settlement_date=settlement_date,
+    )
+
+
 def _process_etf(
     session: Session, etf: ETF, filing, fund_report: FundReport, report_date, filing_date
 ) -> None:
@@ -1002,6 +1095,25 @@ def _process_etf(
                 swap_legs = _build_swap_legs(swp, derivative_swap.id)
                 for leg in swap_legs:
                     session.add(leg)
+
+            # Check for option derivative and create child table
+            # Handles regular options, swaptions, and warrants
+            if investment.derivative_info and investment.derivative_info.option_derivative:
+                opt = investment.derivative_info.option_derivative
+                derivative_option = _build_derivative_option(opt, derivative.id)
+                session.add(derivative_option)
+
+            # Check for swaption (option on swap) - also creates DerivativeOption
+            if investment.derivative_info and investment.derivative_info.swaption_derivative:
+                swaption = investment.derivative_info.swaption_derivative
+                derivative_option = _build_derivative_option(swaption, derivative.id)
+                session.add(derivative_option)
+
+            # Check for forward derivative and create child table
+            if investment.derivative_info and investment.derivative_info.forward_derivative:
+                fwd = investment.derivative_info.forward_derivative
+                derivative_forward = _build_derivative_forward(fwd, derivative.id)
+                session.add(derivative_forward)
 
             derivatives_count += 1
 

@@ -12,6 +12,8 @@ from etf_pipeline.models import (
     CreditSpreadRisk,
     DebtSecurityDetail,
     Derivative,
+    DerivativeForward,
+    DerivativeOption,
     DerivativeSwap,
     DerivativeSwapLeg,
     ETF,
@@ -3998,3 +4000,213 @@ def test_parse_nport_swap_child_tables_no_swap_fields(session, engine, sample_et
     stmt = select(DerivativeSwapLeg)
     legs = session.execute(stmt).scalars().all()
     assert len(legs) == 0
+
+
+def test_parse_nport_option_child_table_regular_option(session, engine, sample_etfs, mock_nport_db):
+    """Test that regular option derivatives create DerivativeOption row (US-7)."""
+
+    def create_mock_option_derivative():
+        """Create a mock option derivative (call on Apple stock)."""
+        inv = Mock()
+        inv.name = "AAPL Call Option"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "OPT"
+        inv.derivative_info.unrealized_appr = Decimal("5000.00")
+
+        opt = Mock()
+        opt.counterparty_name = "JP Morgan"
+        opt.counterparty_lei = "JPM1234567890ABCD"
+        opt.reference_entity_name = "Apple Inc."
+        opt.reference_entity_cusip = "037833100"
+        opt.reference_entity_isin = "US0378331005"
+        opt.reference_entity_ticker = "AAPL"
+        opt.reference_entity_other_id = None
+        opt.reference_entity_other_id_type = None
+        opt.notional_amount = Decimal("1000000.00")
+        opt.termination_date = "2027-03-19"
+        opt.currency_code = "USD"
+        opt.delta = Decimal("0.65")
+
+        # Option-specific fields
+        opt.put_or_call = "Call"
+        opt.written_or_purchased = "Purchased"
+        opt.share_number = Decimal("10000")
+        opt.exercise_price = Decimal("180.50")
+        opt.exercise_price_currency = "USD"
+        opt.index_name = None
+        opt.index_identifier = None
+
+        # No nested derivatives
+        opt.swap_derivative = None
+        opt.forward_derivative = None
+        opt.future_derivative = None
+
+        # Parent-level reference_entity fields
+        opt.reference_entity_title = "Apple Inc."
+        opt.reference_entity_lei = "HWUPKR0MPOU8FGXBT394"
+
+        inv.derivative_info.option_derivative = opt
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_option_derivative()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 2, 28)
+        filing.accession_number = "0000000000-25-000002"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    # Verify Derivative parent created
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+    assert deriv.derivative_type == "OPT"
+    assert deriv.underlying_name == "Apple Inc."
+    assert deriv.unrealized_appreciation == Decimal("5000.00")
+    assert deriv.currency == "USD"
+    assert deriv.delta == Decimal("0.65")
+
+    # Verify DerivativeOption created
+    stmt = select(DerivativeOption).where(DerivativeOption.derivative_id == deriv.id)
+    option = session.execute(stmt).scalar_one()
+    assert option.put_or_call == "Call"
+    assert option.written_or_purchased == "Purchased"
+    assert option.share_number == Decimal("10000")
+    assert option.exercise_price == Decimal("180.50")
+    assert option.exercise_price_currency == "USD"
+    assert option.index_name is None
+    assert option.index_identifier is None
+    assert option.nested_deriv_type is None
+    assert option.nested_deriv_notional is None
+    assert option.nested_deriv_counterparty is None
+    assert option.nested_deriv_currency is None
+
+
+def test_parse_nport_forward_child_table(session, engine, sample_etfs, mock_nport_db):
+    """Test that forward derivatives create DerivativeForward row (US-7)."""
+
+    def create_mock_forward_derivative():
+        """Create a mock forward contract (FX forward)."""
+        inv = Mock()
+        inv.name = "EUR/USD Forward"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "FOR"
+        inv.derivative_info.unrealized_appr = Decimal("-3500.00")
+
+        fwd = Mock()
+        fwd.counterparty_name = "Citibank"
+        fwd.counterparty_lei = "CITI1234567890ABC"
+        fwd.deriv_addl_name = "EUR/USD FX Forward"
+        fwd.deriv_addl_cusip = None
+        fwd.notional_amount = Decimal("1000000.00")
+        fwd.termination_date = "2025-06-30"
+        fwd.currency_code = "USD"
+
+        # Forward-specific fields
+        fwd.currency_sold = "EUR"
+        fwd.amount_sold = Decimal("850000.00")
+        fwd.currency_purchased = "USD"
+        fwd.amount_purchased = Decimal("1000000.00")
+        fwd.settlement_date = "2025-06-30"
+
+        # Parent-level deriv_addl fields
+        fwd.deriv_addl_title = "EUR/USD Foreign Exchange Forward"
+        fwd.deriv_addl_lei = None
+        fwd.deriv_addl_currency = "USD"
+
+        inv.derivative_info.forward_derivative = fwd
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_forward_derivative()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 2, 28)
+        filing.accession_number = "0000000000-25-000004"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    # Verify Derivative parent created
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+    assert deriv.derivative_type == "FOR"
+    assert deriv.underlying_name == "EUR/USD FX Forward"
+    assert deriv.unrealized_appreciation == Decimal("-3500.00")
+    assert deriv.currency == "USD"
+
+    # Verify DerivativeForward created
+    stmt = select(DerivativeForward).where(DerivativeForward.derivative_id == deriv.id)
+    forward = session.execute(stmt).scalar_one()
+    assert forward.currency_sold == "EUR"
+    assert forward.amount_sold == Decimal("850000.00")
+    assert forward.currency_purchased == "USD"
+    assert forward.amount_purchased == Decimal("1000000.00")
+    assert str(forward.settlement_date) == "2025-06-30"
