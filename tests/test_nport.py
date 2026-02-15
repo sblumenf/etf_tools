@@ -1301,6 +1301,21 @@ def test_parse_nport_creates_fund_snapshot(session, engine, sample_etfs, mock_ed
     assert snapshot.total_assets == Decimal("10000000.00")
     assert snapshot.total_liabilities == Decimal("500000.00")
     assert snapshot.net_assets == Decimal("9500000.00")
+    assert snapshot.cash_not_reported == Decimal("50000.00")
+    assert snapshot.assets_invested == Decimal("9800000.00")
+    assert snapshot.assets_misc_sec == Decimal("150000.00")
+    assert snapshot.amt_pay_one_yr_banks_borr == Decimal("100000.00")
+    assert snapshot.amt_pay_one_yr_ctrld_comp == Decimal("0.00")
+    assert snapshot.amt_pay_one_yr_oth_affil == Decimal("0.00")
+    assert snapshot.amt_pay_one_yr_other == Decimal("50000.00")
+    assert snapshot.amt_pay_aft_one_yr_banks_borr == Decimal("250000.00")
+    assert snapshot.amt_pay_aft_one_yr_ctrld_comp == Decimal("0.00")
+    assert snapshot.amt_pay_aft_one_yr_oth_affil == Decimal("0.00")
+    assert snapshot.amt_pay_aft_one_yr_other == Decimal("100000.00")
+    assert snapshot.delay_deliv == Decimal("0.00")
+    assert snapshot.stand_by_commit == Decimal("0.00")
+    assert snapshot.liquidity_pref == Decimal("0.00")
+    assert snapshot.is_non_cash_collateral is False
 
 
 def test_parse_nport_skips_duplicate_fund_snapshot(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, caplog):
