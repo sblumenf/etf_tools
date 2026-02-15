@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from etf_pipeline.models import (
     Derivative,
+    DerivativeForward,
     DerivativeOption,
     ETF,
     FeeExpense,
@@ -257,6 +258,125 @@ class TestDerivativeOption:
         assert deriv.option is not None
         assert deriv.option.put_or_call == "Put"
         assert deriv.option.index_name == "S&P 500"
+
+    def test_derivative_forward_creation(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        deriv = Derivative(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            derivative_type="forward",
+            underlying_name="EUR/USD",
+        )
+        session.add(deriv)
+        session.flush()
+
+        forward = DerivativeForward(
+            derivative_id=deriv.id,
+            currency_sold="USD",
+            amount_sold=Decimal("1000000.00"),
+            currency_purchased="EUR",
+            amount_purchased=Decimal("920000.00"),
+            settlement_date=date(2024, 6, 30),
+        )
+        session.add(forward)
+        session.commit()
+
+        result = session.query(DerivativeForward).one()
+        assert result.currency_sold == "USD"
+        assert result.amount_sold == Decimal("1000000.00")
+        assert result.currency_purchased == "EUR"
+        assert result.amount_purchased == Decimal("920000.00")
+        assert result.settlement_date == date(2024, 6, 30)
+
+    def test_derivative_forward_unique_constraint(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        deriv = Derivative(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            derivative_type="forward",
+            underlying_name="Test",
+        )
+        session.add(deriv)
+        session.flush()
+
+        session.add(
+            DerivativeForward(derivative_id=deriv.id, currency_sold="USD")
+        )
+        session.commit()
+
+        session.add(
+            DerivativeForward(derivative_id=deriv.id, currency_purchased="EUR")
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+    def test_derivative_forward_cascade_delete(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        deriv = Derivative(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            derivative_type="forward",
+            underlying_name="Test",
+        )
+        session.add(deriv)
+        session.flush()
+
+        forward = DerivativeForward(
+            derivative_id=deriv.id,
+            currency_sold="USD",
+            amount_sold=Decimal("500000.00"),
+        )
+        session.add(forward)
+        session.commit()
+
+        assert session.query(DerivativeForward).count() == 1
+
+        session.delete(deriv)
+        session.commit()
+
+        assert session.query(DerivativeForward).count() == 0
+
+    def test_derivative_forward_relationship(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        deriv = Derivative(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            derivative_type="forward",
+            underlying_name="Test",
+        )
+        session.add(deriv)
+        session.flush()
+
+        forward = DerivativeForward(
+            derivative_id=deriv.id,
+            currency_sold="GBP",
+            currency_purchased="USD",
+            settlement_date=date(2024, 7, 15),
+        )
+        session.add(forward)
+        session.commit()
+
+        session.refresh(deriv)
+        assert deriv.forward is not None
+        assert deriv.forward.currency_sold == "GBP"
+        assert deriv.forward.currency_purchased == "USD"
+        assert deriv.forward.settlement_date == date(2024, 7, 15)
 
 
 class TestPerformance:

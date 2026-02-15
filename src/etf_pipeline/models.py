@@ -181,6 +181,9 @@ class Derivative(Base):
     option: Mapped[Optional["DerivativeOption"]] = relationship(
         back_populates="derivative", cascade="all, delete-orphan", uselist=False
     )
+    forward: Mapped[Optional["DerivativeForward"]] = relationship(
+        back_populates="derivative", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class DerivativeSwap(Base):
@@ -266,6 +269,26 @@ class DerivativeOption(Base):
     nested_deriv_currency: Mapped[Optional[str]] = mapped_column(String(3))
 
     derivative: Mapped["Derivative"] = relationship(back_populates="option")
+
+
+class DerivativeForward(Base):
+    """Forward-specific derivative details. One row per forward."""
+    __tablename__ = "derivative_forward"
+    __table_args__ = (
+        Index("derivative_forward_derivative_idx", "derivative_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    derivative_id: Mapped[int] = mapped_column(
+        ForeignKey("derivative.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    currency_sold: Mapped[Optional[str]] = mapped_column(String(3))
+    amount_sold: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    currency_purchased: Mapped[Optional[str]] = mapped_column(String(3))
+    amount_purchased: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    settlement_date: Mapped[Optional[date]] = mapped_column(Date)
+
+    derivative: Mapped["Derivative"] = relationship(back_populates="forward")
 
 
 class DebtSecurityDetail(Base):
