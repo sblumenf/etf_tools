@@ -13,7 +13,14 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import DebtSecurityDetail, Derivative, ETF, FundSnapshot, Holding
+from etf_pipeline.models import (
+    DebtSecurityDetail,
+    Derivative,
+    ETF,
+    FundSnapshot,
+    Holding,
+    SecurityLending,
+)
 from etf_pipeline.parser_utils import ensure_date, update_processing_log
 
 logger = logging.getLogger(__name__)
@@ -405,6 +412,11 @@ def _process_etf(
         if debt_detail:
             holding.debt_security_detail = debt_detail
 
+        # Check for security lending details and attach to holding
+        sec_lending = _map_security_lending(investment)
+        if sec_lending:
+            holding.security_lending = sec_lending
+
         holdings_count += 1
 
     derivatives_count = 0
@@ -668,4 +680,46 @@ def _map_debt_security_detail(investment) -> Optional[DebtSecurityDetail]:
         is_paid_kind=is_paid_kind,
         is_mandatory_convertible=is_mandatory_convertible,
         is_contingent_convertible=is_contingent_convertible,
+    )
+
+
+
+def _map_security_lending(investment) -> Optional[SecurityLending]:
+    """Map security_lending data from investment to SecurityLending model instance."""
+    try:
+        sec_lending = investment.security_lending
+        if sec_lending is None:
+            return None
+        # Check if it's a real security_lending object by verifying it has expected attributes
+        if not hasattr(sec_lending, 'is_cash_collateral'):
+            return None
+    except AttributeError:
+        return None
+
+    # Extract boolean fields
+    is_cash_collateral = False
+    try:
+        if hasattr(sec_lending, 'is_cash_collateral') and sec_lending.is_cash_collateral is not None:
+            is_cash_collateral = bool(sec_lending.is_cash_collateral)
+    except (AttributeError, TypeError):
+        pass
+
+    is_non_cash_collateral = False
+    try:
+        if hasattr(sec_lending, 'is_non_cash_collateral') and sec_lending.is_non_cash_collateral is not None:
+            is_non_cash_collateral = bool(sec_lending.is_non_cash_collateral)
+    except (AttributeError, TypeError):
+        pass
+
+    is_loan_by_fund = False
+    try:
+        if hasattr(sec_lending, 'is_loan_by_fund') and sec_lending.is_loan_by_fund is not None:
+            is_loan_by_fund = bool(sec_lending.is_loan_by_fund)
+    except (AttributeError, TypeError):
+        pass
+
+    return SecurityLending(
+        is_cash_collateral=is_cash_collateral,
+        is_non_cash_collateral=is_non_cash_collateral,
+        is_loan_by_fund=is_loan_by_fund,
     )

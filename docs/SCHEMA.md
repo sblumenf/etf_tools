@@ -125,6 +125,24 @@ Debt-specific details for bond holdings from NPORT-P filings (one-to-one with ho
 
 ---
 
+### `security_lending`
+
+Securities lending program details for holdings from NPORT-P filings (one-to-one with holding).
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `holding_id` | Integer | FK -> holding.id CASCADE, NOT NULL | Parent holding (one-to-one) |
+| `is_cash_collateral` | Boolean | NOT NULL, default=False | Whether the holding is cash collateral for securities loaned |
+| `is_non_cash_collateral` | Boolean | NOT NULL, default=False | Whether the holding is non-cash collateral for securities loaned |
+| `is_loan_by_fund` | Boolean | NOT NULL, default=False | Whether the holding represents a security loaned by the fund |
+
+**Unique:** `(holding_id)`
+
+> Note: Only holdings with `security_lending` data in NPORT-P filings will have a corresponding row in this table.
+
+---
+
 ### `performance`
 
 Annual return and benchmark data from N-CSR filings.
@@ -337,7 +355,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 
 | Filing Type | Tables Populated |
 |---|---|
-| NPORT-P | `holding`, `debt_security_detail`, `derivative`, `fund_snapshot` |
+| NPORT-P | `holding`, `debt_security_detail`, `security_lending`, `derivative`, `fund_snapshot` |
 | N-CSR | `performance`, `per_share_operating`, `per_share_distribution`, `per_share_ratios` |
 | 485BPOS | `etf` (objective/strategy), `fee_expense` |
 | 24F-2NT | `flow_data` |

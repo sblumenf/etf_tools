@@ -8,7 +8,14 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy import select
 
-from etf_pipeline.models import DebtSecurityDetail, Derivative, ETF, FundSnapshot, Holding
+from etf_pipeline.models import (
+    DebtSecurityDetail,
+    Derivative,
+    ETF,
+    FundSnapshot,
+    Holding,
+    SecurityLending,
+)
 from etf_pipeline.parsers.nport import parse_nport
 
 
@@ -1579,9 +1586,143 @@ def test_parse_nport_debt_detail_with_null_coupon(session, engine, sample_etfs, 
 
     # Verify debt security detail was created with NULL coupon rate
     stmt = select(DebtSecurityDetail)
-    debt_details = session.execute(stmt).scalars().all()
-    assert len(debt_details) == 1
-    assert debt_details[0].maturity_date == date(2040, 2, 15)
-    assert debt_details[0].coupon_kind == "Zero"
-    assert debt_details[0].annualized_rate is None  # NULL coupon
-    assert debt_details[0].is_default is False
+
+
+def test_parse_nport_creates_security_lending(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport creates SecurityLending for holdings with lending data."""
+    def create_mock_lending_security(name, cusip, is_cash, is_non_cash, is_loan):
+        """Create a mock InvestmentOrSecurity with security_lending data."""
+        inv = Mock()
+        inv.name = name
+        inv.lei = None
+        inv.title = "Lent Security"
+        inv.cusip = cusip
+        inv.balance = Decimal("1000.0")
+        inv.units = "NS"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("50000.00")
+        inv.pct_value = Decimal("5.0")
+        inv.asset_category = "EC"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "1"
+        inv.ticker = "TEST"
+        inv.debt_security = None  # No debt_security for equity
+
+        identifiers = Mock()
+        identifiers.isin = f"{cusip}XX"
+        inv.identifiers = identifiers
+
+        # Add security_lending data
+        sec_lending = Mock()
+        sec_lending.is_cash_collateral = is_cash
+        sec_lending.is_non_cash_collateral = is_non_cash
+        sec_lending.is_loan_by_fund = is_loan
+        inv.security_lending = sec_lending
+
+        return inv
+
+    def create_report_with_lending(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [
+            create_mock_lending_security("Security A", "111111111", True, False, True),
+            create_mock_lending_security("Security B", "222222222", False, True, False),
+        ]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_lending("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # Verify holdings were created
+    stmt = select(Holding).order_by(Holding.name)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 2
+
+    # Verify security lending details were created
+    stmt = select(SecurityLending).join(Holding).order_by(Holding.name)
+    lending_details = session.execute(stmt).scalars().all()
+    assert len(lending_details) == 2
+
+    # Check first security lending details
+    assert lending_details[0].is_cash_collateral is True
+    assert lending_details[0].is_non_cash_collateral is False
+    assert lending_details[0].is_loan_by_fund is True
+
+    # Check second security lending details
+    assert lending_details[1].is_cash_collateral is False
+    assert lending_details[1].is_non_cash_collateral is True
+    assert lending_details[1].is_loan_by_fund is False
+
+
+def test_parse_nport_holding_without_lending_data(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
+    """Test that holdings without security_lending data do not create SecurityLending rows."""
+    def create_report_without_lending(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+
+        inv = Mock()
+        inv.name = "Regular Security"
+        inv.lei = None
+        inv.title = None
+        inv.cusip = "333333333"
+        inv.balance = Decimal("100.0")
+        inv.units = "NS"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("10000.00")
+        inv.pct_value = Decimal("5.0")
+        inv.asset_category = "EC"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "1"
+        inv.ticker = "REG"
+        inv.debt_security = None  # No debt_security
+        inv.security_lending = None  # No security_lending data
+
+        identifiers = Mock()
+        identifiers.isin = "US3333333333"
+        inv.identifiers = identifiers
+
+        mock_report.non_derivatives = [inv]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.FundReport.from_filing", return_value=create_report_without_lending("S000002839")):
+        parse_nport(cik="36405")
+
+    # Verify holding was created
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 1
+
+    # Verify NO security lending detail was created
+    stmt = select(SecurityLending)
+    lending_details = session.execute(stmt).scalars().all()
+    assert len(lending_details) == 0

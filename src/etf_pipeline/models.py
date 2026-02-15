@@ -97,6 +97,9 @@ class Holding(Base):
     debt_security_detail: Mapped[Optional["DebtSecurityDetail"]] = relationship(
         back_populates="holding", cascade="all, delete-orphan", uselist=False
     )
+    security_lending: Mapped[Optional["SecurityLending"]] = relationship(
+        back_populates="holding", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class Derivative(Base):
@@ -154,6 +157,29 @@ class DebtSecurityDetail(Base):
     )
 
     holding: Mapped["Holding"] = relationship(back_populates="debt_security_detail")
+
+
+class SecurityLending(Base):
+    __tablename__ = "security_lending"
+    __table_args__ = (
+        UniqueConstraint("holding_id", name="security_lending_holding_uniq"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    holding_id: Mapped[int] = mapped_column(
+        ForeignKey("holding.id", ondelete="CASCADE"), nullable=False
+    )
+    is_cash_collateral: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    is_non_cash_collateral: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    is_loan_by_fund: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+
+    holding: Mapped["Holding"] = relationship(back_populates="security_lending")
 
 
 class Performance(Base):
