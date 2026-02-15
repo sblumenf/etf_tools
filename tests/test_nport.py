@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 from etf_pipeline.models import (
     CreditSpreadRisk,
@@ -4210,3 +4211,228 @@ def test_parse_nport_forward_child_table(session, engine, sample_etfs, mock_npor
     assert forward.currency_purchased == "USD"
     assert forward.amount_purchased == Decimal("1000000.00")
     assert str(forward.settlement_date) == "2025-06-30"
+
+
+@pytest.mark.integration
+def test_parse_nport_swap_derivatives_integration(session, engine):
+    """Integration test: verify full swap derivative parsing pipeline (US-8).
+
+    This test uses a mock filing with realistic swap data to verify the complete
+    parsing pipeline including:
+    1. FundReport parsing (using real edgartools structure)
+    2. Parent derivative fields (unrealized_appreciation, currency, underlying_*)
+    3. DerivativeSwap child table
+    4. DerivativeSwapLeg rows with complete pay/receive leg data
+
+    Note: Marked as integration test. Uses mocked filing data with realistic
+    structure to ensure consistent test results.
+    """
+    # Create ETF in database
+    test_cik = "0001100663"
+    test_series_id = "S000016033"
+
+    etf = ETF(
+        ticker="AGG",
+        cik=test_cik,
+        series_id=test_series_id,
+        issuer_name="BlackRock Inc",
+        fund_name="iShares Core U.S. Aggregate Bond ETF",
+    )
+    session.add(etf)
+    session.commit()
+
+    # Create a realistic mock swap derivative based on actual NPORT-P structure
+    def create_realistic_swap_derivative():
+        """Create a mock swap derivative with complete realistic data."""
+        inv = Mock()
+        inv.name = "USD Interest Rate Swap"
+
+        # Derivative info with parent fields
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "SWP"
+        inv.derivative_info.unrealized_appr = Decimal("125000.50")
+
+        # Create swap derivative with all fields
+        swp = Mock()
+        swp.counterparty_name = "JPMorgan Chase Bank N.A."
+        swp.counterparty_lei = "ZBUT11V806EZRVTWT807"
+        swp.deriv_addl_name = "USD SOFR-FEDFUND Basis Swap"
+        swp.deriv_addl_cusip = None
+        swp.reference_entity_name = None
+        swp.reference_entity_cusip = None
+        swp.notional_amount = Decimal("50000000.00")
+        swp.termination_date = "2030-12-15"
+        swp.currency_code = "USD"
+
+        # Parent-level fields
+        swp.deriv_addl_title = "Interest Rate Swap on USD SOFR"
+        swp.deriv_addl_lei = None
+        swp.deriv_addl_isin = None
+        swp.deriv_addl_ticker = None
+        swp.deriv_addl_other_id = None
+        swp.deriv_addl_other_id_type = None
+        swp.deriv_addl_balance = Decimal("1.0")
+        swp.deriv_addl_units = "NS"
+        swp.deriv_addl_currency = "USD"
+        swp.deriv_addl_value_usd = Decimal("125000.50")
+        swp.deriv_addl_pct_value = Decimal("0.015")
+        swp.deriv_addl_asset_cat = "DSWP"
+        swp.deriv_addl_issuer_cat = "CORP"
+        swp.deriv_addl_inv_country = "US"
+
+        # Swap parent fields
+        swp.upfront_payment = Decimal("25000.00")
+        swp.upfront_payment_currency = "USD"
+        swp.upfront_receipt = Decimal("10000.00")
+        swp.upfront_receipt_currency = "USD"
+        swp.swap_flag = "Y"
+
+        # Pay leg (fixed rate)
+        swp.fixed_rate_pay = Decimal("0.0425")
+        swp.fixed_amount_pay = Decimal("2125000.00")
+        swp.fixed_currency_pay = "USD"
+        swp.floating_index_pay = None
+        swp.floating_spread_pay = None
+        swp.floating_amount_pay = None
+        swp.floating_currency_pay = None
+        swp.floating_tenor_pay = None
+        swp.floating_tenor_unit_pay = None
+        swp.floating_reset_date_tenor_pay = None
+        swp.floating_reset_date_unit_pay = None
+        swp.other_description_pay = None
+
+        # Receive leg (floating rate)
+        swp.fixed_rate_receive = None
+        swp.fixed_amount_receive = None
+        swp.fixed_currency_receive = None
+        swp.floating_index_receive = "USD-SOFR-COMPOUND"
+        swp.floating_spread_receive = Decimal("0.0025")
+        swp.floating_amount_receive = Decimal("2000000.00")
+        swp.floating_currency_receive = "USD"
+        swp.floating_tenor_receive = "3"
+        swp.floating_tenor_unit_receive = "M"
+        swp.floating_reset_date_tenor_receive = "2"
+        swp.floating_reset_date_unit_receive = "D"
+        swp.other_description_receive = None
+
+        inv.derivative_info.swap_derivative = swp
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    # Create mock FundReport
+    def create_mock_report():
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_realistic_swap_derivative()]
+
+        general_info = Mock()
+        general_info.series_id = test_series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    # Patch the pipeline to use our mock report
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 2, 1)
+        filing.accession_number = "0001193125-25-020000"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch("etf_pipeline.parsers.nport.FundReport.from_filing", return_value=create_mock_report()):
+            with patch("etf_pipeline.parsers.nport.parse_nport_investments_xml", return_value={}):
+                with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
+                    with patch("etf_pipeline.parsers.nport.sessionmaker") as mock_sm:
+                        mock_sm.return_value = sessionmaker(bind=engine)
+                        parse_nport(cik=test_cik, clear_cache=False)
+
+    # VERIFICATION: Check that swap derivatives were parsed correctly
+
+    # 1. Verify Derivative parent table
+    stmt = select(Derivative).where(Derivative.derivative_type == "SWP")
+    deriv = session.execute(stmt).scalar_one()
+
+    # Verify parent fields are populated
+    assert deriv.unrealized_appreciation == Decimal("125000.50"), \
+        "Parent derivative unrealized_appreciation not populated"
+    assert deriv.currency == "USD", \
+        "Parent derivative currency not populated"
+    assert deriv.underlying_name == "USD SOFR-FEDFUND Basis Swap", \
+        "Parent derivative underlying_name not populated"
+    assert deriv.underlying_title == "Interest Rate Swap on USD SOFR", \
+        "Parent derivative underlying_title not populated"
+    assert deriv.underlying_balance == Decimal("1.0"), \
+        "Parent derivative underlying_balance not populated"
+    assert deriv.underlying_units == "NS", \
+        "Parent derivative underlying_units not populated"
+
+    # 2. Verify DerivativeSwap child table
+    stmt = select(DerivativeSwap).where(DerivativeSwap.derivative_id == deriv.id)
+    swap = session.execute(stmt).scalar_one()
+
+    assert swap.upfront_payment == Decimal("25000.00"), \
+        "DerivativeSwap upfront_payment not populated"
+    assert swap.upfront_payment_currency == "USD", \
+        "DerivativeSwap upfront_payment_currency not populated"
+    assert swap.upfront_receipt == Decimal("10000.00"), \
+        "DerivativeSwap upfront_receipt not populated"
+    assert swap.upfront_receipt_currency == "USD", \
+        "DerivativeSwap upfront_receipt_currency not populated"
+    assert swap.swap_flag == "Y", \
+        "DerivativeSwap swap_flag not populated"
+
+    # 3. Verify DerivativeSwapLeg rows (pay + receive)
+    stmt = select(DerivativeSwapLeg).where(
+        DerivativeSwapLeg.swap_id == swap.id
+    ).order_by(DerivativeSwapLeg.direction)
+    legs = session.execute(stmt).scalars().all()
+
+    assert len(legs) == 2, f"Expected 2 swap legs, found {len(legs)}"
+
+    # Verify pay leg (fixed)
+    pay_leg = legs[0]
+    assert pay_leg.direction == "pay", f"Expected 'pay' direction, got {pay_leg.direction}"
+    assert pay_leg.leg_type == "fixed", f"Expected 'fixed' leg type, got {pay_leg.leg_type}"
+    assert pay_leg.fixed_rate == Decimal("0.0425"), \
+        f"Pay leg fixed_rate not populated correctly: {pay_leg.fixed_rate}"
+    assert pay_leg.fixed_amount == Decimal("2125000.00"), \
+        f"Pay leg fixed_amount not populated correctly: {pay_leg.fixed_amount}"
+    assert pay_leg.fixed_currency == "USD", \
+        f"Pay leg fixed_currency not populated correctly: {pay_leg.fixed_currency}"
+    assert pay_leg.floating_index is None, \
+        "Pay leg should not have floating_index (it's a fixed leg)"
+
+    # Verify receive leg (floating)
+    receive_leg = legs[1]
+    assert receive_leg.direction == "receive", f"Expected 'receive' direction, got {receive_leg.direction}"
+    assert receive_leg.leg_type == "floating", f"Expected 'floating' leg type, got {receive_leg.leg_type}"
+    assert receive_leg.floating_index == "USD-SOFR-COMPOUND", \
+        f"Receive leg floating_index not populated correctly: {receive_leg.floating_index}"
+    assert receive_leg.floating_spread == Decimal("0.0025"), \
+        f"Receive leg floating_spread not populated correctly: {receive_leg.floating_spread}"
+    assert receive_leg.floating_amount == Decimal("2000000.00"), \
+        f"Receive leg floating_amount not populated correctly: {receive_leg.floating_amount}"
+    assert receive_leg.floating_currency == "USD", \
+        f"Receive leg floating_currency not populated correctly: {receive_leg.floating_currency}"
+    assert receive_leg.tenor == "3", \
+        f"Receive leg tenor not populated correctly: {receive_leg.tenor}"
+    assert receive_leg.tenor_unit == "M", \
+        f"Receive leg tenor_unit not populated correctly: {receive_leg.tenor_unit}"
+    assert receive_leg.reset_date_tenor == "2", \
+        f"Receive leg reset_date_tenor not populated correctly: {receive_leg.reset_date_tenor}"
+    assert receive_leg.reset_date_unit == "D", \
+        f"Receive leg reset_date_unit not populated correctly: {receive_leg.reset_date_unit}"
+    assert receive_leg.fixed_rate is None, \
+        "Receive leg should not have fixed_rate (it's a floating leg)"
