@@ -111,10 +111,11 @@ def mock_edgar_company(mock_fund_report):
             # Create mock filings with series_id attached
             series_list = cik_to_series.get(cik, [])
             filings_list = []
-            for series_id in series_list:
+            for idx, series_id in enumerate(series_list):
                 filing = Mock()
                 filing.filing_date = date(2025, 1, 15)
                 filing.series_id = series_id
+                filing.accession_number = f"0000000000-25-{idx:06d}"
                 filings_list.append(filing)
 
             # Mock filings collection
@@ -287,8 +288,10 @@ def test_parse_nport_handles_na_values(session, engine, sample_etfs, mock_nport_
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
         filing2 = Mock()
         filing2.filing_date = date(2025, 1, 15)
+        filing2.accession_number = "0000000000-25-000001"
 
         filings = Mock()
         filings.empty = False
@@ -374,6 +377,7 @@ def test_parse_nport_deduplicates_holdings_with_same_cusip(session, engine, samp
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
 
         filings = Mock()
         filings.empty = False
@@ -464,6 +468,7 @@ def test_parse_nport_does_not_deduplicate_none_cusip_holdings(session, engine, s
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
 
         filings = Mock()
         filings.empty = False
@@ -543,6 +548,7 @@ def test_parse_nport_deduplicates_derivatives_with_same_key(session, engine, sam
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
 
         filings = Mock()
         filings.empty = False
@@ -577,8 +583,10 @@ def test_parse_nport_fundreport_parse_error(session, engine, sample_etfs, mock_n
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
         filing2 = Mock()
         filing2.filing_date = date(2025, 1, 15)
+        filing2.accession_number = "0000000000-25-000001"
 
         filings = Mock()
         filings.empty = False
@@ -675,8 +683,10 @@ def test_parse_nport_creates_derivatives(session, engine, sample_etfs, mock_npor
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
         filing2 = Mock()
         filing2.filing_date = date(2025, 1, 15)
+        filing2.accession_number = "0000000000-25-000001"
 
         filings = Mock()
         filings.empty = False
@@ -756,8 +766,10 @@ def test_parse_nport_etf_with_no_derivatives(session, engine, sample_etfs, mock_
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
         filing2 = Mock()
         filing2.filing_date = date(2025, 1, 15)
+        filing2.accession_number = "0000000000-25-000001"
 
         filings = Mock()
         filings.empty = False
@@ -832,8 +844,10 @@ def test_parse_nport_skips_derivatives_when_holdings_exist(session, engine, samp
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
         filing2 = Mock()
         filing2.filing_date = date(2025, 1, 15)
+        filing2.accession_number = "0000000000-25-000001"
 
         filings = Mock()
         filings.empty = False
@@ -918,8 +932,10 @@ def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, s
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
         filing2 = Mock()
         filing2.filing_date = date(2025, 1, 15)
+        filing2.accession_number = "0000000000-25-000001"
 
         filings = Mock()
         filings.empty = False
@@ -1012,6 +1028,7 @@ def test_parse_nport_option_derivative_index_name_fallback(session, engine, samp
 
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
 
         filings = Mock()
         filings.empty = False
@@ -1177,8 +1194,10 @@ def test_parse_nport_sets_filing_date(session, engine, sample_etfs, mock_edgar_c
         company = Mock()
         filing1 = Mock()
         filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
         filing2 = Mock()
         filing2.filing_date = date(2025, 1, 15)
+        filing2.accession_number = "0000000000-25-000001"
 
         filings = Mock()
         filings.empty = False

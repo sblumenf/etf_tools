@@ -127,7 +127,7 @@ def _get_latest_filings_per_series(filings):
 
     # Get the most recent filing date
     latest_date = max(by_date.keys())
-    latest_filings = by_date[latest_date]
+    latest_filings = sorted(by_date[latest_date], key=lambda f: f.accession_number)
 
     # Parse each filing and extract series_id
     series_map = {}
