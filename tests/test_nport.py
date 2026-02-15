@@ -2068,3 +2068,201 @@ def test_parse_nport_extracts_title_payoff_exchange_rate(session, engine, sample
     assert holding.payoff_profile == "Long"
     assert holding.exchange_rate == Decimal("1.095432")
     assert holding.holding_key == "888888888"
+
+
+def test_parse_nport_forward_derivative_currency_fields(session, engine, sample_etfs, mock_nport_db):
+    """Test that forward derivatives extract currency_sold, currency_amt_sold, and settlement_date."""
+    def create_mock_forward_with_currency():
+        inv = Mock()
+        inv.name = "Forward Currency Derivative"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "FWD"
+
+        fwd = Mock()
+        fwd.counterparty_name = "JP Morgan"
+        fwd.counterparty_lei = "123456789012345678XX"
+        fwd.deriv_addl_name = "EUR/USD Forward"
+        fwd.deriv_addl_cusip = "EURUSD001"
+        fwd.amount_sold = Decimal("1000000.00")
+        fwd.amount_purchased = None
+        fwd.currency_sold = "EUR"
+        fwd.settlement_date = "2025-06-30"
+        inv.derivative_info.forward_derivative = fwd
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_forward(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_forward_with_currency()]
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_forward("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+    assert deriv.derivative_type == "FWD"
+    assert deriv.currency_sold == "EUR"
+    assert deriv.currency_amt_sold == Decimal("1000000.00")
+    assert deriv.settlement_date == date(2025, 6, 30)
+    assert deriv.counterparty == "JP Morgan"
+
+
+def test_parse_nport_written_option_notional_amt(session, engine, sample_etfs, mock_nport_db):
+    """Test that written options extract written_notional_amt."""
+    def create_mock_written_option():
+        inv = Mock()
+        inv.name = "Written Call Option"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "OPT"
+
+        opt = Mock()
+        opt.counterparty_name = "Goldman Sachs"
+        opt.counterparty_lei = "123456789012345678YY"
+        opt.reference_entity_name = "SPY"
+        opt.index_name = None
+        opt.reference_entity_cusip = "78462F103"
+        opt.share_number = Decimal("5000")
+        opt.written_or_purchased = "W"  # Written
+        opt.delta = Decimal("-0.45")
+        opt.expiration_date = "2025-03-21"
+        inv.derivative_info.option_derivative = opt
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_written_option(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_written_option()]
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_written_option("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+    assert deriv.derivative_type == "OPT"
+    assert deriv.written_notional_amt == Decimal("5000")
+    assert deriv.underlying_name == "SPY"
+    assert deriv.delta == Decimal("-0.45")
+
+
+def test_parse_nport_derivative_with_null_new_fields(session, engine, sample_etfs, mock_nport_db):
+    """Test that derivatives with NULL values for new fields are handled correctly."""
+    def create_mock_future_no_new_fields():
+        inv = Mock()
+        inv.name = "Simple Future"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "FUT"
+
+        fut = Mock()
+        fut.counterparty_name = "Morgan Stanley"
+        fut.counterparty_lei = "123456789012345678ZZ"
+        fut.reference_entity_name = "10Y Treasury Note"
+        fut.reference_entity_cusip = "912810RY1"
+        fut.notional_amount = Decimal("2000000.00")
+        fut.expiration_date = "2025-09-30"
+        inv.derivative_info.future_derivative = fut
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_future(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_future_no_new_fields()]
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_future("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+    assert deriv.derivative_type == "FUT"
+    assert deriv.currency_sold is None
+    assert deriv.currency_amt_sold is None
+    assert deriv.settlement_date is None
+    assert deriv.written_notional_amt is None
+    assert deriv.other_amt is None
+    assert deriv.notional_value == Decimal("2000000.00")
