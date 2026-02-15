@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from etf_pipeline.models import (
     Derivative,
+    DerivativeOption,
     ETF,
     FeeExpense,
     FlowData,
@@ -140,6 +141,122 @@ class TestDerivative:
 
         result = session.query(Derivative).one()
         assert result.derivative_type == "future"
+
+
+class TestDerivativeOption:
+    def test_create_derivative_option(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        deriv = Derivative(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            derivative_type="option",
+            underlying_name="Apple Inc",
+            notional_value=Decimal("1000000.00"),
+        )
+        session.add(deriv)
+        session.flush()
+
+        option = DerivativeOption(
+            derivative_id=deriv.id,
+            put_or_call="Call",
+            written_or_purchased="Purchased",
+            share_number=Decimal("10000.0000"),
+            exercise_price=Decimal("150.000000"),
+            exercise_price_currency="USD",
+        )
+        session.add(option)
+        session.commit()
+
+        result = session.query(DerivativeOption).one()
+        assert result.put_or_call == "Call"
+        assert result.written_or_purchased == "Purchased"
+        assert result.share_number == Decimal("10000.0000")
+        assert result.exercise_price == Decimal("150.000000")
+
+    def test_derivative_option_unique_constraint(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        deriv = Derivative(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            derivative_type="option",
+            underlying_name="Test",
+        )
+        session.add(deriv)
+        session.flush()
+
+        session.add(DerivativeOption(derivative_id=deriv.id, put_or_call="Call"))
+        session.commit()
+
+        session.add(DerivativeOption(derivative_id=deriv.id, put_or_call="Put"))
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+    def test_derivative_option_cascade_delete(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        deriv = Derivative(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            derivative_type="option",
+            underlying_name="Test",
+        )
+        session.add(deriv)
+        session.flush()
+
+        option = DerivativeOption(
+            derivative_id=deriv.id,
+            put_or_call="Call",
+            exercise_price=Decimal("100.000000"),
+        )
+        session.add(option)
+        session.commit()
+
+        assert session.query(DerivativeOption).count() == 1
+
+        session.delete(deriv)
+        session.commit()
+
+        assert session.query(DerivativeOption).count() == 0
+
+    def test_derivative_option_relationship(self, session):
+        etf = _make_etf()
+        session.add(etf)
+        session.flush()
+
+        deriv = Derivative(
+            etf_id=etf.id,
+            report_date=date(2024, 3, 31),
+            filing_date=date(2024, 5, 1),
+            derivative_type="option",
+            underlying_name="Test",
+        )
+        session.add(deriv)
+        session.flush()
+
+        option = DerivativeOption(
+            derivative_id=deriv.id,
+            put_or_call="Put",
+            index_name="S&P 500",
+            index_identifier="SPX",
+        )
+        session.add(option)
+        session.commit()
+
+        session.refresh(deriv)
+        assert deriv.option is not None
+        assert deriv.option.put_or_call == "Put"
+        assert deriv.option.index_name == "S&P 500"
 
 
 class TestPerformance:

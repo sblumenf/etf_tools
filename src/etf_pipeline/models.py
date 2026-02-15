@@ -178,6 +178,9 @@ class Derivative(Base):
     swap: Mapped[Optional["DerivativeSwap"]] = relationship(
         back_populates="derivative", cascade="all, delete-orphan", uselist=False
     )
+    option: Mapped[Optional["DerivativeOption"]] = relationship(
+        back_populates="derivative", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class DerivativeSwap(Base):
@@ -217,12 +220,12 @@ class DerivativeSwapLeg(Base):
     )
     direction: Mapped[str] = mapped_column(String(7), nullable=False)  # "pay" or "receive"
     leg_type: Mapped[Optional[str]] = mapped_column(String(10))  # "fixed", "floating", "other"
-    
+
     # Fixed leg fields
     fixed_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6))
     fixed_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
     fixed_currency: Mapped[Optional[str]] = mapped_column(String(3))
-    
+
     # Floating leg fields
     floating_index: Mapped[Optional[str]] = mapped_column(String(100))
     floating_spread: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6))
@@ -232,11 +235,37 @@ class DerivativeSwapLeg(Base):
     tenor_unit: Mapped[Optional[str]] = mapped_column(String(10))
     reset_date_tenor: Mapped[Optional[str]] = mapped_column(String(20))
     reset_date_unit: Mapped[Optional[str]] = mapped_column(String(10))
-    
+
     # Other leg type
     other_description: Mapped[Optional[str]] = mapped_column(Text)
 
     swap: Mapped["DerivativeSwap"] = relationship(back_populates="legs")
+
+
+class DerivativeOption(Base):
+    """Option-specific derivative details. One row per option, swaption, or warrant."""
+    __tablename__ = "derivative_option"
+    __table_args__ = (
+        Index("derivative_option_derivative_idx", "derivative_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    derivative_id: Mapped[int] = mapped_column(
+        ForeignKey("derivative.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    put_or_call: Mapped[Optional[str]] = mapped_column(String(4))
+    written_or_purchased: Mapped[Optional[str]] = mapped_column(String(10))
+    share_number: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    exercise_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 6))
+    exercise_price_currency: Mapped[Optional[str]] = mapped_column(String(3))
+    index_name: Mapped[Optional[str]] = mapped_column(String(150))
+    index_identifier: Mapped[Optional[str]] = mapped_column(String(50))
+    nested_deriv_type: Mapped[Optional[str]] = mapped_column(String(20))
+    nested_deriv_notional: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    nested_deriv_counterparty: Mapped[Optional[str]] = mapped_column(String(500))
+    nested_deriv_currency: Mapped[Optional[str]] = mapped_column(String(3))
+
+    derivative: Mapped["Derivative"] = relationship(back_populates="option")
 
 
 class DebtSecurityDetail(Base):
