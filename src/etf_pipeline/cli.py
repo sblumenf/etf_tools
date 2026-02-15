@@ -231,7 +231,7 @@ def run_parser_for_cik(cik, parser_type):
     }
 
     parser_func = parser_map[parser_type]
-    parser_func(ciks=[cik], clear_cache=False)
+    parser_func(ciks=[cik], clear_cache=True)
 
 
 @main.command()
@@ -239,7 +239,6 @@ def run_parser_for_cik(cik, parser_type):
 def run_all(limit):
     """Run the full pipeline with per-CIK orchestration and freshness detection."""
     import logging
-    from edgar.storage_management import clear_cache as edgar_clear_cache
     from sqlalchemy.orm import sessionmaker
 
     from etf_pipeline.db import get_engine
@@ -300,7 +299,6 @@ def run_all(limit):
                             click.echo(f"  Failed {parser_type} for CIK {cik}: {e}")
                             raise
 
-                edgar_clear_cache(dry_run=False)
                 gc.collect()
                 processed += 1
 

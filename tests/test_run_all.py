@@ -256,7 +256,6 @@ def test_run_all_skips_cik_with_no_new_filings(
     assert "0 CIKs failed" in result.output
 
     mock_run_parser.assert_called_once_with("0000005678", "nport")
-    assert mock_clear_cache.call_count == 1  # Only for CIK 5678
 
 
 @patch("edgar.storage_management.clear_cache")
@@ -294,23 +293,21 @@ def test_run_all_runs_parsers_in_order(
     assert mock_run_parser.call_args_list == expected_calls
 
 
-@patch("edgar.storage_management.clear_cache")
 @patch("etf_pipeline.cli.run_parser_for_cik")
 @patch("etf_pipeline.cli.get_stale_parsers")
 @patch("etf_pipeline.cli.check_sec_filing_dates")
 @patch("etf_pipeline.cli.get_all_ciks")
 @patch("etf_pipeline.load_etfs.load_etfs")
 @patch("etf_pipeline.discover.fetch")
-def test_run_all_clears_cache_per_cik(
+def test_run_all_processes_multiple_ciks(
     mock_fetch,
     mock_load_etfs,
     mock_get_all_ciks,
     mock_check_sec,
     mock_get_stale,
     mock_run_parser,
-    mock_clear_cache,
 ):
-    """Test that run_all clears cache after each CIK."""
+    """Test that run_all processes multiple CIKs."""
     runner = CliRunner()
 
     mock_get_all_ciks.return_value = ["0000001234", "0000005678", "0000009999"]
@@ -319,7 +316,7 @@ def test_run_all_clears_cache_per_cik(
     result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
-    assert mock_clear_cache.call_count == 3  # Once per CIK
+    assert mock_run_parser.call_count == 3  # Once per CIK
 
 
 @patch("edgar.storage_management.clear_cache")
@@ -442,7 +439,7 @@ def test_run_parser_for_cik_nport(mock_parse_nport):
 
     run_parser_for_cik("0000001234", "nport")
 
-    mock_parse_nport.assert_called_once_with(ciks=["0000001234"], clear_cache=False)
+    mock_parse_nport.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
 
 
 @patch("etf_pipeline.parsers.ncsr.parse_ncsr")
@@ -452,7 +449,7 @@ def test_run_parser_for_cik_ncsr(mock_parse_ncsr):
 
     run_parser_for_cik("0000001234", "ncsr")
 
-    mock_parse_ncsr.assert_called_once_with(ciks=["0000001234"], clear_cache=False)
+    mock_parse_ncsr.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
 
 
 @patch("etf_pipeline.parsers.prospectus.parse_prospectus")
@@ -462,7 +459,7 @@ def test_run_parser_for_cik_prospectus(mock_parse_prospectus):
 
     run_parser_for_cik("0000001234", "prospectus")
 
-    mock_parse_prospectus.assert_called_once_with(ciks=["0000001234"], clear_cache=False)
+    mock_parse_prospectus.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
 
 
 @patch("etf_pipeline.parsers.finhigh.parse_finhigh")
@@ -472,7 +469,7 @@ def test_run_parser_for_cik_finhigh(mock_parse_finhigh):
 
     run_parser_for_cik("0000001234", "finhigh")
 
-    mock_parse_finhigh.assert_called_once_with(ciks=["0000001234"], clear_cache=False)
+    mock_parse_finhigh.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
 
 
 @patch("etf_pipeline.parsers.flows.parse_flows")
@@ -482,7 +479,7 @@ def test_run_parser_for_cik_flows(mock_parse_flows):
 
     run_parser_for_cik("0000001234", "flows")
 
-    mock_parse_flows.assert_called_once_with(ciks=["0000001234"], clear_cache=False)
+    mock_parse_flows.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
 
 
 def test_parser_form_map_consistency():
