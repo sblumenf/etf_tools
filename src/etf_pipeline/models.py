@@ -133,6 +133,11 @@ class Derivative(Base):
     counterparty_lei: Mapped[Optional[str]] = mapped_column(String(20))
     delta: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6))
     expiration_date: Mapped[Optional[date]] = mapped_column(Date)
+    currency_sold: Mapped[Optional[str]] = mapped_column(String(3))
+    currency_amt_sold: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    settlement_date: Mapped[Optional[date]] = mapped_column(Date)
+    written_notional_amt: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    other_amt: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
 
     etf: Mapped["ETF"] = relationship(back_populates="derivatives")
 
