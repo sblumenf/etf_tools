@@ -537,6 +537,11 @@ def _map_investment_to_derivative(
     counterparty_lei = None
     delta = None
     expiration_date = None
+    currency_sold = None
+    currency_amt_sold = None
+    settlement_date = None
+    written_notional_amt = None
+    other_amt = None
 
     if deriv_info.forward_derivative:
         fwd = deriv_info.forward_derivative
@@ -549,6 +554,10 @@ def _map_investment_to_derivative(
         elif fwd.amount_purchased:
             notional_value = fwd.amount_purchased
         expiration_date = _parse_date(fwd.settlement_date)
+        # New fields for forward derivatives
+        currency_sold = _clean_str(fwd.currency_sold)
+        currency_amt_sold = fwd.amount_sold
+        settlement_date = _parse_date(fwd.settlement_date)
 
     elif deriv_info.future_derivative:
         fut = deriv_info.future_derivative
@@ -569,6 +578,9 @@ def _map_investment_to_derivative(
             notional_value = opt.share_number
         delta = _parse_delta(opt.delta)
         expiration_date = _parse_date(opt.expiration_date)
+        # New field for written options
+        if opt.written_or_purchased == "W" and opt.share_number:
+            written_notional_amt = opt.share_number
 
     elif deriv_info.swap_derivative:
         swp = deriv_info.swap_derivative
@@ -584,6 +596,9 @@ def _map_investment_to_derivative(
         counterparty = swo.counterparty_name
         counterparty_lei = swo.counterparty_lei
         expiration_date = _parse_date(swo.expiration_date)
+        # New field for written swaptions
+        if swo.written_or_purchased == "W" and swo.share_number:
+            written_notional_amt = swo.share_number
 
     return Derivative(
         etf_id=etf.id,
@@ -597,6 +612,11 @@ def _map_investment_to_derivative(
         counterparty_lei=_clean_str(counterparty_lei),
         delta=delta,
         expiration_date=expiration_date,
+        currency_sold=currency_sold,
+        currency_amt_sold=currency_amt_sold,
+        settlement_date=settlement_date,
+        written_notional_amt=written_notional_amt,
+        other_amt=other_amt,
     )
 
 
