@@ -130,6 +130,7 @@ class Derivative(Base):
             "derivative_type",
             "underlying_name",
             "filing_date",
+            "counterparty",
             name="derivative_uniq",
         ),
         Index("derivative_etf_report_idx", "etf_id", "report_date"),
@@ -153,6 +154,25 @@ class Derivative(Base):
     settlement_date: Mapped[Optional[date]] = mapped_column(Date)
     written_notional_amt: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
     other_amt: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+
+    # New shared fields (US-1)
+    unrealized_appreciation: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    currency: Mapped[Optional[str]] = mapped_column(String(3))
+    underlying_title: Mapped[Optional[str]] = mapped_column(String(150))
+    underlying_lei: Mapped[Optional[str]] = mapped_column(String(20))
+    underlying_isin: Mapped[Optional[str]] = mapped_column(String(12))
+    underlying_ticker: Mapped[Optional[str]] = mapped_column(String(20))
+    underlying_other_id: Mapped[Optional[str]] = mapped_column(String(50))
+    underlying_other_id_type: Mapped[Optional[str]] = mapped_column(String(50))
+    underlying_balance: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    underlying_units: Mapped[Optional[str]] = mapped_column(String(50))
+    underlying_currency: Mapped[Optional[str]] = mapped_column(String(3))
+    underlying_value_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    underlying_pct_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 5))
+    underlying_asset_cat: Mapped[Optional[str]] = mapped_column(String(20))
+    underlying_issuer_cat: Mapped[Optional[str]] = mapped_column(String(20))
+    underlying_inv_country: Mapped[Optional[str]] = mapped_column(String(2))
+    payoff_profile: Mapped[Optional[str]] = mapped_column(String(10))
 
     etf: Mapped["ETF"] = relationship(back_populates="derivatives")
 
