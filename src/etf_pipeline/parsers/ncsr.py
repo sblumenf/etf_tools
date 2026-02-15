@@ -234,6 +234,65 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                 logger.warning(f"CIK {cik}: Filing {filing_idx} has no ClassAxis dimension")
                 continue
 
+            # Extract benchmark data BEFORE per-class loop (benchmarks never have ClassAxis)
+            benchmark_name = None
+            benchmark_returns = {}
+
+            has_benchmark_axis = 'dim_oef_BroadBasedIndexAxis' in df_filtered.columns
+            if has_benchmark_axis:
+                # Filter for benchmark facts: BroadBasedIndexAxis is not null AND ClassAxis is null
+                benchmark_facts = df_filtered[
+                    (df_filtered['dim_oef_BroadBasedIndexAxis'].notna()) &
+                    (df_filtered['dim_oef_ClassAxis'].isna())
+                ].copy()
+
+                if not benchmark_facts.empty:
+                    # Deduplicate benchmark facts by (concept, period_start, period_end, numeric_value)
+                    # Keep first occurrence when multiple benchmark member IDs have identical values
+                    benchmark_facts_deduped = benchmark_facts.drop_duplicates(
+                        subset=['concept', 'period_start', 'period_end', 'numeric_value'],
+                        keep='first'
+                    )
+
+                    # Extract benchmark name from the first benchmark
+                    benchmark_axis_values = benchmark_facts_deduped['dim_oef_BroadBasedIndexAxis'].dropna().unique()
+                    if len(benchmark_axis_values) > 0:
+                        benchmark_name = _extract_benchmark_name(benchmark_axis_values[0])
+
+                    # Extract benchmark returns
+                    for _, row in benchmark_facts_deduped.iterrows():
+                        concept = row['concept']
+                        numeric_value = row.get('numeric_value')
+
+                        if concept == 'oef:AvgAnnlRtrPct':
+                            period_start = row.get('period_start')
+                            period_end = row.get('period_end')
+
+                            if period_start and period_end:
+                                # Convert to date objects if needed
+                                if isinstance(period_start, str):
+                                    period_start = datetime.strptime(period_start, "%Y-%m-%d").date()
+                                elif isinstance(period_start, datetime):
+                                    period_start = period_start.date()
+                                elif hasattr(period_start, 'date'):
+                                    period_start = period_start.date()
+
+                                if isinstance(period_end, str):
+                                    period_end = datetime.strptime(period_end, "%Y-%m-%d").date()
+                                elif isinstance(period_end, datetime):
+                                    period_end = period_end.date()
+                                elif hasattr(period_end, 'date'):
+                                    period_end = period_end.date()
+
+                                field_name = _map_return_period(period_start, period_end)
+                                if field_name:
+                                    # Map to benchmark field name
+                                    benchmark_field = field_name.replace('return_', 'benchmark_return_')
+                                    if benchmark_field in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
+                                        benchmark_returns[benchmark_field] = _parse_decimal(numeric_value)
+
+                    logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark: {benchmark_name}, returns: {benchmark_returns}")
+
             # Process each unique class_id in this filing's XBRL data
             for class_axis_value in df_filtered['dim_oef_ClassAxis'].dropna().unique():
                 class_id = _extract_class_id(class_axis_value)
@@ -247,17 +306,9 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                     skipped_etfs += 1
                     continue
 
-                # Get all facts for this class
+                # Get all facts for this class (fund facts only - no benchmark axis)
                 class_facts = df_filtered[df_filtered['dim_oef_ClassAxis'] == class_axis_value].copy()
-
-                # Separate fund facts from benchmark facts
-                has_benchmark_axis = 'dim_oef_BroadBasedIndexAxis' in class_facts.columns
-                if has_benchmark_axis:
-                    fund_facts = class_facts[class_facts['dim_oef_BroadBasedIndexAxis'].isna()].copy()
-                    benchmark_facts = class_facts[class_facts['dim_oef_BroadBasedIndexAxis'].notna()].copy()
-                else:
-                    fund_facts = class_facts
-                    benchmark_facts = pd.DataFrame()
+                fund_facts = class_facts[class_facts['dim_oef_BroadBasedIndexAxis'].isna()].copy() if has_benchmark_axis else class_facts
 
                 # Extract fiscal_year_end from period_end (use the first one we find)
                 fiscal_year_end = None
@@ -328,48 +379,6 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
 
                     elif concept == 'us-gaap:InvestmentCompanyPortfolioTurnover':
                         portfolio_turnover = _parse_decimal(numeric_value)
-
-                # Extract benchmark data (if any)
-                benchmark_name = None
-                benchmark_returns = {}
-
-                if not benchmark_facts.empty:
-                    # Extract benchmark name from the first benchmark
-                    benchmark_axis_values = benchmark_facts['dim_oef_BroadBasedIndexAxis'].dropna().unique()
-                    if len(benchmark_axis_values) > 0:
-                        benchmark_name = _extract_benchmark_name(benchmark_axis_values[0])
-
-                    # Extract benchmark returns
-                    for _, row in benchmark_facts.iterrows():
-                        concept = row['concept']
-                        numeric_value = row.get('numeric_value')
-
-                        if concept == 'oef:AvgAnnlRtrPct':
-                            period_start = row.get('period_start')
-                            period_end = row.get('period_end')
-
-                            if period_start and period_end:
-                                # Convert to date objects if needed
-                                if isinstance(period_start, str):
-                                    period_start = datetime.strptime(period_start, "%Y-%m-%d").date()
-                                elif isinstance(period_start, datetime):
-                                    period_start = period_start.date()
-                                elif hasattr(period_start, 'date'):
-                                    period_start = period_start.date()
-
-                                if isinstance(period_end, str):
-                                    period_end = datetime.strptime(period_end, "%Y-%m-%d").date()
-                                elif isinstance(period_end, datetime):
-                                    period_end = period_end.date()
-                                elif hasattr(period_end, 'date'):
-                                    period_end = period_end.date()
-
-                                field_name = _map_return_period(period_start, period_end)
-                                if field_name:
-                                    # Map to benchmark field name
-                                    benchmark_field = field_name.replace('return_', 'benchmark_return_')
-                                    if benchmark_field in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
-                                        benchmark_returns[benchmark_field] = _parse_decimal(numeric_value)
 
                 # Upsert Performance record
                 stmt = select(Performance).where(

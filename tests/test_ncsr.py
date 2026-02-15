@@ -212,9 +212,9 @@ class TestNCSRParser:
                 'ist:C000131291Member',
                 'ist:C000131291Member',
                 'ist:C000131291Member',
-                'ist:C000131291Member',
-                'ist:C000131291Member',
-                'ist:C000131291Member',
+                None,  # Benchmark rows have NULL ClassAxis (matches real XBRL)
+                None,
+                None,
             ],
             'dim_oef_BroadBasedIndexAxis': [
                 None,  # Fund returns have NaN benchmark axis
@@ -451,8 +451,8 @@ class TestNCSRParser:
             ],
             'dim_oef_ClassAxis': [
                 'ist:C000131291Member',
-                'ist:C000131291Member',
-                'ist:C000131291Member',
+                None,  # Benchmark rows have NULL ClassAxis (matches real XBRL)
+                None,
             ],
             'dim_oef_BroadBasedIndexAxis': [
                 None,
