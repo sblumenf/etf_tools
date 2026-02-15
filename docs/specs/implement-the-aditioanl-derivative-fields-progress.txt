@@ -1,0 +1,15 @@
+Phase 1: Schema
+  [PENDING] US-1: Extend Derivative Parent Table
+  [PENDING] US-2: Create Derivative Swap Tables
+  [PENDING] US-3: Create Derivative Option Table
+  [PENDING] US-4: Create Derivative Forward Table
+
+Phase 2: Parser — Parent Fields
+  [PENDING] US-5: Update NPORT Parser — Parent Fields
+
+Phase 3: Parser — Child Tables
+  [PENDING] US-6: Update NPORT Parser — Swap Child Tables
+  [PENDING] US-7: Update NPORT Parser — Option and Forward Child Tables
+
+Phase 4: Integration Test
+  [PENDING] US-8: Integration Test Against Real Filing

@@ -16,6 +16,7 @@ ETF (1) ──< PerShareDistribution
 ETF (1) ──< PerShareRatios
 
 FlowData (standalone, keyed by CIK)
+FundSnapshot (standalone, keyed by CIK)
 ```
 
 ---
@@ -168,6 +169,26 @@ Fund-level sales and redemption flows from 24F-2NT filings.
 
 ---
 
+### `fund_snapshot`
+
+Fund-level balance sheet snapshot from NPORT-P filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `cik` | String(10) | NOT NULL, INDEXED | SEC CIK (issuer-level, not per-ETF) |
+| `report_date` | Date | NOT NULL, INDEXED | NPORT filing report date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
+| `total_assets` | Numeric(20,2) | | Fund's total asset value |
+| `total_liabilities` | Numeric(20,2) | | Fund's total liabilities |
+| `net_assets` | Numeric(20,2) | | NAV (total_assets - total_liabilities) |
+
+**Unique:** `(cik, report_date, filing_date)`
+
+> Note: `fund_snapshot` is keyed by CIK, not `etf_id`. NPORT-P filings report fund-level balance sheet data at the series level, which maps to CIK in our data model. This table captures the balance sheet state as of each quarterly filing.
+
+---
+
 ### `per_share_operating`
 
 Per-share operating performance from N-CSR financial highlights.
@@ -264,6 +285,9 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 | fee_expense | `fee_expense_etf_date_filing_uniq` | UNIQUE | `etf_id, effective_date, filing_date` |
 | flow_data | `flow_data_cik_fy_filing_uniq` | UNIQUE | `cik, fiscal_year_end, filing_date` |
 | flow_data | `flow_data_fy_idx` | INDEX | `fiscal_year_end` |
+| fund_snapshot | `fund_snapshot_cik_date_uniq` | UNIQUE | `cik, report_date, filing_date` |
+| fund_snapshot | `fund_snapshot_cik_idx` | INDEX | `cik` |
+| fund_snapshot | `fund_snapshot_report_date_idx` | INDEX | `report_date` |
 | per_share_operating | `per_share_operating_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
 | per_share_distribution | `per_share_distribution_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
 | per_share_ratios | `per_share_ratios_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
@@ -275,7 +299,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 
 | Filing Type | Tables Populated |
 |---|---|
-| NPORT-P | `holding`, `derivative` |
+| NPORT-P | `holding`, `derivative`, `fund_snapshot` |
 | N-CSR | `performance`, `per_share_operating`, `per_share_distribution`, `per_share_ratios` |
 | 485BPOS | `etf` (objective/strategy), `fee_expense` |
 | 24F-2NT | `flow_data` |

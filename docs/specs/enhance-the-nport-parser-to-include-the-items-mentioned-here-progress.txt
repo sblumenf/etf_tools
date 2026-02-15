@@ -1,0 +1,21 @@
+Phase 1: Schema Foundation + Fund Snapshot [PENDING]
+  - US-1: Fund-Level Balance Sheet Snapshot [PENDING]
+
+Phase 2: Holding/Derivative Enhancements + Debt/Lending Tables [PENDING]
+  - US-2: Debt Security Detail Table [PENDING]
+  - US-3: Securities Lending Table [PENDING]
+  - US-4: Enhanced Holding Columns + Constraint Fix [PENDING]
+  - US-5: Enhanced Derivative Columns [PENDING]
+
+Phase 3: Monthly Returns + Flows [PENDING]
+  - US-6: Monthly Total Returns [PENDING]
+  - US-7: Monthly Fund Flows [PENDING]
+
+Phase 4: Risk Metrics + Custom XML [PENDING]
+  - US-8: Interest Rate Risk Metrics [PENDING]
+  - US-9: Credit Spread Risk Metrics [PENDING]
+  - US-10: Custom XML — Borrower Details + Liquidity Classification [PENDING]
+
+Phase 5: Prospectus Enhancements — Risk Narrative + Fee Waiver Date [PENDING]
+  - US-11: Principal Risk Disclosure Narrative [PENDING]
+  - US-12: Fee Waiver Expiration Date [PENDING]

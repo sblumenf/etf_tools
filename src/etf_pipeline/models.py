@@ -270,6 +270,25 @@ class PerShareRatios(Base):
     etf: Mapped["ETF"] = relationship(back_populates="per_share_ratios")
 
 
+class FundSnapshot(Base):
+    __tablename__ = "fund_snapshot"
+    __table_args__ = (
+        UniqueConstraint(
+            "cik", "report_date", "filing_date", name="fund_snapshot_cik_date_uniq"
+        ),
+        Index("fund_snapshot_cik_idx", "cik"),
+        Index("fund_snapshot_report_date_idx", "report_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cik: Mapped[str] = mapped_column(String(10), nullable=False)
+    report_date: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
+    total_assets: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    total_liabilities: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    net_assets: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+
+
 class ProcessingLog(Base):
     __tablename__ = "processing_log"
     __table_args__ = (

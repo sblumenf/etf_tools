@@ -13,7 +13,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import Derivative, ETF, Holding
+from etf_pipeline.models import Derivative, ETF, FundSnapshot, Holding
 from etf_pipeline.parser_utils import ensure_date, update_processing_log
 
 logger = logging.getLogger(__name__)
@@ -222,10 +222,66 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
     logger.info(f"CIK {cik}: Processed {processed}/{etf_count} ETF(s)")
 
 
+def _extract_fund_snapshot(
+    session: Session, cik: str, fund_report: FundReport, report_date, filing_date
+) -> None:
+    """Extract and insert fund-level balance sheet snapshot from FundReport."""
+    # Check if snapshot already exists
+    stmt = select(FundSnapshot).where(
+        FundSnapshot.cik == cik,
+        FundSnapshot.report_date == report_date,
+        FundSnapshot.filing_date == filing_date,
+    )
+    existing = session.execute(stmt).scalar_one_or_none()
+    if existing:
+        logger.debug(f"Fund snapshot already exists for CIK {cik} on {report_date}")
+        return
+
+    # Extract fund_info data
+    try:
+        fund_info = fund_report.fund_info
+    except AttributeError:
+        logger.warning(f"No fund_info found in FundReport for CIK {cik}")
+        return
+
+    total_assets = None
+    total_liabilities = None
+    net_assets = None
+
+    try:
+        total_assets = fund_info.total_assets
+    except AttributeError:
+        pass
+
+    try:
+        total_liabilities = fund_info.total_liabilities
+    except AttributeError:
+        pass
+
+    try:
+        net_assets = fund_info.net_assets
+    except AttributeError:
+        pass
+
+    snapshot = FundSnapshot(
+        cik=cik,
+        report_date=report_date,
+        filing_date=filing_date,
+        total_assets=total_assets,
+        total_liabilities=total_liabilities,
+        net_assets=net_assets,
+    )
+    session.add(snapshot)
+    logger.info(f"Created fund snapshot for CIK {cik} on {report_date}")
+
+
 def _process_etf(
     session: Session, etf: ETF, fund_report: FundReport, report_date, filing_date
 ) -> None:
     """Process a single ETF: extract and insert holdings and derivatives."""
+    # Extract fund-level snapshot
+    _extract_fund_snapshot(session, etf.cik, fund_report, report_date, filing_date)
+
     holdings_count = 0
     seen_cusips = set()
     for investment in fund_report.non_derivatives:

@@ -8,8 +8,17 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy import select
 
-from etf_pipeline.models import Derivative, ETF, Holding
+from etf_pipeline.models import Derivative, ETF, FundSnapshot, Holding
 from etf_pipeline.parsers.nport import parse_nport
+
+
+def _add_mock_fund_info(mock_report):
+    """Helper to add fund_info to a mock FundReport."""
+    fund_info = Mock()
+    fund_info.total_assets = Decimal("10000000.00")
+    fund_info.total_liabilities = Decimal("500000.00")
+    fund_info.net_assets = Decimal("9500000.00")
+    mock_report.fund_info = fund_info
 
 
 @pytest.fixture
@@ -88,6 +97,13 @@ def mock_fund_report():
         general_info = Mock()
         general_info.series_id = series_id
         mock_report.general_info = general_info
+
+        # Add fund_info with balance sheet data
+        fund_info = Mock()
+        fund_info.total_assets = Decimal("10000000.00")
+        fund_info.total_liabilities = Decimal("500000.00")
+        fund_info.net_assets = Decimal("9500000.00")
+        mock_report.fund_info = fund_info
 
         return mock_report
 
@@ -281,6 +297,12 @@ def test_parse_nport_handles_na_values(session, engine, sample_etfs, mock_nport_
         general_info = Mock()
         general_info.series_id = series_id
         mock_report.general_info = general_info
+        # Add fund_info
+        fund_info = Mock()
+        fund_info.total_assets = Decimal("1000000.00")
+        fund_info.total_liabilities = Decimal("50000.00")
+        fund_info.net_assets = Decimal("950000.00")
+        mock_report.fund_info = fund_info
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -370,6 +392,7 @@ def test_parse_nport_deduplicates_holdings_with_same_cusip(session, engine, samp
         general_info.series_id = series_id
         mock_report.general_info = general_info
 
+        _add_mock_fund_info(mock_report)
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -461,6 +484,7 @@ def test_parse_nport_does_not_deduplicate_none_cusip_holdings(session, engine, s
         general_info.series_id = series_id
         mock_report.general_info = general_info
 
+        _add_mock_fund_info(mock_report)
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -541,6 +565,7 @@ def test_parse_nport_deduplicates_derivatives_with_same_key(session, engine, sam
         general_info.series_id = series_id
         mock_report.general_info = general_info
 
+        _add_mock_fund_info(mock_report)
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -676,6 +701,7 @@ def test_parse_nport_creates_derivatives(session, engine, sample_etfs, mock_npor
         general_info = Mock()
         general_info.series_id = series_id
         mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -759,6 +785,7 @@ def test_parse_nport_etf_with_no_derivatives(session, engine, sample_etfs, mock_
         general_info = Mock()
         general_info.series_id = series_id
         mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -837,6 +864,7 @@ def test_parse_nport_skips_derivatives_when_holdings_exist(session, engine, samp
         general_info = Mock()
         general_info.series_id = series_id
         mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -925,6 +953,7 @@ def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, s
         general_info = Mock()
         general_info.series_id = series_id
         mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -1021,6 +1050,7 @@ def test_parse_nport_option_derivative_index_name_fallback(session, engine, samp
         general_info = Mock()
         general_info.series_id = series_id
         mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -1188,6 +1218,7 @@ def test_parse_nport_sets_filing_date(session, engine, sample_etfs, mock_edgar_c
         general_info = Mock()
         general_info.series_id = series_id
         mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
         return mock_report
 
     with patch("etf_pipeline.parsers.nport.Company") as mock_company:
@@ -1220,3 +1251,94 @@ def test_parse_nport_sets_filing_date(session, engine, sample_etfs, mock_edgar_c
     stmt = select(Derivative).limit(1)
     derivative = session.execute(stmt).scalar_one()
     assert derivative.filing_date == date(2025, 1, 15)
+
+
+def test_parse_nport_creates_fund_snapshot(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
+    """Test that parse_nport creates fund snapshot records with balance sheet data."""
+    parse_nport(cik="36405")
+
+    # Verify fund snapshots were created
+    stmt = select(FundSnapshot).where(FundSnapshot.cik == "0000036405")
+    snapshots = session.execute(stmt).scalars().all()
+
+    # Should have one snapshot (both ETFs share same CIK and filing date)
+    assert len(snapshots) == 1
+
+    snapshot = snapshots[0]
+    assert snapshot.cik == "0000036405"
+    assert snapshot.report_date == date(2024, 12, 31)
+    assert snapshot.filing_date == date(2025, 1, 15)
+    assert snapshot.total_assets == Decimal("10000000.00")
+    assert snapshot.total_liabilities == Decimal("500000.00")
+    assert snapshot.net_assets == Decimal("9500000.00")
+
+
+def test_parse_nport_skips_duplicate_fund_snapshot(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, caplog):
+    """Test that parse_nport skips creating fund snapshot if one already exists."""
+    import logging
+    caplog.set_level(logging.DEBUG)
+
+    # Create initial snapshot
+    existing_snapshot = FundSnapshot(
+        cik="0000036405",
+        report_date=date(2024, 12, 31),
+        filing_date=date(2025, 1, 15),
+        total_assets=Decimal("5000000.00"),
+        total_liabilities=Decimal("200000.00"),
+        net_assets=Decimal("4800000.00"),
+    )
+    session.add(existing_snapshot)
+    session.commit()
+
+    # Run parser
+    parse_nport(cik="36405")
+
+    # Verify only one snapshot exists (original was not overwritten)
+    stmt = select(FundSnapshot).where(FundSnapshot.cik == "0000036405")
+    snapshots = session.execute(stmt).scalars().all()
+    assert len(snapshots) == 1
+    assert snapshots[0].total_assets == Decimal("5000000.00")  # Original value
+    assert "Fund snapshot already exists" in caplog.text
+
+
+def test_parse_nport_handles_missing_fund_info(session, engine, sample_etfs, mock_nport_db, caplog):
+    """Test that parse_nport handles FundReport without fund_info gracefully."""
+    import logging
+    caplog.set_level(logging.WARNING)
+
+    def create_report_without_fund_info(series_id):
+        mock_report = Mock(spec=['reporting_period', 'non_derivatives', 'derivatives', 'general_info'])
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        # No fund_info attribute - will raise AttributeError when accessed
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_without_fund_info("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # No snapshots should be created
+    stmt = select(FundSnapshot)
+    snapshots = session.execute(stmt).scalars().all()
+    assert len(snapshots) == 0
+    assert "No fund_info found" in caplog.text
