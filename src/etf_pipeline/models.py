@@ -60,6 +60,9 @@ class ETF(Base):
     per_share_ratios: Mapped[list["PerShareRatios"]] = relationship(
         back_populates="etf"
     )
+    monthly_returns: Mapped[list["NPORTMonthlyReturn"]] = relationship(
+        back_populates="etf"
+    )
 
 
 class Holding(Base):
@@ -366,6 +369,26 @@ class FundSnapshot(Base):
     stand_by_commit: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
     liquidity_pref: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
     is_non_cash_collateral: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class NPORTMonthlyReturn(Base):
+    __tablename__ = "nport_monthly_return"
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_id", "report_date", "class_id", "filing_date", name="nport_monthly_return_uniq"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    etf_id: Mapped[int] = mapped_column(ForeignKey("etf.id"), nullable=False)
+    report_date: Mapped[date] = mapped_column(Date, nullable=False)
+    filing_date: Mapped[date] = mapped_column(Date, nullable=False)
+    class_id: Mapped[Optional[str]] = mapped_column(String(10))
+    month_1_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    month_2_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+    month_3_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 2))
+
+    etf: Mapped["ETF"] = relationship(back_populates="monthly_returns")
 
 
 class ProcessingLog(Base):

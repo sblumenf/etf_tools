@@ -1,6 +1,7 @@
 """Parse NPORT-P filings for holdings and derivatives data."""
 
 import logging
+import xml.etree.ElementTree as ET
 from collections import defaultdict
 from datetime import date, datetime
 from decimal import Decimal
@@ -19,6 +20,7 @@ from etf_pipeline.models import (
     ETF,
     FundSnapshot,
     Holding,
+    NPORTMonthlyReturn,
     SecurityLending,
 )
 from etf_pipeline.parser_utils import ensure_date, update_processing_log
@@ -119,7 +121,7 @@ def _get_latest_filings_per_series(filings):
         filings: EntityFilings collection from edgartools
 
     Returns:
-        dict: Mapping of series_id -> (fund_report, report_date, filing_date)
+        dict: Mapping of series_id -> (filing, fund_report, report_date, filing_date)
     """
     if not filings or (hasattr(filings, 'empty') and filings.empty):
         return {}
@@ -152,7 +154,7 @@ def _get_latest_filings_per_series(filings):
                 report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
 
             filing_date = ensure_date(filing.filing_date)
-            series_map[series_id] = (fund_report, report_date, filing_date)
+            series_map[series_id] = (filing, fund_report, report_date, filing_date)
 
         except Exception as e:
             logger.warning(f"Failed to parse filing: {e} (filing_date={filing.filing_date})")
@@ -184,7 +186,7 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
     logger.info(f"CIK {cik}: Parsed {len(series_map)} series from latest filings")
 
     # Track the latest filing date seen across all filings processed
-    latest_filing_date = max(filing_date for _, _, filing_date in series_map.values()) if series_map else None
+    latest_filing_date = max(filing_date for _, _, _, filing_date in series_map.values()) if series_map else None
 
     with session_factory() as session:
         stmt = select(ETF).where(ETF.cik == cik)
@@ -194,7 +196,7 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
         etf_report_pairs = []
         for etf in etfs:
             if etf.series_id in series_map:
-                _, report_date, _ = series_map[etf.series_id]
+                _, _, report_date, _ = series_map[etf.series_id]
                 etf_report_pairs.append((etf.id, report_date))
 
         # Batch query: find ETFs that already have holdings for their report_date
@@ -215,8 +217,8 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
             if etf.id in existing_etf_ids:
                 logger.info(f"ETF {etf.ticker}: Holdings already exist, skipping")
                 continue
-            fund_report, report_date, filing_date = series_map[etf.series_id]
-            _process_etf(session, etf, fund_report, report_date, filing_date)
+            filing, fund_report, report_date, filing_date = series_map[etf.series_id]
+            _process_etf(session, etf, filing, fund_report, report_date, filing_date)
             processed += 1
 
         # Update processing log after successful processing
@@ -389,12 +391,109 @@ def _extract_fund_snapshot(
     logger.info(f"Created fund snapshot for CIK {cik} on {report_date}")
 
 
+def _extract_monthly_returns(filing, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyReturn]:
+    """Extract monthly return data from NPORT-P filing XML.
+
+    Args:
+        filing: Filing object from edgartools
+        etf_id: ETF ID to associate returns with
+        report_date: Report date for the filing
+        filing_date: Filing date
+
+    Returns:
+        List of NPORTMonthlyReturn objects
+    """
+    monthly_returns = []
+
+    try:
+        # Get raw XML content from filing
+        xml_content = filing.xml
+        if not xml_content:
+            logger.debug(f"No XML content found in filing for etf_id={etf_id}")
+            return monthly_returns
+
+        # Parse XML
+        root = ET.fromstring(xml_content)
+
+        # Find monthlyTotReturns element
+        # Path: /edgarSubmission/formData/fundinfo/returnInfo/monthlyTotReturns
+        ns = {'edgar': 'http://www.sec.gov/edgar/nport'}
+
+        # Try without namespace first
+        monthly_tot_returns = root.find('.//monthlyTotReturns')
+
+        # If not found, try with namespace
+        if monthly_tot_returns is None:
+            monthly_tot_returns = root.find('.//edgar:monthlyTotReturns', ns)
+
+        # If still not found, try different path variations
+        if monthly_tot_returns is None:
+            # Try full path
+            for form_data in root.iter('formData'):
+                for fund_info in form_data.iter('fundinfo'):
+                    for return_info in fund_info.iter('returnInfo'):
+                        monthly_tot_returns = return_info.find('monthlyTotReturns')
+                        if monthly_tot_returns is not None:
+                            break
+
+        if monthly_tot_returns is None:
+            logger.debug(f"No monthlyTotReturns element found in NPORT XML for etf_id={etf_id}")
+            return monthly_returns
+
+        # Extract each monthlyTotReturn child element
+        for monthly_return_elem in monthly_tot_returns.findall('monthlyTotReturn'):
+            # Extract attributes
+            rtn1 = monthly_return_elem.get('rtn1')
+            rtn2 = monthly_return_elem.get('rtn2')
+            rtn3 = monthly_return_elem.get('rtn3')
+            class_id = monthly_return_elem.get('classId')
+
+            # Convert "N/A" to None, otherwise convert to Decimal
+            def parse_return(val):
+                if val is None or val.strip().upper() == "N/A":
+                    return None
+                try:
+                    return Decimal(val)
+                except (ValueError, Exception) as e:
+                    logger.warning(f"Could not parse return value '{val}': {e}")
+                    return None
+
+            month_1 = parse_return(rtn1)
+            month_2 = parse_return(rtn2)
+            month_3 = parse_return(rtn3)
+
+            # Create NPORTMonthlyReturn object
+            monthly_return = NPORTMonthlyReturn(
+                etf_id=etf_id,
+                report_date=report_date,
+                filing_date=filing_date,
+                class_id=class_id if class_id else None,
+                month_1_return=month_1,
+                month_2_return=month_2,
+                month_3_return=month_3,
+            )
+            monthly_returns.append(monthly_return)
+
+        if monthly_returns:
+            logger.info(f"Extracted {len(monthly_returns)} monthly return entries for etf_id={etf_id}")
+
+    except Exception as e:
+        logger.warning(f"Failed to extract monthly returns for etf_id={etf_id}: {e}")
+
+    return monthly_returns
+
+
 def _process_etf(
-    session: Session, etf: ETF, fund_report: FundReport, report_date, filing_date
+    session: Session, etf: ETF, filing, fund_report: FundReport, report_date, filing_date
 ) -> None:
     """Process a single ETF: extract and insert holdings and derivatives."""
     # Extract fund-level snapshot
     _extract_fund_snapshot(session, etf.cik, fund_report, report_date, filing_date)
+
+    # Extract monthly returns
+    monthly_returns = _extract_monthly_returns(filing, etf.id, report_date, filing_date)
+    for monthly_return in monthly_returns:
+        session.add(monthly_return)
 
     holdings_count = 0
     seen_holding_keys = set()

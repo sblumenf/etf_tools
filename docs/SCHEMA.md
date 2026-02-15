@@ -14,6 +14,7 @@ ETF (1) ──< FeeExpense
 ETF (1) ──< PerShareOperating
 ETF (1) ──< PerShareDistribution
 ETF (1) ──< PerShareRatios
+ETF (1) ──< NPORTMonthlyReturn
 
 FlowData (standalone, keyed by CIK)
 FundSnapshot (standalone, keyed by CIK)
@@ -253,6 +254,27 @@ Fund-level balance sheet snapshot from NPORT-P filings.
 **Unique:** `(cik, report_date, filing_date)`
 
 > Note: `fund_snapshot` is keyed by CIK, not `etf_id`. NPORT-P filings report fund-level balance sheet data at the series level, which maps to CIK in our data model. This table captures the balance sheet state as of each quarterly filing.
+
+---
+
+### `nport_monthly_return`
+
+Monthly total return data from NPORT-P filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `report_date` | Date | NOT NULL | NPORT filing report date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
+| `class_id` | String(10) | | SEC class identifier (NULL = fund-level returns) |
+| `month_1_return` | Numeric(24,2) | | Most recent month's return (NULL if N/A in filing) |
+| `month_2_return` | Numeric(24,2) | | Second most recent month's return (NULL if N/A in filing) |
+| `month_3_return` | Numeric(24,2) | | Third most recent month's return (NULL if N/A in filing) |
+
+**Unique:** `(etf_id, report_date, class_id, filing_date)`
+
+> Note: Monthly returns are extracted from the XML at `/edgarSubmission/formData/fundinfo/returnInfo/monthlyTotReturns`. The `class_id` field is NULL for fund-level returns or contains the class identifier when returns are reported separately by share class. Return values of "N/A" in the XML are stored as NULL.
 
 ---
 

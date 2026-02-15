@@ -2266,3 +2266,258 @@ def test_parse_nport_derivative_with_null_new_fields(session, engine, sample_etf
     assert deriv.written_notional_amt is None
     assert deriv.other_amt is None
     assert deriv.notional_value == Decimal("2000000.00")
+
+
+def test_monthly_returns_single_class(session, sample_etfs, mock_nport_db):
+    """Test extracting monthly returns with single class entry."""
+    from etf_pipeline.models import NPORTMonthlyReturn
+    from etf_pipeline.parsers.nport import parse_nport
+
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+    <edgarSubmission>
+        <formData>
+            <fundinfo>
+                <returnInfo>
+                    <monthlyTotReturns>
+                        <monthlyTotReturn rtn1="2.50" rtn2="1.75" rtn3="3.20" />
+                    </monthlyTotReturns>
+                </returnInfo>
+            </fundinfo>
+        </formData>
+    </edgarSubmission>"""
+
+    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000001"
+        filing.xml = xml_content
+
+        filings_obj = Mock()
+        filings_obj.empty = False
+        filings_obj.__len__ = Mock(return_value=1)
+        filings_obj.__iter__ = Mock(return_value=iter([filing]))
+
+        company.get_filings = Mock(return_value=filings_obj)
+        mock_company.return_value = company
+
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = "S000002839"
+        mock_report.general_info = general_info
+
+        fund_info = Mock()
+        fund_info.total_assets = Decimal("10000000.00")
+        fund_info.total_liabilities = Decimal("500000.00")
+        fund_info.net_assets = Decimal("9500000.00")
+        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.assets_invested = Decimal("9800000.00")
+        fund_info.assets_misc_sec = Decimal("150000.00")
+        fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
+        fund_info.amt_pay_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_one_yr_other = Decimal("50000.00")
+        fund_info.amt_pay_aft_one_yr_banks_borr = Decimal("250000.00")
+        fund_info.amt_pay_aft_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
+        fund_info.delay_deliv = Decimal("0.00")
+        fund_info.stand_by_commit = Decimal("0.00")
+        fund_info.liquidity_pref = Decimal("0.00")
+        fund_info.is_non_cash_collateral = False
+        mock_report.fund_info = fund_info
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=mock_report,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(NPORTMonthlyReturn).where(NPORTMonthlyReturn.etf_id == voo.id)
+    monthly_returns = session.execute(stmt).scalars().all()
+
+    assert len(monthly_returns) == 1
+    ret = monthly_returns[0]
+    assert ret.etf_id == voo.id
+    assert ret.report_date == date(2024, 12, 31)
+    assert ret.filing_date == date(2025, 1, 15)
+    assert ret.class_id is None
+    assert ret.month_1_return == Decimal("2.50")
+    assert ret.month_2_return == Decimal("1.75")
+    assert ret.month_3_return == Decimal("3.20")
+
+
+def test_monthly_returns_multiple_classes(session, sample_etfs, mock_nport_db):
+    """Test extracting monthly returns with multiple class entries."""
+    from etf_pipeline.models import NPORTMonthlyReturn
+    from etf_pipeline.parsers.nport import parse_nport
+
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+    <edgarSubmission>
+        <formData>
+            <fundinfo>
+                <returnInfo>
+                    <monthlyTotReturns>
+                        <monthlyTotReturn rtn1="2.50" rtn2="1.75" rtn3="3.20" classId="C000001" />
+                        <monthlyTotReturn rtn1="2.45" rtn2="1.70" rtn3="3.15" classId="C000002" />
+                    </monthlyTotReturns>
+                </returnInfo>
+            </fundinfo>
+        </formData>
+    </edgarSubmission>"""
+
+    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000001"
+        filing.xml = xml_content
+
+        filings_obj = Mock()
+        filings_obj.empty = False
+        filings_obj.__len__ = Mock(return_value=1)
+        filings_obj.__iter__ = Mock(return_value=iter([filing]))
+
+        company.get_filings = Mock(return_value=filings_obj)
+        mock_company.return_value = company
+
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = "S000002839"
+        mock_report.general_info = general_info
+
+        fund_info = Mock()
+        fund_info.total_assets = Decimal("10000000.00")
+        fund_info.total_liabilities = Decimal("500000.00")
+        fund_info.net_assets = Decimal("9500000.00")
+        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.assets_invested = Decimal("9800000.00")
+        fund_info.assets_misc_sec = Decimal("150000.00")
+        fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
+        fund_info.amt_pay_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_one_yr_other = Decimal("50000.00")
+        fund_info.amt_pay_aft_one_yr_banks_borr = Decimal("250000.00")
+        fund_info.amt_pay_aft_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
+        fund_info.delay_deliv = Decimal("0.00")
+        fund_info.stand_by_commit = Decimal("0.00")
+        fund_info.liquidity_pref = Decimal("0.00")
+        fund_info.is_non_cash_collateral = False
+        mock_report.fund_info = fund_info
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=mock_report,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(NPORTMonthlyReturn).where(NPORTMonthlyReturn.etf_id == voo.id).order_by(NPORTMonthlyReturn.class_id)
+    monthly_returns = session.execute(stmt).scalars().all()
+
+    assert len(monthly_returns) == 2
+    ret1 = monthly_returns[0]
+    assert ret1.class_id == "C000001"
+    assert ret1.month_1_return == Decimal("2.50")
+    assert ret1.month_2_return == Decimal("1.75")
+    assert ret1.month_3_return == Decimal("3.20")
+
+    ret2 = monthly_returns[1]
+    assert ret2.class_id == "C000002"
+    assert ret2.month_1_return == Decimal("2.45")
+    assert ret2.month_2_return == Decimal("1.70")
+    assert ret2.month_3_return == Decimal("3.15")
+
+
+def test_monthly_returns_with_na_values(session, sample_etfs, mock_nport_db):
+    """Test extracting monthly returns with N/A values."""
+    from etf_pipeline.models import NPORTMonthlyReturn
+    from etf_pipeline.parsers.nport import parse_nport
+
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+    <edgarSubmission>
+        <formData>
+            <fundinfo>
+                <returnInfo>
+                    <monthlyTotReturns>
+                        <monthlyTotReturn rtn1="2.50" rtn2="N/A" rtn3="3.20" />
+                    </monthlyTotReturns>
+                </returnInfo>
+            </fundinfo>
+        </formData>
+    </edgarSubmission>"""
+
+    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000001"
+        filing.xml = xml_content
+
+        filings_obj = Mock()
+        filings_obj.empty = False
+        filings_obj.__len__ = Mock(return_value=1)
+        filings_obj.__iter__ = Mock(return_value=iter([filing]))
+
+        company.get_filings = Mock(return_value=filings_obj)
+        mock_company.return_value = company
+
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = "S000002839"
+        mock_report.general_info = general_info
+
+        fund_info = Mock()
+        fund_info.total_assets = Decimal("10000000.00")
+        fund_info.total_liabilities = Decimal("500000.00")
+        fund_info.net_assets = Decimal("9500000.00")
+        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.assets_invested = Decimal("9800000.00")
+        fund_info.assets_misc_sec = Decimal("150000.00")
+        fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
+        fund_info.amt_pay_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_one_yr_other = Decimal("50000.00")
+        fund_info.amt_pay_aft_one_yr_banks_borr = Decimal("250000.00")
+        fund_info.amt_pay_aft_one_yr_ctrld_comp = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_oth_affil = Decimal("0.00")
+        fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
+        fund_info.delay_deliv = Decimal("0.00")
+        fund_info.stand_by_commit = Decimal("0.00")
+        fund_info.liquidity_pref = Decimal("0.00")
+        fund_info.is_non_cash_collateral = False
+        mock_report.fund_info = fund_info
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=mock_report,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(NPORTMonthlyReturn).where(NPORTMonthlyReturn.etf_id == voo.id)
+    monthly_returns = session.execute(stmt).scalars().all()
+
+    assert len(monthly_returns) == 1
+    ret = monthly_returns[0]
+    assert ret.month_1_return == Decimal("2.50")
+    assert ret.month_2_return is None
+    assert ret.month_3_return == Decimal("3.20")
