@@ -12,6 +12,8 @@ from etf_pipeline.models import (
     CreditSpreadRisk,
     DebtSecurityDetail,
     Derivative,
+    DerivativeSwap,
+    DerivativeSwapLeg,
     ETF,
     FundSnapshot,
     Holding,
@@ -3591,3 +3593,408 @@ def test_parse_nport_derivative_parent_fields_with_na_values(session, engine, sa
     assert deriv.underlying_asset_cat is None
     assert deriv.underlying_issuer_cat is None
     assert deriv.underlying_inv_country is None
+
+
+def test_parse_nport_swap_child_tables_complete_swap(session, engine, sample_etfs, mock_nport_db):
+    """Test that swap derivatives create DerivativeSwap and two DerivativeSwapLeg rows (US-6)."""
+
+    def create_mock_swap_derivative_full():
+        """Create a mock swap derivative with complete pay and receive legs."""
+        inv = Mock()
+        inv.name = "Interest Rate Swap"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "SWP"
+        inv.derivative_info.unrealized_appr = Decimal("25000.00")
+
+        swp = Mock()
+        swp.counterparty_name = "Goldman Sachs"
+        swp.counterparty_lei = "GS1234567890ABCDE"
+        swp.deriv_addl_name = "USD SOFR Swap"
+        swp.deriv_addl_cusip = "SOFR001"
+        swp.reference_entity_name = None
+        swp.reference_entity_cusip = None
+        swp.notional_amount = Decimal("5000000.00")
+        swp.termination_date = "2029-06-30"
+        swp.currency_code = "USD"
+
+        # Swap parent fields
+        swp.upfront_payment = Decimal("15000.00")
+        swp.upfront_payment_currency = "USD"
+        swp.upfront_receipt = Decimal("5000.00")
+        swp.upfront_receipt_currency = "USD"
+        swp.swap_flag = "Y"
+
+        # Pay leg (fixed)
+        swp.fixed_rate_pay = Decimal("0.035000")
+        swp.fixed_amount_pay = Decimal("175000.00")
+        swp.fixed_currency_pay = "USD"
+        swp.floating_index_pay = None
+        swp.floating_spread_pay = None
+        swp.floating_amount_pay = None
+        swp.floating_currency_pay = None
+        swp.floating_tenor_pay = None
+        swp.floating_tenor_unit_pay = None
+        swp.floating_reset_date_tenor_pay = None
+        swp.floating_reset_date_unit_pay = None
+        swp.other_description_pay = None
+
+        # Receive leg (floating)
+        swp.fixed_rate_receive = None
+        swp.fixed_amount_receive = None
+        swp.fixed_currency_receive = None
+        swp.floating_index_receive = "USD-SOFR"
+        swp.floating_spread_receive = Decimal("0.001500")
+        swp.floating_amount_receive = Decimal("150000.00")
+        swp.floating_currency_receive = "USD"
+        swp.floating_tenor_receive = "3"
+        swp.floating_tenor_unit_receive = "M"
+        swp.floating_reset_date_tenor_receive = "2"
+        swp.floating_reset_date_unit_receive = "D"
+        swp.other_description_receive = None
+
+        # Parent-level deriv_addl_* fields
+        swp.deriv_addl_title = "SOFR Interest Rate Swap"
+        swp.deriv_addl_lei = None
+        swp.deriv_addl_isin = None
+        swp.deriv_addl_ticker = None
+        swp.deriv_addl_other_id = None
+        swp.deriv_addl_other_id_type = None
+        swp.deriv_addl_balance = None
+        swp.deriv_addl_units = None
+        swp.deriv_addl_currency = "USD"
+        swp.deriv_addl_value_usd = None
+        swp.deriv_addl_pct_value = None
+        swp.deriv_addl_asset_cat = None
+        swp.deriv_addl_issuer_cat = None
+        swp.deriv_addl_inv_country = None
+
+        inv.derivative_info.swap_derivative = swp
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_swap_derivative_full()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000000"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    # Verify Derivative created
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+    assert deriv.derivative_type == "SWP"
+    assert deriv.underlying_name == "USD SOFR Swap"
+
+    # Verify DerivativeSwap created
+    stmt = select(DerivativeSwap).where(DerivativeSwap.derivative_id == deriv.id)
+    swaps = session.execute(stmt).scalars().all()
+    assert len(swaps) == 1
+    swap = swaps[0]
+    assert swap.upfront_payment == Decimal("15000.00")
+    assert swap.upfront_payment_currency == "USD"
+    assert swap.upfront_receipt == Decimal("5000.00")
+    assert swap.upfront_receipt_currency == "USD"
+    assert swap.swap_flag == "Y"
+
+    # Verify two DerivativeSwapLeg rows created
+    stmt = select(DerivativeSwapLeg).where(DerivativeSwapLeg.swap_id == swap.id).order_by(DerivativeSwapLeg.direction)
+    legs = session.execute(stmt).scalars().all()
+    assert len(legs) == 2
+
+    # Verify pay leg (fixed)
+    pay_leg = legs[0]
+    assert pay_leg.direction == "pay"
+    assert pay_leg.leg_type == "fixed"
+    assert pay_leg.fixed_rate == Decimal("0.035000")
+    assert pay_leg.fixed_amount == Decimal("175000.00")
+    assert pay_leg.fixed_currency == "USD"
+    assert pay_leg.floating_index is None
+    assert pay_leg.floating_spread is None
+    assert pay_leg.other_description is None
+
+    # Verify receive leg (floating)
+    receive_leg = legs[1]
+    assert receive_leg.direction == "receive"
+    assert receive_leg.leg_type == "floating"
+    assert receive_leg.fixed_rate is None
+    assert receive_leg.floating_index == "USD-SOFR"
+    assert receive_leg.floating_spread == Decimal("0.001500")
+    assert receive_leg.floating_amount == Decimal("150000.00")
+    assert receive_leg.floating_currency == "USD"
+    assert receive_leg.tenor == "3"
+    assert receive_leg.tenor_unit == "M"
+    assert receive_leg.reset_date_tenor == "2"
+    assert receive_leg.reset_date_unit == "D"
+    assert receive_leg.other_description is None
+
+
+def test_parse_nport_swap_child_tables_other_leg_type(session, engine, sample_etfs, mock_nport_db):
+    """Test that swap derivatives handle 'other' leg type with description (US-6)."""
+
+    def create_mock_swap_derivative_other():
+        """Create a mock swap derivative with 'other' leg type."""
+        inv = Mock()
+        inv.name = "Custom Swap"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "SWP"
+        inv.derivative_info.unrealized_appr = Decimal("10000.00")
+
+        swp = Mock()
+        swp.counterparty_name = "Morgan Stanley"
+        swp.counterparty_lei = "MS1234567890ABCDE"
+        swp.deriv_addl_name = "Custom Swap Structure"
+        swp.deriv_addl_cusip = None
+        swp.reference_entity_name = None
+        swp.reference_entity_cusip = None
+        swp.notional_amount = Decimal("2000000.00")
+        swp.termination_date = "2027-12-31"
+        swp.currency_code = "USD"
+
+        # Swap parent fields
+        swp.upfront_payment = None
+        swp.upfront_payment_currency = None
+        swp.upfront_receipt = None
+        swp.upfront_receipt_currency = None
+        swp.swap_flag = None
+
+        # Pay leg (other)
+        swp.fixed_rate_pay = None
+        swp.fixed_amount_pay = None
+        swp.fixed_currency_pay = None
+        swp.floating_index_pay = None
+        swp.floating_spread_pay = None
+        swp.floating_amount_pay = None
+        swp.floating_currency_pay = None
+        swp.floating_tenor_pay = None
+        swp.floating_tenor_unit_pay = None
+        swp.floating_reset_date_tenor_pay = None
+        swp.floating_reset_date_unit_pay = None
+        swp.other_description_pay = "Pay leg based on equity returns"
+
+        # Receive leg (fixed)
+        swp.fixed_rate_receive = Decimal("0.025000")
+        swp.fixed_amount_receive = Decimal("50000.00")
+        swp.fixed_currency_receive = "USD"
+        swp.floating_index_receive = None
+        swp.floating_spread_receive = None
+        swp.floating_amount_receive = None
+        swp.floating_currency_receive = None
+        swp.floating_tenor_receive = None
+        swp.floating_tenor_unit_receive = None
+        swp.floating_reset_date_tenor_receive = None
+        swp.floating_reset_date_unit_receive = None
+        swp.other_description_receive = None
+
+        # Parent-level deriv_addl_* fields
+        swp.deriv_addl_title = None
+        swp.deriv_addl_lei = None
+        swp.deriv_addl_isin = None
+        swp.deriv_addl_ticker = None
+        swp.deriv_addl_other_id = None
+        swp.deriv_addl_other_id_type = None
+        swp.deriv_addl_balance = None
+        swp.deriv_addl_units = None
+        swp.deriv_addl_currency = None
+        swp.deriv_addl_value_usd = None
+        swp.deriv_addl_pct_value = None
+        swp.deriv_addl_asset_cat = None
+        swp.deriv_addl_issuer_cat = None
+        swp.deriv_addl_inv_country = None
+
+        inv.derivative_info.swap_derivative = swp
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_swap_derivative_other()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000001"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    # Verify Derivative created
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+
+    # Verify DerivativeSwap created
+    stmt = select(DerivativeSwap).where(DerivativeSwap.derivative_id == deriv.id)
+    swaps = session.execute(stmt).scalars().all()
+    assert len(swaps) == 1
+    swap = swaps[0]
+
+    # Verify two DerivativeSwapLeg rows created
+    stmt = select(DerivativeSwapLeg).where(DerivativeSwapLeg.swap_id == swap.id).order_by(DerivativeSwapLeg.direction)
+    legs = session.execute(stmt).scalars().all()
+    assert len(legs) == 2
+
+    # Verify pay leg (other type)
+    pay_leg = legs[0]
+    assert pay_leg.direction == "pay"
+    assert pay_leg.leg_type == "other"
+    assert pay_leg.fixed_rate is None
+    assert pay_leg.floating_index is None
+    assert pay_leg.other_description == "Pay leg based on equity returns"
+
+    # Verify receive leg (fixed)
+    receive_leg = legs[1]
+    assert receive_leg.direction == "receive"
+    assert receive_leg.leg_type == "fixed"
+    assert receive_leg.fixed_rate == Decimal("0.025000")
+    assert receive_leg.fixed_amount == Decimal("50000.00")
+    assert receive_leg.fixed_currency == "USD"
+    assert receive_leg.other_description is None
+
+
+def test_parse_nport_swap_child_tables_no_swap_fields(session, engine, sample_etfs, mock_nport_db):
+    """Test that non-swap derivatives do not create swap child tables (US-6)."""
+
+    def create_mock_forward_derivative():
+        """Create a mock forward derivative (not a swap)."""
+        inv = Mock()
+        inv.name = "Forward Contract"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "FOR"
+        inv.derivative_info.unrealized_appr = Decimal("5000.00")
+
+        fwd = Mock()
+        fwd.counterparty_name = "Bank of America"
+        fwd.counterparty_lei = "BOA1234567890ABCD"
+        fwd.deriv_addl_name = "EUR/USD Forward"
+        fwd.deriv_addl_cusip = None
+        fwd.amount_sold = Decimal("1000000.00")
+        fwd.amount_purchased = None
+        fwd.settlement_date = "2025-06-30"
+        fwd.currency_sold = "EUR"
+        fwd.deriv_addl_title = None
+        fwd.deriv_addl_currency = None
+
+        inv.derivative_info.forward_derivative = fwd
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_forward_derivative()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000002"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    # Verify Derivative created
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+    assert deriv.derivative_type == "FOR"
+
+    # Verify NO DerivativeSwap created
+    stmt = select(DerivativeSwap).where(DerivativeSwap.derivative_id == deriv.id)
+    swaps = session.execute(stmt).scalars().all()
+    assert len(swaps) == 0
+
+    # Verify NO DerivativeSwapLeg created
+    stmt = select(DerivativeSwapLeg)
+    legs = session.execute(stmt).scalars().all()
+    assert len(legs) == 0

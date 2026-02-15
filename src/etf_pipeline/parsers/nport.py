@@ -18,6 +18,8 @@ from etf_pipeline.models import (
     CreditSpreadRisk,
     DebtSecurityDetail,
     Derivative,
+    DerivativeSwap,
+    DerivativeSwapLeg,
     ETF,
     FundSnapshot,
     Holding,
@@ -826,6 +828,103 @@ def _parse_decimal(val: Optional[str]) -> Optional[Decimal]:
         return None
 
 
+def _build_derivative_swap(swp, derivative_id: int) -> DerivativeSwap:
+    """Build a DerivativeSwap instance from a SwapDerivative object.
+
+    Args:
+        swp: SwapDerivative object from edgartools
+        derivative_id: Foreign key to parent Derivative row
+
+    Returns:
+        DerivativeSwap instance
+    """
+    upfront_payment = _safe_numeric(swp.upfront_payment) if hasattr(swp, 'upfront_payment') else None
+    upfront_payment_currency = _clean_str(swp.upfront_payment_currency) if hasattr(swp, 'upfront_payment_currency') else None
+    upfront_receipt = _safe_numeric(swp.upfront_receipt) if hasattr(swp, 'upfront_receipt') else None
+    upfront_receipt_currency = _clean_str(swp.upfront_receipt_currency) if hasattr(swp, 'upfront_receipt_currency') else None
+    swap_flag = _clean_str(swp.swap_flag) if hasattr(swp, 'swap_flag') else None
+
+    return DerivativeSwap(
+        derivative_id=derivative_id,
+        upfront_payment=upfront_payment,
+        upfront_payment_currency=upfront_payment_currency,
+        upfront_receipt=upfront_receipt,
+        upfront_receipt_currency=upfront_receipt_currency,
+        swap_flag=swap_flag,
+    )
+
+
+def _build_swap_legs(swp, swap_id: int) -> list[DerivativeSwapLeg]:
+    """Build pay and receive DerivativeSwapLeg instances from a SwapDerivative object.
+
+    Args:
+        swp: SwapDerivative object from edgartools
+        swap_id: Foreign key to parent DerivativeSwap row
+
+    Returns:
+        List of two DerivativeSwapLeg instances (pay and receive)
+    """
+    legs = []
+
+    # Build pay leg
+    pay_leg_type = None
+    if hasattr(swp, 'fixed_rate_pay') and swp.fixed_rate_pay is not None:
+        pay_leg_type = "fixed"
+    elif hasattr(swp, 'floating_index_pay') and swp.floating_index_pay:
+        pay_leg_type = "floating"
+    elif hasattr(swp, 'other_description_pay') and swp.other_description_pay:
+        pay_leg_type = "other"
+
+    pay_leg = DerivativeSwapLeg(
+        swap_id=swap_id,
+        direction="pay",
+        leg_type=pay_leg_type,
+        fixed_rate=_safe_numeric(swp.fixed_rate_pay) if hasattr(swp, 'fixed_rate_pay') else None,
+        fixed_amount=_safe_numeric(swp.fixed_amount_pay) if hasattr(swp, 'fixed_amount_pay') else None,
+        fixed_currency=_clean_str(swp.fixed_currency_pay) if hasattr(swp, 'fixed_currency_pay') else None,
+        floating_index=_clean_str(swp.floating_index_pay) if hasattr(swp, 'floating_index_pay') else None,
+        floating_spread=_safe_numeric(swp.floating_spread_pay) if hasattr(swp, 'floating_spread_pay') else None,
+        floating_amount=_safe_numeric(swp.floating_amount_pay) if hasattr(swp, 'floating_amount_pay') else None,
+        floating_currency=_clean_str(swp.floating_currency_pay) if hasattr(swp, 'floating_currency_pay') else None,
+        tenor=_clean_str(swp.floating_tenor_pay) if hasattr(swp, 'floating_tenor_pay') else None,
+        tenor_unit=_clean_str(swp.floating_tenor_unit_pay) if hasattr(swp, 'floating_tenor_unit_pay') else None,
+        reset_date_tenor=_clean_str(swp.floating_reset_date_tenor_pay) if hasattr(swp, 'floating_reset_date_tenor_pay') else None,
+        reset_date_unit=_clean_str(swp.floating_reset_date_unit_pay) if hasattr(swp, 'floating_reset_date_unit_pay') else None,
+        other_description=_clean_str(swp.other_description_pay) if hasattr(swp, 'other_description_pay') else None,
+    )
+    legs.append(pay_leg)
+
+    # Build receive leg
+    receive_leg_type = None
+    if hasattr(swp, 'fixed_rate_receive') and swp.fixed_rate_receive is not None:
+        receive_leg_type = "fixed"
+    elif hasattr(swp, 'floating_index_receive') and swp.floating_index_receive:
+        receive_leg_type = "floating"
+    elif hasattr(swp, 'other_description_receive') and swp.other_description_receive:
+        receive_leg_type = "other"
+
+    receive_leg = DerivativeSwapLeg(
+        swap_id=swap_id,
+        direction="receive",
+        leg_type=receive_leg_type,
+        fixed_rate=_safe_numeric(swp.fixed_rate_receive) if hasattr(swp, 'fixed_rate_receive') else None,
+        fixed_amount=_safe_numeric(swp.fixed_amount_receive) if hasattr(swp, 'fixed_amount_receive') else None,
+        fixed_currency=_clean_str(swp.fixed_currency_receive) if hasattr(swp, 'fixed_currency_receive') else None,
+        floating_index=_clean_str(swp.floating_index_receive) if hasattr(swp, 'floating_index_receive') else None,
+        floating_spread=_safe_numeric(swp.floating_spread_receive) if hasattr(swp, 'floating_spread_receive') else None,
+        floating_amount=_safe_numeric(swp.floating_amount_receive) if hasattr(swp, 'floating_amount_receive') else None,
+        floating_currency=_clean_str(swp.floating_currency_receive) if hasattr(swp, 'floating_currency_receive') else None,
+        tenor=_clean_str(swp.floating_tenor_receive) if hasattr(swp, 'floating_tenor_receive') else None,
+        tenor_unit=_clean_str(swp.floating_tenor_unit_receive) if hasattr(swp, 'floating_tenor_unit_receive') else None,
+        reset_date_tenor=_clean_str(swp.floating_reset_date_tenor_receive) if hasattr(swp, 'floating_reset_date_tenor_receive') else None,
+        reset_date_unit=_clean_str(swp.floating_reset_date_unit_receive) if hasattr(swp, 'floating_reset_date_unit_receive') else None,
+        other_description=_clean_str(swp.other_description_receive) if hasattr(swp, 'other_description_receive') else None,
+    )
+    legs.append(receive_leg)
+
+    return legs
+
+
 def _process_etf(
     session: Session, etf: ETF, filing, fund_report: FundReport, report_date, filing_date
 ) -> None:
@@ -890,6 +989,20 @@ def _process_etf(
             if deriv_key != (None, None):
                 seen_derivative_keys.add(deriv_key)
             session.add(derivative)
+            session.flush()  # Flush to get derivative.id
+
+            # Check for swap derivative and create child tables
+            if investment.derivative_info and investment.derivative_info.swap_derivative:
+                swp = investment.derivative_info.swap_derivative
+                derivative_swap = _build_derivative_swap(swp, derivative.id)
+                session.add(derivative_swap)
+                session.flush()  # Flush to get swap.id
+
+                # Create swap legs
+                swap_legs = _build_swap_legs(swp, derivative_swap.id)
+                for leg in swap_legs:
+                    session.add(leg)
+
             derivatives_count += 1
 
     logger.info(
