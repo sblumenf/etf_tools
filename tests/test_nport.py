@@ -2949,3 +2949,645 @@ def test_parse_nport_handles_missing_interest_rate_risk(session, engine, sample_
     risks = session.execute(stmt).scalars().all()
 
     assert len(risks) == 0
+
+
+def test_parse_nport_derivative_parent_fields_forward(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport populates parent-level fields for forward derivatives (US-5)."""
+
+    def create_mock_forward_derivative():
+        """Create a mock forward derivative with all parent-level fields."""
+        inv = Mock()
+        inv.name = "Forward Derivative"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "FWD"
+        inv.derivative_info.unrealized_appr = Decimal("15000.50")
+
+        fwd = Mock()
+        fwd.counterparty_name = "Goldman Sachs"
+        fwd.counterparty_lei = "123456789012345678AA"
+        fwd.deriv_addl_name = "EUR/USD Forward"
+        fwd.deriv_addl_cusip = "EURUSD123"
+        fwd.amount_sold = Decimal("1000000.00")
+        fwd.amount_purchased = None
+        fwd.currency_sold = "EUR"
+        fwd.settlement_date = "2025-06-30"
+
+        # Parent-level deriv_addl_* fields
+        fwd.deriv_addl_currency = "USD"
+        fwd.deriv_addl_title = "Euro/US Dollar Forward Contract"
+        fwd.deriv_addl_lei = "EURUSD987654321"
+        fwd.deriv_addl_isin = "US123456789012"
+        fwd.deriv_addl_ticker = "EURUSD"
+        fwd.deriv_addl_other_id = "FWD001"
+        fwd.deriv_addl_other_id_type = "Internal"
+        fwd.deriv_addl_balance = Decimal("1000000.0000")
+        fwd.deriv_addl_units = "Currency Units"
+        fwd.deriv_addl_value_usd = Decimal("1015000.00")
+        fwd.deriv_addl_pct_value = Decimal("2.50000")
+        fwd.deriv_addl_asset_cat = "FX"
+        fwd.deriv_addl_issuer_cat = "FRGN"
+        fwd.deriv_addl_inv_country = "US"
+
+        inv.derivative_info.forward_derivative = fwd
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_forward_derivative()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000000"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+
+    # Verify parent-level fields
+    assert deriv.unrealized_appreciation == Decimal("15000.50")
+    assert deriv.currency == "USD"
+    assert deriv.underlying_title == "Euro/US Dollar Forward Contract"
+    assert deriv.underlying_lei == "EURUSD987654321"
+    assert deriv.underlying_isin == "US123456789012"
+    assert deriv.underlying_ticker == "EURUSD"
+    assert deriv.underlying_other_id == "FWD001"
+    assert deriv.underlying_other_id_type == "Internal"
+    assert deriv.underlying_balance == Decimal("1000000.0000")
+    assert deriv.underlying_units == "Currency Units"
+    assert deriv.underlying_currency == "USD"
+    assert deriv.underlying_value_usd == Decimal("1015000.00")
+    assert deriv.underlying_pct_value == Decimal("2.50000")
+    assert deriv.underlying_asset_cat == "FX"
+    assert deriv.underlying_issuer_cat == "FRGN"
+    assert deriv.underlying_inv_country == "US"
+    assert deriv.payoff_profile is None  # Only for futures
+
+
+def test_parse_nport_derivative_parent_fields_future(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport populates parent-level fields for future derivatives (US-5)."""
+
+    def create_mock_future_derivative():
+        """Create a mock future derivative with all parent-level fields."""
+        inv = Mock()
+        inv.name = "Future Derivative"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "FUT"
+        inv.derivative_info.unrealized_appr = Decimal("25000.75")
+
+        fut = Mock()
+        fut.counterparty_name = "CME Group"
+        fut.counterparty_lei = "CME123456789012345"
+        fut.reference_entity_name = "S&P 500 Index"
+        fut.reference_entity_cusip = "SPX123456"
+        fut.notional_amount = Decimal("5000000.00")
+        fut.expiration_date = "2025-03-15"
+
+        # Parent-level reference_entity_* fields
+        fut.currency_code = "USD"
+        fut.payoff_profile = "Long"
+        fut.reference_entity_title = "S&P 500 Index Future"
+        fut.reference_entity_lei = "SPX987654321"
+        fut.reference_entity_isin = "US78378X1072"
+        fut.reference_entity_ticker = "SPX"
+        fut.reference_entity_other_id = "FUT002"
+        fut.reference_entity_other_id_type = "Exchange"
+        fut.reference_entity_balance = Decimal("100.0000")
+        fut.reference_entity_units = "Contracts"
+        fut.reference_entity_currency = "USD"
+        fut.reference_entity_value_usd = Decimal("5025000.00")
+        fut.reference_entity_pct_value = Decimal("10.00000")
+        fut.reference_entity_asset_cat = "IDX"
+        fut.reference_entity_issuer_cat = "INDEX"
+        fut.reference_entity_inv_country = "US"
+
+        inv.derivative_info.future_derivative = fut
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_future_derivative()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000000"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+
+    # Verify parent-level fields
+    assert deriv.unrealized_appreciation == Decimal("25000.75")
+    assert deriv.currency == "USD"
+    assert deriv.payoff_profile == "Long"
+    assert deriv.underlying_title == "S&P 500 Index Future"
+    assert deriv.underlying_lei == "SPX987654321"
+    assert deriv.underlying_isin == "US78378X1072"
+    assert deriv.underlying_ticker == "SPX"
+    assert deriv.underlying_other_id == "FUT002"
+    assert deriv.underlying_other_id_type == "Exchange"
+    assert deriv.underlying_balance == Decimal("100.0000")
+    assert deriv.underlying_units == "Contracts"
+    assert deriv.underlying_currency == "USD"
+    assert deriv.underlying_value_usd == Decimal("5025000.00")
+    assert deriv.underlying_pct_value == Decimal("10.00000")
+    assert deriv.underlying_asset_cat == "IDX"
+    assert deriv.underlying_issuer_cat == "INDEX"
+    assert deriv.underlying_inv_country == "US"
+
+
+def test_parse_nport_derivative_parent_fields_option(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport populates parent-level fields for option derivatives (US-5)."""
+
+    def create_mock_option_derivative():
+        """Create a mock option derivative with all parent-level fields."""
+        inv = Mock()
+        inv.name = "Option Derivative"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "OPT"
+        inv.derivative_info.unrealized_appr = Decimal("12500.25")
+
+        opt = Mock()
+        opt.counterparty_name = "Morgan Stanley"
+        opt.counterparty_lei = "MS123456789012345"
+        opt.reference_entity_name = "Apple Inc"
+        opt.reference_entity_cusip = "037833100"
+        opt.index_name = None
+        opt.share_number = Decimal("1000")
+        opt.delta = Decimal("0.65")
+        opt.expiration_date = "2025-04-18"
+        opt.written_or_purchased = "P"
+
+        # Parent-level reference_entity_* fields
+        opt.currency_code = "USD"
+        opt.reference_entity_title = "Apple Inc Common Stock"
+        opt.reference_entity_lei = "HWUPKR0MPOU8FGXBT394"
+        opt.reference_entity_isin = "US0378331005"
+        opt.reference_entity_ticker = "AAPL"
+        opt.reference_entity_other_id = "OPT003"
+        opt.reference_entity_other_id_type = "CBOE"
+        opt.reference_entity_balance = Decimal("1000.0000")
+        opt.reference_entity_units = "Shares"
+        opt.reference_entity_currency = "USD"
+        opt.reference_entity_value_usd = Decimal("175000.00")
+        opt.reference_entity_pct_value = Decimal("0.35000")
+        opt.reference_entity_asset_cat = "EC"
+        opt.reference_entity_issuer_cat = "CORP"
+        opt.reference_entity_inv_country = "US"
+
+        inv.derivative_info.option_derivative = opt
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_option_derivative()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000000"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+
+    # Verify parent-level fields
+    assert deriv.unrealized_appreciation == Decimal("12500.25")
+    assert deriv.currency == "USD"
+    assert deriv.underlying_title == "Apple Inc Common Stock"
+    assert deriv.underlying_lei == "HWUPKR0MPOU8FGXBT394"
+    assert deriv.underlying_isin == "US0378331005"
+    assert deriv.underlying_ticker == "AAPL"
+    assert deriv.underlying_other_id == "OPT003"
+    assert deriv.underlying_other_id_type == "CBOE"
+    assert deriv.underlying_balance == Decimal("1000.0000")
+    assert deriv.underlying_units == "Shares"
+    assert deriv.underlying_currency == "USD"
+    assert deriv.underlying_value_usd == Decimal("175000.00")
+    assert deriv.underlying_pct_value == Decimal("0.35000")
+    assert deriv.underlying_asset_cat == "EC"
+    assert deriv.underlying_issuer_cat == "CORP"
+    assert deriv.underlying_inv_country == "US"
+    assert deriv.payoff_profile is None  # Only for futures
+
+
+def test_parse_nport_derivative_parent_fields_swap(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport populates parent-level fields for swap derivatives (US-5)."""
+
+    def create_mock_swap_derivative():
+        """Create a mock swap derivative with all parent-level fields."""
+        inv = Mock()
+        inv.name = "Swap Derivative"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "SWP"
+        inv.derivative_info.unrealized_appr = Decimal("45000.00")
+
+        swp = Mock()
+        swp.counterparty_name = "JP Morgan"
+        swp.counterparty_lei = "JPM123456789012345"
+        swp.deriv_addl_name = "USD LIBOR 3M"
+        swp.deriv_addl_cusip = "LIBOR3M"
+        swp.reference_entity_name = None
+        swp.reference_entity_cusip = None
+        swp.notional_amount = Decimal("10000000.00")
+        swp.termination_date = "2030-12-31"
+
+        # Parent-level deriv_addl_* fields (preferred for swaps)
+        swp.currency_code = "USD"
+        swp.deriv_addl_title = "3-Month USD LIBOR Index"
+        swp.deriv_addl_lei = "LIBOR987654321"
+        swp.deriv_addl_isin = "US1234567890"
+        swp.deriv_addl_ticker = "LIBOR3M"
+        swp.deriv_addl_other_id = "SWP004"
+        swp.deriv_addl_other_id_type = "ISDA"
+        swp.deriv_addl_balance = Decimal("10000000.0000")
+        swp.deriv_addl_units = "Currency Units"
+        swp.deriv_addl_currency = "USD"
+        swp.deriv_addl_value_usd = Decimal("10045000.00")
+        swp.deriv_addl_pct_value = Decimal("20.00000")
+        swp.deriv_addl_asset_cat = "IRS"
+        swp.deriv_addl_issuer_cat = "SWAP"
+        swp.deriv_addl_inv_country = "US"
+
+        inv.derivative_info.swap_derivative = swp
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_swap_derivative()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000000"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+
+    # Verify parent-level fields
+    assert deriv.unrealized_appreciation == Decimal("45000.00")
+    assert deriv.currency == "USD"
+    assert deriv.underlying_title == "3-Month USD LIBOR Index"
+    assert deriv.underlying_lei == "LIBOR987654321"
+    assert deriv.underlying_isin == "US1234567890"
+    assert deriv.underlying_ticker == "LIBOR3M"
+    assert deriv.underlying_other_id == "SWP004"
+    assert deriv.underlying_other_id_type == "ISDA"
+    assert deriv.underlying_balance == Decimal("10000000.0000")
+    assert deriv.underlying_units == "Currency Units"
+    assert deriv.underlying_currency == "USD"
+    assert deriv.underlying_value_usd == Decimal("10045000.00")
+    assert deriv.underlying_pct_value == Decimal("20.00000")
+    assert deriv.underlying_asset_cat == "IRS"
+    assert deriv.underlying_issuer_cat == "SWAP"
+    assert deriv.underlying_inv_country == "US"
+    assert deriv.payoff_profile is None  # Only for futures
+
+
+def test_parse_nport_derivative_parent_fields_swaption(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport populates parent-level fields for swaption derivatives (US-5)."""
+
+    def create_mock_swaption_derivative():
+        """Create a mock swaption derivative with all parent-level fields."""
+        inv = Mock()
+        inv.name = "Swaption Derivative"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "SWO"
+        inv.derivative_info.unrealized_appr = Decimal("8500.00")
+
+        swo = Mock()
+        swo.counterparty_name = "Barclays"
+        swo.counterparty_lei = "BARCLAYS123456789"
+        swo.expiration_date = "2026-06-30"
+        swo.written_or_purchased = "P"
+        swo.share_number = None
+
+        # Parent-level reference_entity_* fields
+        swo.reference_entity_title = "5-Year Interest Rate Swaption"
+        swo.reference_entity_lei = "SWAPTION987654321"
+        swo.reference_entity_isin = "US9876543210"
+        swo.reference_entity_ticker = "SWO5Y"
+        swo.reference_entity_other_id = "SWO005"
+        swo.reference_entity_other_id_type = "ISDA"
+        swo.reference_entity_balance = Decimal("5000000.0000")
+        swo.reference_entity_units = "Notional"
+        swo.reference_entity_currency = "USD"
+        swo.reference_entity_value_usd = Decimal("5008500.00")
+        swo.reference_entity_pct_value = Decimal("10.00000")
+        swo.reference_entity_asset_cat = "SWO"
+        swo.reference_entity_issuer_cat = "SWAP"
+        swo.reference_entity_inv_country = "US"
+
+        inv.derivative_info.swaption_derivative = swo
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swap_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_swaption_derivative()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000000"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+
+    # Verify parent-level fields
+    assert deriv.unrealized_appreciation == Decimal("8500.00")
+    assert deriv.currency is None  # Swaptions don't have currency_code
+    assert deriv.underlying_title == "5-Year Interest Rate Swaption"
+    assert deriv.underlying_lei == "SWAPTION987654321"
+    assert deriv.underlying_isin == "US9876543210"
+    assert deriv.underlying_ticker == "SWO5Y"
+    assert deriv.underlying_other_id == "SWO005"
+    assert deriv.underlying_other_id_type == "ISDA"
+    assert deriv.underlying_balance == Decimal("5000000.0000")
+    assert deriv.underlying_units == "Notional"
+    assert deriv.underlying_currency == "USD"
+    assert deriv.underlying_value_usd == Decimal("5008500.00")
+    assert deriv.underlying_pct_value == Decimal("10.00000")
+    assert deriv.underlying_asset_cat == "SWO"
+    assert deriv.underlying_issuer_cat == "SWAP"
+    assert deriv.underlying_inv_country == "US"
+    assert deriv.payoff_profile is None  # Only for futures
+
+
+def test_parse_nport_derivative_parent_fields_with_na_values(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport converts N/A values to NULL for parent-level derivative fields (US-5)."""
+
+    def create_mock_derivative_with_na():
+        """Create a mock derivative with N/A values for parent fields."""
+        inv = Mock()
+        inv.name = "Derivative with N/A"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "FUT"
+        inv.derivative_info.unrealized_appr = None
+
+        fut = Mock()
+        fut.counterparty_name = "Test Counterparty"
+        fut.counterparty_lei = "TEST123456789012345"
+        fut.reference_entity_name = "Test Index"
+        fut.reference_entity_cusip = "TEST12345"
+        fut.notional_amount = Decimal("1000000.00")
+        fut.expiration_date = "2025-03-15"
+
+        # N/A values should be converted to None
+        fut.currency_code = "N/A"
+        fut.payoff_profile = "N/A"
+        fut.reference_entity_title = "N/A"
+        fut.reference_entity_lei = "N/A"
+        fut.reference_entity_isin = "N/A"
+        fut.reference_entity_ticker = "N/A"
+        fut.reference_entity_other_id = "N/A"
+        fut.reference_entity_other_id_type = "N/A"
+        fut.reference_entity_balance = None
+        fut.reference_entity_units = "N/A"
+        fut.reference_entity_currency = "N/A"
+        fut.reference_entity_value_usd = None
+        fut.reference_entity_pct_value = None
+        fut.reference_entity_asset_cat = "N/A"
+        fut.reference_entity_issuer_cat = "N/A"
+        fut.reference_entity_inv_country = "N/A"
+
+        inv.derivative_info.future_derivative = fut
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_series(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_derivative_with_na()]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000000"
+        filing.xml = "<xml/>"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_series("S000002839"),
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+                return_value={},
+            ):
+                parse_nport(cik="36405")
+
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+
+    assert len(derivatives) == 1
+    deriv = derivatives[0]
+
+    # Verify all N/A values were converted to None
+    assert deriv.unrealized_appreciation is None
+    assert deriv.currency is None
+    assert deriv.payoff_profile is None
+    assert deriv.underlying_title is None
+    assert deriv.underlying_lei is None
+    assert deriv.underlying_isin is None
+    assert deriv.underlying_ticker is None
+    assert deriv.underlying_other_id is None
+    assert deriv.underlying_other_id_type is None
+    assert deriv.underlying_balance is None
+    assert deriv.underlying_units is None
+    assert deriv.underlying_currency is None
+    assert deriv.underlying_value_usd is None
+    assert deriv.underlying_pct_value is None
+    assert deriv.underlying_asset_cat is None
+    assert deriv.underlying_issuer_cat is None
+    assert deriv.underlying_inv_country is None

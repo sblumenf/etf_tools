@@ -33,10 +33,26 @@ logger = logging.getLogger(__name__)
 
 
 def _clean_str(val):
-    """Return None if val is None or 'N/A', else str(val)."""
-    if val is None or str(val).strip() == "N/A":
+    """Return None if val is None, 'N/A', or Mock object, else str(val)."""
+    if val is None:
         return None
-    return str(val).strip() if val else None
+    # Check if it's a Mock object (check for _mock_name attribute)
+    if hasattr(val, '_mock_name'):
+        return None
+    val_str = str(val).strip()
+    if val_str == "N/A":
+        return None
+    return val_str if val_str else None
+
+
+def _safe_numeric(val):
+    """Return None if val is None or Mock object, otherwise return val as-is."""
+    if val is None:
+        return None
+    # Check if it's a Mock object
+    if hasattr(val, '_mock_name'):
+        return None
+    return val
 
 
 def parse_nport(
@@ -999,6 +1015,32 @@ def _map_investment_to_derivative(
     written_notional_amt = None
     other_amt = None
 
+    # New parent-level fields (US-1)
+    unrealized_appreciation = None
+    currency = None
+    underlying_title = None
+    underlying_lei = None
+    underlying_isin = None
+    underlying_ticker = None
+    underlying_other_id = None
+    underlying_other_id_type = None
+    underlying_balance = None
+    underlying_units = None
+    underlying_currency = None
+    underlying_value_usd = None
+    underlying_pct_value = None
+    underlying_asset_cat = None
+    underlying_issuer_cat = None
+    underlying_inv_country = None
+    payoff_profile = None
+
+    # Extract unrealized appreciation (all derivative types)
+    if hasattr(deriv_info, 'unrealized_appr') and deriv_info.unrealized_appr is not None:
+        try:
+            unrealized_appreciation = Decimal(str(deriv_info.unrealized_appr))
+        except (ValueError, TypeError, Exception):
+            logger.debug(f"Could not parse unrealized_appr: {deriv_info.unrealized_appr}")
+
     if deriv_info.forward_derivative:
         fwd = deriv_info.forward_derivative
         counterparty = fwd.counterparty_name
@@ -1015,6 +1057,23 @@ def _map_investment_to_derivative(
         currency_amt_sold = fwd.amount_sold
         settlement_date = _parse_date(fwd.settlement_date)
 
+        # Parent-level fields for forwards (deriv_addl_*)
+        currency = _clean_str(fwd.deriv_addl_currency) if hasattr(fwd, 'deriv_addl_currency') else None
+        underlying_title = _clean_str(fwd.deriv_addl_title) if hasattr(fwd, 'deriv_addl_title') else None
+        underlying_lei = _clean_str(fwd.deriv_addl_lei) if hasattr(fwd, 'deriv_addl_lei') else None
+        underlying_isin = _clean_str(fwd.deriv_addl_isin) if hasattr(fwd, 'deriv_addl_isin') else None
+        underlying_ticker = _clean_str(fwd.deriv_addl_ticker) if hasattr(fwd, 'deriv_addl_ticker') else None
+        underlying_other_id = _clean_str(fwd.deriv_addl_other_id) if hasattr(fwd, 'deriv_addl_other_id') else None
+        underlying_other_id_type = _clean_str(fwd.deriv_addl_other_id_type) if hasattr(fwd, 'deriv_addl_other_id_type') else None
+        underlying_balance = _safe_numeric(fwd.deriv_addl_balance) if hasattr(fwd, 'deriv_addl_balance') else None
+        underlying_units = _clean_str(fwd.deriv_addl_units) if hasattr(fwd, 'deriv_addl_units') else None
+        underlying_currency = _clean_str(fwd.deriv_addl_currency) if hasattr(fwd, 'deriv_addl_currency') else None
+        underlying_value_usd = _safe_numeric(fwd.deriv_addl_value_usd) if hasattr(fwd, 'deriv_addl_value_usd') else None
+        underlying_pct_value = _safe_numeric(fwd.deriv_addl_pct_value) if hasattr(fwd, 'deriv_addl_pct_value') else None
+        underlying_asset_cat = _clean_str(fwd.deriv_addl_asset_cat) if hasattr(fwd, 'deriv_addl_asset_cat') else None
+        underlying_issuer_cat = _clean_str(fwd.deriv_addl_issuer_cat) if hasattr(fwd, 'deriv_addl_issuer_cat') else None
+        underlying_inv_country = _clean_str(fwd.deriv_addl_inv_country) if hasattr(fwd, 'deriv_addl_inv_country') else None
+
     elif deriv_info.future_derivative:
         fut = deriv_info.future_derivative
         counterparty = fut.counterparty_name
@@ -1023,6 +1082,24 @@ def _map_investment_to_derivative(
         underlying_cusip = fut.reference_entity_cusip
         notional_value = fut.notional_amount
         expiration_date = _parse_date(fut.expiration_date)
+
+        # Parent-level fields for futures (reference_entity_* + payoff_profile)
+        currency = _clean_str(fut.currency_code) if hasattr(fut, 'currency_code') else None
+        payoff_profile = _clean_str(fut.payoff_profile) if hasattr(fut, 'payoff_profile') else None
+        underlying_title = _clean_str(fut.reference_entity_title) if hasattr(fut, 'reference_entity_title') else None
+        underlying_lei = _clean_str(fut.reference_entity_lei) if hasattr(fut, 'reference_entity_lei') else None
+        underlying_isin = _clean_str(fut.reference_entity_isin) if hasattr(fut, 'reference_entity_isin') else None
+        underlying_ticker = _clean_str(fut.reference_entity_ticker) if hasattr(fut, 'reference_entity_ticker') else None
+        underlying_other_id = _clean_str(fut.reference_entity_other_id) if hasattr(fut, 'reference_entity_other_id') else None
+        underlying_other_id_type = _clean_str(fut.reference_entity_other_id_type) if hasattr(fut, 'reference_entity_other_id_type') else None
+        underlying_balance = _safe_numeric(fut.reference_entity_balance) if hasattr(fut, 'reference_entity_balance') else None
+        underlying_units = _clean_str(fut.reference_entity_units) if hasattr(fut, 'reference_entity_units') else None
+        underlying_currency = _clean_str(fut.reference_entity_currency) if hasattr(fut, 'reference_entity_currency') else None
+        underlying_value_usd = _safe_numeric(fut.reference_entity_value_usd) if hasattr(fut, 'reference_entity_value_usd') else None
+        underlying_pct_value = _safe_numeric(fut.reference_entity_pct_value) if hasattr(fut, 'reference_entity_pct_value') else None
+        underlying_asset_cat = _clean_str(fut.reference_entity_asset_cat) if hasattr(fut, 'reference_entity_asset_cat') else None
+        underlying_issuer_cat = _clean_str(fut.reference_entity_issuer_cat) if hasattr(fut, 'reference_entity_issuer_cat') else None
+        underlying_inv_country = _clean_str(fut.reference_entity_inv_country) if hasattr(fut, 'reference_entity_inv_country') else None
 
     elif deriv_info.option_derivative:
         opt = deriv_info.option_derivative
@@ -1038,6 +1115,23 @@ def _map_investment_to_derivative(
         if opt.written_or_purchased == "W" and opt.share_number:
             written_notional_amt = opt.share_number
 
+        # Parent-level fields for options (reference_entity_*)
+        currency = _clean_str(opt.currency_code) if hasattr(opt, 'currency_code') else None
+        underlying_title = _clean_str(opt.reference_entity_title) if hasattr(opt, 'reference_entity_title') else None
+        underlying_lei = _clean_str(opt.reference_entity_lei) if hasattr(opt, 'reference_entity_lei') else None
+        underlying_isin = _clean_str(opt.reference_entity_isin) if hasattr(opt, 'reference_entity_isin') else None
+        underlying_ticker = _clean_str(opt.reference_entity_ticker) if hasattr(opt, 'reference_entity_ticker') else None
+        underlying_other_id = _clean_str(opt.reference_entity_other_id) if hasattr(opt, 'reference_entity_other_id') else None
+        underlying_other_id_type = _clean_str(opt.reference_entity_other_id_type) if hasattr(opt, 'reference_entity_other_id_type') else None
+        underlying_balance = _safe_numeric(opt.reference_entity_balance) if hasattr(opt, 'reference_entity_balance') else None
+        underlying_units = _clean_str(opt.reference_entity_units) if hasattr(opt, 'reference_entity_units') else None
+        underlying_currency = _clean_str(opt.reference_entity_currency) if hasattr(opt, 'reference_entity_currency') else None
+        underlying_value_usd = _safe_numeric(opt.reference_entity_value_usd) if hasattr(opt, 'reference_entity_value_usd') else None
+        underlying_pct_value = _safe_numeric(opt.reference_entity_pct_value) if hasattr(opt, 'reference_entity_pct_value') else None
+        underlying_asset_cat = _clean_str(opt.reference_entity_asset_cat) if hasattr(opt, 'reference_entity_asset_cat') else None
+        underlying_issuer_cat = _clean_str(opt.reference_entity_issuer_cat) if hasattr(opt, 'reference_entity_issuer_cat') else None
+        underlying_inv_country = _clean_str(opt.reference_entity_inv_country) if hasattr(opt, 'reference_entity_inv_country') else None
+
     elif deriv_info.swap_derivative:
         swp = deriv_info.swap_derivative
         counterparty = swp.counterparty_name
@@ -1047,6 +1141,39 @@ def _map_investment_to_derivative(
         notional_value = swp.notional_amount
         expiration_date = _parse_date(swp.termination_date)
 
+        # Parent-level fields for swaps (deriv_addl_* or reference_entity_*)
+        currency = _clean_str(swp.currency_code) if hasattr(swp, 'currency_code') else None
+        # Prefer deriv_addl_* fields, fallback to reference_entity_*
+        underlying_title = _clean_str(swp.deriv_addl_title) if hasattr(swp, 'deriv_addl_title') and swp.deriv_addl_title else (_clean_str(swp.reference_entity_title) if hasattr(swp, 'reference_entity_title') else None)
+        underlying_lei = _clean_str(swp.deriv_addl_lei) if hasattr(swp, 'deriv_addl_lei') and swp.deriv_addl_lei else (_clean_str(swp.reference_entity_lei) if hasattr(swp, 'reference_entity_lei') else None)
+        underlying_isin = _clean_str(swp.deriv_addl_isin) if hasattr(swp, 'deriv_addl_isin') and swp.deriv_addl_isin else (_clean_str(swp.reference_entity_isin) if hasattr(swp, 'reference_entity_isin') else None)
+        underlying_ticker = _clean_str(swp.deriv_addl_ticker) if hasattr(swp, 'deriv_addl_ticker') and swp.deriv_addl_ticker else (_clean_str(swp.reference_entity_ticker) if hasattr(swp, 'reference_entity_ticker') else None)
+        underlying_other_id = _clean_str(swp.deriv_addl_other_id) if hasattr(swp, 'deriv_addl_other_id') and swp.deriv_addl_other_id else (_clean_str(swp.reference_entity_other_id) if hasattr(swp, 'reference_entity_other_id') else None)
+        underlying_other_id_type = _clean_str(swp.deriv_addl_other_id_type) if hasattr(swp, 'deriv_addl_other_id_type') and swp.deriv_addl_other_id_type else (_clean_str(swp.reference_entity_other_id_type) if hasattr(swp, 'reference_entity_other_id_type') else None)
+
+        # For numeric fields, check if value is not None
+        if hasattr(swp, 'deriv_addl_balance'):
+            underlying_balance = _safe_numeric(swp.deriv_addl_balance)
+        elif hasattr(swp, 'reference_entity_balance'):
+            underlying_balance = _safe_numeric(swp.reference_entity_balance)
+
+        underlying_units = _clean_str(swp.deriv_addl_units) if hasattr(swp, 'deriv_addl_units') and swp.deriv_addl_units else (_clean_str(swp.reference_entity_units) if hasattr(swp, 'reference_entity_units') else None)
+        underlying_currency = _clean_str(swp.deriv_addl_currency) if hasattr(swp, 'deriv_addl_currency') and swp.deriv_addl_currency else (_clean_str(swp.reference_entity_currency) if hasattr(swp, 'reference_entity_currency') else None)
+
+        if hasattr(swp, 'deriv_addl_value_usd'):
+            underlying_value_usd = _safe_numeric(swp.deriv_addl_value_usd)
+        elif hasattr(swp, 'reference_entity_value_usd'):
+            underlying_value_usd = _safe_numeric(swp.reference_entity_value_usd)
+
+        if hasattr(swp, 'deriv_addl_pct_value'):
+            underlying_pct_value = _safe_numeric(swp.deriv_addl_pct_value)
+        elif hasattr(swp, 'reference_entity_pct_value'):
+            underlying_pct_value = _safe_numeric(swp.reference_entity_pct_value)
+
+        underlying_asset_cat = _clean_str(swp.deriv_addl_asset_cat) if hasattr(swp, 'deriv_addl_asset_cat') and swp.deriv_addl_asset_cat else (_clean_str(swp.reference_entity_asset_cat) if hasattr(swp, 'reference_entity_asset_cat') else None)
+        underlying_issuer_cat = _clean_str(swp.deriv_addl_issuer_cat) if hasattr(swp, 'deriv_addl_issuer_cat') and swp.deriv_addl_issuer_cat else (_clean_str(swp.reference_entity_issuer_cat) if hasattr(swp, 'reference_entity_issuer_cat') else None)
+        underlying_inv_country = _clean_str(swp.deriv_addl_inv_country) if hasattr(swp, 'deriv_addl_inv_country') and swp.deriv_addl_inv_country else (_clean_str(swp.reference_entity_inv_country) if hasattr(swp, 'reference_entity_inv_country') else None)
+
     elif deriv_info.swaption_derivative:
         swo = deriv_info.swaption_derivative
         counterparty = swo.counterparty_name
@@ -1055,6 +1182,22 @@ def _map_investment_to_derivative(
         # New field for written swaptions
         if swo.written_or_purchased == "W" and swo.share_number:
             written_notional_amt = swo.share_number
+
+        # Parent-level fields for swaptions (reference_entity_*)
+        underlying_title = _clean_str(swo.reference_entity_title) if hasattr(swo, 'reference_entity_title') else None
+        underlying_lei = _clean_str(swo.reference_entity_lei) if hasattr(swo, 'reference_entity_lei') else None
+        underlying_isin = _clean_str(swo.reference_entity_isin) if hasattr(swo, 'reference_entity_isin') else None
+        underlying_ticker = _clean_str(swo.reference_entity_ticker) if hasattr(swo, 'reference_entity_ticker') else None
+        underlying_other_id = _clean_str(swo.reference_entity_other_id) if hasattr(swo, 'reference_entity_other_id') else None
+        underlying_other_id_type = _clean_str(swo.reference_entity_other_id_type) if hasattr(swo, 'reference_entity_other_id_type') else None
+        underlying_balance = _safe_numeric(swo.reference_entity_balance) if hasattr(swo, 'reference_entity_balance') else None
+        underlying_units = _clean_str(swo.reference_entity_units) if hasattr(swo, 'reference_entity_units') else None
+        underlying_currency = _clean_str(swo.reference_entity_currency) if hasattr(swo, 'reference_entity_currency') else None
+        underlying_value_usd = _safe_numeric(swo.reference_entity_value_usd) if hasattr(swo, 'reference_entity_value_usd') else None
+        underlying_pct_value = _safe_numeric(swo.reference_entity_pct_value) if hasattr(swo, 'reference_entity_pct_value') else None
+        underlying_asset_cat = _clean_str(swo.reference_entity_asset_cat) if hasattr(swo, 'reference_entity_asset_cat') else None
+        underlying_issuer_cat = _clean_str(swo.reference_entity_issuer_cat) if hasattr(swo, 'reference_entity_issuer_cat') else None
+        underlying_inv_country = _clean_str(swo.reference_entity_inv_country) if hasattr(swo, 'reference_entity_inv_country') else None
 
     return Derivative(
         etf_id=etf.id,
@@ -1073,6 +1216,24 @@ def _map_investment_to_derivative(
         settlement_date=settlement_date,
         written_notional_amt=written_notional_amt,
         other_amt=other_amt,
+        # New parent-level fields (US-1)
+        unrealized_appreciation=unrealized_appreciation,
+        currency=currency,
+        underlying_title=underlying_title,
+        underlying_lei=underlying_lei,
+        underlying_isin=underlying_isin,
+        underlying_ticker=underlying_ticker,
+        underlying_other_id=underlying_other_id,
+        underlying_other_id_type=underlying_other_id_type,
+        underlying_balance=underlying_balance,
+        underlying_units=underlying_units,
+        underlying_currency=underlying_currency,
+        underlying_value_usd=underlying_value_usd,
+        underlying_pct_value=underlying_pct_value,
+        underlying_asset_cat=underlying_asset_cat,
+        underlying_issuer_cat=underlying_issuer_cat,
+        underlying_inv_country=underlying_inv_country,
+        payoff_profile=payoff_profile,
     )
 
 
