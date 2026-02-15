@@ -247,6 +247,21 @@ def _extract_fund_snapshot(
     total_assets = None
     total_liabilities = None
     net_assets = None
+    cash_not_reported = None
+    assets_invested = None
+    assets_misc_sec = None
+    amt_pay_one_yr_banks_borr = None
+    amt_pay_one_yr_ctrld_comp = None
+    amt_pay_one_yr_oth_affil = None
+    amt_pay_one_yr_other = None
+    amt_pay_aft_one_yr_banks_borr = None
+    amt_pay_aft_one_yr_ctrld_comp = None
+    amt_pay_aft_one_yr_oth_affil = None
+    amt_pay_aft_one_yr_other = None
+    delay_deliv = None
+    stand_by_commit = None
+    liquidity_pref = None
+    is_non_cash_collateral = False
 
     try:
         total_assets = fund_info.total_assets
@@ -263,6 +278,83 @@ def _extract_fund_snapshot(
     except AttributeError:
         pass
 
+    try:
+        cash_not_reported = fund_info.cash_not_reported
+    except AttributeError:
+        pass
+
+    try:
+        assets_invested = fund_info.assets_invested
+    except AttributeError:
+        pass
+
+    try:
+        assets_misc_sec = fund_info.assets_misc_sec
+    except AttributeError:
+        pass
+
+    try:
+        amt_pay_one_yr_banks_borr = fund_info.amt_pay_one_yr_banks_borr
+    except AttributeError:
+        pass
+
+    try:
+        amt_pay_one_yr_ctrld_comp = fund_info.amt_pay_one_yr_ctrld_comp
+    except AttributeError:
+        pass
+
+    try:
+        amt_pay_one_yr_oth_affil = fund_info.amt_pay_one_yr_oth_affil
+    except AttributeError:
+        pass
+
+    try:
+        amt_pay_one_yr_other = fund_info.amt_pay_one_yr_other
+    except AttributeError:
+        pass
+
+    try:
+        amt_pay_aft_one_yr_banks_borr = fund_info.amt_pay_aft_one_yr_banks_borr
+    except AttributeError:
+        pass
+
+    try:
+        amt_pay_aft_one_yr_ctrld_comp = fund_info.amt_pay_aft_one_yr_ctrld_comp
+    except AttributeError:
+        pass
+
+    try:
+        amt_pay_aft_one_yr_oth_affil = fund_info.amt_pay_aft_one_yr_oth_affil
+    except AttributeError:
+        pass
+
+    try:
+        amt_pay_aft_one_yr_other = fund_info.amt_pay_aft_one_yr_other
+    except AttributeError:
+        pass
+
+    try:
+        delay_deliv = fund_info.delay_deliv
+    except AttributeError:
+        pass
+
+    try:
+        stand_by_commit = fund_info.stand_by_commit
+    except AttributeError:
+        pass
+
+    try:
+        liquidity_pref = fund_info.liquidity_pref
+    except AttributeError:
+        pass
+
+    try:
+        is_non_cash_collateral_val = fund_info.is_non_cash_collateral
+        if is_non_cash_collateral_val is not None:
+            is_non_cash_collateral = bool(is_non_cash_collateral_val)
+    except AttributeError:
+        pass
+
     snapshot = FundSnapshot(
         cik=cik,
         report_date=report_date,
@@ -270,6 +362,21 @@ def _extract_fund_snapshot(
         total_assets=total_assets,
         total_liabilities=total_liabilities,
         net_assets=net_assets,
+        cash_not_reported=cash_not_reported,
+        assets_invested=assets_invested,
+        assets_misc_sec=assets_misc_sec,
+        amt_pay_one_yr_banks_borr=amt_pay_one_yr_banks_borr,
+        amt_pay_one_yr_ctrld_comp=amt_pay_one_yr_ctrld_comp,
+        amt_pay_one_yr_oth_affil=amt_pay_one_yr_oth_affil,
+        amt_pay_one_yr_other=amt_pay_one_yr_other,
+        amt_pay_aft_one_yr_banks_borr=amt_pay_aft_one_yr_banks_borr,
+        amt_pay_aft_one_yr_ctrld_comp=amt_pay_aft_one_yr_ctrld_comp,
+        amt_pay_aft_one_yr_oth_affil=amt_pay_aft_one_yr_oth_affil,
+        amt_pay_aft_one_yr_other=amt_pay_aft_one_yr_other,
+        delay_deliv=delay_deliv,
+        stand_by_commit=stand_by_commit,
+        liquidity_pref=liquidity_pref,
+        is_non_cash_collateral=is_non_cash_collateral,
     )
     session.add(snapshot)
     logger.info(f"Created fund snapshot for CIK {cik} on {report_date}")
