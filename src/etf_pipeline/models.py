@@ -175,6 +175,68 @@ class Derivative(Base):
     payoff_profile: Mapped[Optional[str]] = mapped_column(String(10))
 
     etf: Mapped["ETF"] = relationship(back_populates="derivatives")
+    swap: Mapped[Optional["DerivativeSwap"]] = relationship(
+        back_populates="derivative", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class DerivativeSwap(Base):
+    """Swap-specific derivative details. One row per swap derivative."""
+    __tablename__ = "derivative_swap"
+    __table_args__ = (
+        Index("derivative_swap_derivative_idx", "derivative_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    derivative_id: Mapped[int] = mapped_column(
+        ForeignKey("derivative.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    upfront_payment: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    upfront_payment_currency: Mapped[Optional[str]] = mapped_column(String(3))
+    upfront_receipt: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    upfront_receipt_currency: Mapped[Optional[str]] = mapped_column(String(3))
+    swap_flag: Mapped[Optional[str]] = mapped_column(String(1))
+
+    derivative: Mapped["Derivative"] = relationship(back_populates="swap")
+    legs: Mapped[list["DerivativeSwapLeg"]] = relationship(
+        back_populates="swap", cascade="all, delete-orphan"
+    )
+
+
+class DerivativeSwapLeg(Base):
+    """Swap leg (pay or receive). Two rows per swap."""
+    __tablename__ = "derivative_swap_leg"
+    __table_args__ = (
+        UniqueConstraint("swap_id", "direction", name="swap_leg_uniq"),
+        Index("derivative_swap_leg_swap_idx", "swap_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    swap_id: Mapped[int] = mapped_column(
+        ForeignKey("derivative_swap.id", ondelete="CASCADE"), nullable=False
+    )
+    direction: Mapped[str] = mapped_column(String(7), nullable=False)  # "pay" or "receive"
+    leg_type: Mapped[Optional[str]] = mapped_column(String(10))  # "fixed", "floating", "other"
+    
+    # Fixed leg fields
+    fixed_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6))
+    fixed_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    fixed_currency: Mapped[Optional[str]] = mapped_column(String(3))
+    
+    # Floating leg fields
+    floating_index: Mapped[Optional[str]] = mapped_column(String(100))
+    floating_spread: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6))
+    floating_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    floating_currency: Mapped[Optional[str]] = mapped_column(String(3))
+    tenor: Mapped[Optional[str]] = mapped_column(String(20))
+    tenor_unit: Mapped[Optional[str]] = mapped_column(String(10))
+    reset_date_tenor: Mapped[Optional[str]] = mapped_column(String(20))
+    reset_date_unit: Mapped[Optional[str]] = mapped_column(String(10))
+    
+    # Other leg type
+    other_description: Mapped[Optional[str]] = mapped_column(Text)
+
+    swap: Mapped["DerivativeSwap"] = relationship(back_populates="legs")
 
 
 class DebtSecurityDetail(Base):
