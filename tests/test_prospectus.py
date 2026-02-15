@@ -331,6 +331,17 @@ class TestExtractTagValue:
         # HTML <b> tags should be stripped
         assert value == "The fund invests primarily in common stocks of large U.S. companies."
 
+    def test_extract_principal_risks_text_block(self, sample_filing):
+        """Test extracting principal risks text block (HTML stripped)."""
+        context_id = "AsOf2022-11-03_custom_S000014796Member"
+        value = extract_tag_value(sample_filing, "rr:RiskTextBlock", context_id)
+
+        assert isinstance(value, str)
+        # HTML <b> tags should be stripped
+        assert "Stock Market Volatility" in value
+        assert "Foreign Exposure" in value
+        assert value == "Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments."
+
     def test_extract_missing_tag(self, sample_filing):
         """Test extracting non-existent tag returns None."""
         context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
@@ -482,10 +493,12 @@ class TestIntegrationProcessCikProspectus:
         session.refresh(etf_i)
         assert etf_a.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_a.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        assert etf_a.principal_risks == 'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
         assert etf_a.filing_url == 'https://www.sec.gov/test/filing.htm'
         # Both classes share the same series-level text (both have series_id S000014796)
         assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        assert etf_i.principal_risks == 'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
 
     def test_process_cik_multi_filing(self, session, sample_filing_path):
         """Test processing multiple filings - verifies loop can handle multiple files."""
@@ -796,6 +809,15 @@ class TestOEFNamespace:
         assert isinstance(value, str)
         assert value == "The fund seeks long-term capital growth."
 
+    def test_extract_oef_principal_risks_text(self, sample_filing_oef):
+        """Test extracting principal risks text with oef: prefix."""
+        context_id = "AsOf2022-11-03_custom_S000014796Member"
+        value = extract_tag_value(sample_filing_oef, "oef:RiskTextBlock", context_id)
+
+        assert isinstance(value, str)
+        assert "Stock Market Volatility" in value
+        assert "Foreign Exposure" in value
+
     def test_process_cik_oef_full_flow(self, session, sample_filing_oef_path):
         """Test full CIK processing flow with OEF namespace."""
         from unittest.mock import Mock, patch
@@ -865,8 +887,10 @@ class TestOEFNamespace:
         session.refresh(etf_i)
         assert etf_a.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_a.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        assert etf_a.principal_risks == 'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
         assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        assert etf_i.principal_risks == 'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
 
 
 class TestProspectusProcessingLog:

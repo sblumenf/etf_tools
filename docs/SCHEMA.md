@@ -41,6 +41,7 @@ Central table identifying each ETF share class.
 | `issuer_name` | String(500) | NOT NULL | Issuer/registrant name |
 | `objective_text` | Text | | Investment objective narrative |
 | `strategy_text` | Text | | Principal strategy narrative |
+| `principal_risks` | Text | | Principal risk disclosure narrative |
 | `filing_url` | String(1000) | | Source filing URL |
 | `category` | String(100) | | Fund category |
 | `is_active` | Boolean | NOT NULL, default=True | Whether the ETF is active |
@@ -489,5 +490,5 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 |---|---|
 | NPORT-P | `holding`, `debt_security_detail`, `security_lending`, `derivative`, `fund_snapshot`, `nport_monthly_return`, `nport_monthly_flow`, `interest_rate_risk`, `credit_spread_risk` |
 | N-CSR | `performance`, `per_share_operating`, `per_share_distribution`, `per_share_ratios` |
-| 485BPOS | `etf` (objective/strategy), `fee_expense` |
+| 485BPOS | `etf` (objective/strategy/principal_risks), `fee_expense` |
 | 24F-2NT | `flow_data` |

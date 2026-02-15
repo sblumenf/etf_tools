@@ -522,6 +522,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                     # Extract objective and strategy text
                     objective_text = extract_tag_value(tag_index, f'{tag_prefix}:ObjectivePrimaryTextBlock', context_id)
                     strategy_text = extract_tag_value(tag_index, f'{tag_prefix}:StrategyNarrativeTextBlock', context_id)
+                    principal_risks = extract_tag_value(tag_index, f'{tag_prefix}:RiskTextBlock', context_id)
 
                     # Update all ETFs with this series_id (multiple share classes can belong to same series)
                     for etf in etf_list:
@@ -532,6 +533,10 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                         if strategy_text:
                             etf.strategy_text = strategy_text
                             logger.debug(f"CIK {cik}: Updated strategy_text for {etf.ticker}")
+
+                        if principal_risks:
+                            etf.principal_risks = principal_risks
+                            logger.debug(f"CIK {cik}: Updated principal_risks for {etf.ticker}")
 
             # Update filing_url for ETFs processed in this filing
             if filing_url:

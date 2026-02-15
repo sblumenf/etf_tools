@@ -34,6 +34,7 @@ class ETF(Base):
     issuer_name: Mapped[str] = mapped_column(String(500), nullable=False)
     objective_text: Mapped[Optional[str]] = mapped_column(Text)
     strategy_text: Mapped[Optional[str]] = mapped_column(Text)
+    principal_risks: Mapped[Optional[str]] = mapped_column(Text)
     filing_url: Mapped[Optional[str]] = mapped_column(String(1000))
     category: Mapped[Optional[str]] = mapped_column(String(100))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
