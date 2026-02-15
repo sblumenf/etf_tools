@@ -182,6 +182,21 @@ Fund-level balance sheet snapshot from NPORT-P filings.
 | `total_assets` | Numeric(20,2) | | Fund's total asset value |
 | `total_liabilities` | Numeric(20,2) | | Fund's total liabilities |
 | `net_assets` | Numeric(20,2) | | NAV (total_assets - total_liabilities) |
+| `cash_not_reported` | Numeric(20,2) | | Cash not reported in Part D |
+| `assets_invested` | Numeric(20,2) | | Assets invested in securities |
+| `assets_misc_sec` | Numeric(20,2) | | Assets attributable to miscellaneous securities |
+| `amt_pay_one_yr_banks_borr` | Numeric(20,2) | | Amounts payable within one year to banks for borrowings |
+| `amt_pay_one_yr_ctrld_comp` | Numeric(20,2) | | Amounts payable within one year to controlled companies |
+| `amt_pay_one_yr_oth_affil` | Numeric(20,2) | | Amounts payable within one year to other affiliates |
+| `amt_pay_one_yr_other` | Numeric(20,2) | | Amounts payable within one year to other parties |
+| `amt_pay_aft_one_yr_banks_borr` | Numeric(20,2) | | Amounts payable after one year to banks for borrowings |
+| `amt_pay_aft_one_yr_ctrld_comp` | Numeric(20,2) | | Amounts payable after one year to controlled companies |
+| `amt_pay_aft_one_yr_oth_affil` | Numeric(20,2) | | Amounts payable after one year to other affiliates |
+| `amt_pay_aft_one_yr_other` | Numeric(20,2) | | Amounts payable after one year to other parties |
+| `delay_deliv` | Numeric(20,2) | | Delayed delivery commitments |
+| `stand_by_commit` | Numeric(20,2) | | Standby commitments |
+| `liquidity_pref` | Numeric(20,2) | | Liquidity preference of outstanding preferred stock |
+| `is_non_cash_collateral` | Boolean | NOT NULL, default=False | Whether fund holds non-cash collateral |
 
 **Unique:** `(cik, report_date, filing_date)`
 
