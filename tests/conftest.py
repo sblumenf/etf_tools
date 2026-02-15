@@ -36,7 +36,9 @@ def mock_nport_db(engine):
     with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
         with patch("etf_pipeline.parsers.nport.sessionmaker") as mock_sm:
             mock_sm.return_value = sessionmaker(bind=engine)
-            yield
+            # Patch XML parser to return empty dict (tests don't provide real XML)
+            with patch("etf_pipeline.parsers.nport.parse_nport_investments_xml", return_value={}):
+                yield
 
 
 @pytest.fixture

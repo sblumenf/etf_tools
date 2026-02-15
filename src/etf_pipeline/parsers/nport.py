@@ -27,6 +27,7 @@ from etf_pipeline.models import (
     SecurityLending,
 )
 from etf_pipeline.parser_utils import ensure_date, update_processing_log
+from etf_pipeline.parsers.nport_xml import parse_nport_investments_xml
 
 logger = logging.getLogger(__name__)
 
@@ -836,10 +837,13 @@ def _process_etf(
     if credit_spread_risk:
         session.add(credit_spread_risk)
 
+    # Parse XML for custom fields not exposed by edgartools
+    xml_custom_fields = parse_nport_investments_xml(filing.xml)
+
     holdings_count = 0
     seen_holding_keys = set()
     for investment in fund_report.non_derivatives:
-        holding = _map_investment_to_holding(etf, investment, report_date, filing_date)
+        holding = _map_investment_to_holding(etf, investment, report_date, filing_date, xml_custom_fields)
         if holding.holding_key in seen_holding_keys:
             logger.warning(f"ETF {etf.ticker}: Skipping duplicate holding_key {holding.holding_key} in NPORT filing")
             continue
@@ -877,7 +881,9 @@ def _process_etf(
     )
 
 
-def _map_investment_to_holding(etf: ETF, investment, report_date, filing_date) -> Holding:
+def _map_investment_to_holding(
+    etf: ETF, investment, report_date, filing_date, xml_custom_fields: dict
+) -> Holding:
     """Map an InvestmentOrSecurity to a Holding model instance."""
     identifiers = investment.identifiers
 
@@ -928,7 +934,15 @@ def _map_investment_to_holding(etf: ETF, investment, report_date, filing_date) -
     cusip_clean = _clean_str(investment.cusip)
     isin_clean = _clean_str(isin)
     name_clean = _clean_str(investment.name) or ""
+    lei_clean = _clean_str(investment.lei)
     holding_key = cusip_clean or isin_clean or name_clean
+
+    # Extract custom XML fields using holding key
+    # Build XML holding key (name|cusip|lei as used in nport_xml.py)
+    xml_key = f"{name_clean}|{cusip_clean or ''}|{lei_clean or ''}"
+    custom_fields = xml_custom_fields.get(xml_key, {})
+    liquidity_classification = custom_fields.get("liquidity_classification")
+    borrower_name = custom_fields.get("borrower_name")
 
     return Holding(
         etf_id=etf.id,
@@ -938,7 +952,7 @@ def _map_investment_to_holding(etf: ETF, investment, report_date, filing_date) -
         cusip=cusip_clean,
         isin=isin_clean,
         ticker=_clean_str(ticker),
-        lei=_clean_str(investment.lei),
+        lei=lei_clean,
         balance=investment.balance,
         units=investment.units,
         value_usd=investment.value_usd,
@@ -953,6 +967,8 @@ def _map_investment_to_holding(etf: ETF, investment, report_date, filing_date) -
         payoff_profile=payoff_profile,
         exchange_rate=exchange_rate,
         holding_key=holding_key,
+        borrower_name=borrower_name,
+        liquidity_classification=liquidity_classification,
     )
 
 

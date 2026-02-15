@@ -108,6 +108,8 @@ class Holding(Base):
     payoff_profile: Mapped[Optional[str]] = mapped_column(String(10))
     exchange_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6))
     holding_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    borrower_name: Mapped[Optional[str]] = mapped_column(String(500))
+    liquidity_classification: Mapped[Optional[str]] = mapped_column(String(50))
 
     etf: Mapped["ETF"] = relationship(back_populates="holdings")
     debt_security_detail: Mapped[Optional["DebtSecurityDetail"]] = relationship(

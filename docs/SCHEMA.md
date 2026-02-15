@@ -79,11 +79,22 @@ Individual portfolio holdings from NPORT-P filings.
 | `payoff_profile` | String(10) | | Payoff profile (Long/Short) |
 | `exchange_rate` | Numeric(12,6) | | FX rate used for USD valuation |
 | `holding_key` | String(500) | NOT NULL | Unique identifier: COALESCE(cusip, isin, name) |
+| `borrower_name` | String(500) | | Borrower name for repurchase agreements (typically NULL) |
+| `liquidity_classification` | String(50) | | SEC liquidity classification (HLI/MLI/LLI/ILI) |
 
 **Unique:** `(etf_id, report_date, holding_key, filing_date)`
 **Indexes:** `(etf_id, report_date)`, `(cusip)`, `(report_date)`
 
-> Note: `holding_key` is computed as the first non-null value among cusip, isin, and name. This ensures foreign holdings without CUSIP identifiers can be uniquely identified without constraint violations on NULL cusip values.
+> **Note**: `holding_key` is computed as the first non-null value among cusip, isin, and name. This ensures foreign holdings without CUSIP identifiers can be uniquely identified without constraint violations on NULL cusip values.
+
+> **Liquidity Classification**: Extracted from NPORT XML `<fundCat>` or `<fundCats>` elements. Values:
+> - **HLI**: Highly Liquid Investments
+> - **MLI**: Moderately Liquid Investments
+> - **LLI**: Less Liquid Investments
+> - **ILI**: Illiquid Investments
+> - **NULL**: Not classified or N/A
+
+> **Borrower Name**: Per NPORT-P schema, borrower information is stored at the fund level (not per-holding) in `<fundInfo><borrowers>` elements. This field is included for API completeness but will typically be NULL. Fund-level borrower tracking may be added in a future enhancement.
 
 ---
 
