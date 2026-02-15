@@ -102,6 +102,11 @@ Derivative positions from NPORT-P filings.
 | `counterparty_lei` | String(20) | | Counterparty LEI |
 | `delta` | Numeric(10,6) | | Option delta |
 | `expiration_date` | Date | | Contract expiration |
+| `currency_sold` | String(3) | | Currency sold (for forward currency derivatives) |
+| `currency_amt_sold` | Numeric(18,2) | | Amount of currency sold (for forward currency derivatives) |
+| `settlement_date` | Date | | Settlement date (for forward derivatives) |
+| `written_notional_amt` | Numeric(18,2) | | Notional amount for written options/swaptions |
+| `other_amt` | Numeric(18,2) | | Catch-all for other derivative amounts |
 
 **Unique:** `(etf_id, report_date, derivative_type, underlying_name, filing_date)`
 **Indexes:** `(etf_id, report_date)`, `(report_date)`
