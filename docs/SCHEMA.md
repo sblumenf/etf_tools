@@ -211,6 +211,7 @@ Annual fee table data from 485BPOS prospectus filings.
 | `fee_waiver` | Numeric(6,5) | | Fee waiver/reimbursement |
 | `total_expense_net` | Numeric(6,5) | | Net total expense ratio |
 | `acquired_fund_fees` | Numeric(6,5) | | Acquired fund fees and expenses |
+| `fee_waiver_expiration_date` | Date | | Date when fee waiver agreement expires |
 
 **Unique:** `(etf_id, effective_date, filing_date)`
 

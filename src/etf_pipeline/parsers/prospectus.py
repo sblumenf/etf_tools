@@ -479,6 +479,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                     'fee_waiver': extract_tag_value(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssets', context_id, negate_to_positive=True),
                     'total_expense_net': extract_tag_value(tag_index, f'{tag_prefix}:NetExpensesOverAssets', context_id),
                     'acquired_fund_fees': extract_tag_value(tag_index, f'{tag_prefix}:AcquiredFundFeesAndExpensesOverAssets', context_id),
+                    'fee_waiver_expiration_date': parse_date_tag(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssetsDateOfTermination', context_id),
                 }
 
                 # Upsert FeeExpense (if any data present)

@@ -251,6 +251,7 @@ class FeeExpense(Base):
     fee_waiver: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
     total_expense_net: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
     acquired_fund_fees: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
+    fee_waiver_expiration_date: Mapped[Optional[date]] = mapped_column(Date)
 
     etf: Mapped["ETF"] = relationship(back_populates="fee_expenses")
 

@@ -377,6 +377,21 @@ class TestParseDateTag:
 
         assert date_value is None
 
+    def test_parse_fee_waiver_expiration_date(self, sample_filing):
+        """Test parsing fee waiver expiration date."""
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
+        date_value = parse_date_tag(sample_filing, "rr:FeeWaiverOrReimbursementOverAssetsDateOfTermination", context_id)
+
+        from datetime import date
+        assert date_value == date(2024, 12, 31)
+
+    def test_parse_fee_waiver_expiration_date_missing(self, sample_filing):
+        """Test parsing missing fee waiver expiration date returns None."""
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014546Member"
+        date_value = parse_date_tag(sample_filing, "rr:FeeWaiverOrReimbursementOverAssetsDateOfTermination", context_id)
+
+        assert date_value is None
+
 
 class TestEdgeCases:
     """Test edge cases and error handling."""
@@ -479,6 +494,7 @@ class TestIntegrationProcessCikProspectus:
         assert fee_a.fee_waiver == pytest.approx(Decimal('0.0010'))  # Negated from source -0.10
         assert fee_a.total_expense_net == pytest.approx(Decimal('0.0115'))
         assert fee_a.acquired_fund_fees is None  # Not in fixture
+        assert fee_a.fee_waiver_expiration_date == date(2024, 12, 31)
         assert fee_a.effective_date == date(2022, 11, 3)
 
         # Verify FeeExpense data for Class I (values from fixture)
@@ -487,6 +503,7 @@ class TestIntegrationProcessCikProspectus:
         assert fee_i.distribution_12b1 == Decimal('0')  # zerodash "—"
         assert fee_i.other_expenses == pytest.approx(Decimal('0.0024'))  # 0.24 with scale -2
         assert fee_i.total_expense_gross == pytest.approx(Decimal('0.0094'))  # 0.94 with scale -2
+        assert fee_i.fee_waiver_expiration_date is None  # Not in fixture for Class I
 
         # Verify ETF updates (narrative text from series-level context)
         session.refresh(etf_a)
@@ -875,6 +892,7 @@ class TestOEFNamespace:
         assert fee_a.total_expense_gross == pytest.approx(Decimal('0.0125'))
         assert fee_a.fee_waiver == pytest.approx(Decimal('0.0010'))
         assert fee_a.total_expense_net == pytest.approx(Decimal('0.0115'))
+        assert fee_a.fee_waiver_expiration_date == date(2024, 12, 31)
         assert fee_a.effective_date == date(2022, 11, 3)
 
         # Verify FeeExpense data for Class I
