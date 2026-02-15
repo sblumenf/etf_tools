@@ -160,19 +160,6 @@ def test_parse_nport_creates_holdings(session, engine, sample_etfs, mock_edgar_c
     assert holdings[0].report_date == date(2024, 12, 31)
 
 
-def test_parse_nport_updates_last_fetched(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
-    """Test that parse_nport updates ETF.last_fetched timestamp."""
-    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
-    assert voo.last_fetched is None
-
-    parse_nport(cik="36405")
-
-    session.expire_all()
-    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
-    assert voo.last_fetched is not None
-    assert isinstance(voo.last_fetched, datetime)
-
-
 def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, caplog):
     """Test that parse_nport skips ETF when holdings already exist for report_date."""
     import logging

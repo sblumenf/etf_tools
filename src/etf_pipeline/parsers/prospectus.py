@@ -337,7 +337,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
         True if successful, False otherwise
     """
     from edgar import Company
-    from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample
+    from etf_pipeline.models import ETF, FeeExpense
     from etf_pipeline.parser_utils import ensure_date, update_processing_log
     from sqlalchemy import select
 
@@ -503,76 +503,6 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                         logger.debug(f"CIK {cik}: Inserted fee data for {etf.ticker}")
 
                     etfs_with_data_this_filing.add(etf.id)
-
-                # Extract shareholder fees
-                shareholder_fee_data = {
-                    'etf_id': etf.id,
-                    'effective_date': effective_date,
-                    'filing_date': filing_date,
-                    'front_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeImposedOnPurchasesOverOfferingPrice', context_id),
-                    'deferred_load': extract_tag_value(tag_index, f'{tag_prefix}:MaximumDeferredSalesChargeOverOther', context_id),
-                    'reinvestment_charge': extract_tag_value(tag_index, f'{tag_prefix}:MaximumSalesChargeOnReinvestedDividendsAndDistributionsOverOther', context_id),
-                    'redemption_fee': extract_tag_value(tag_index, f'{tag_prefix}:RedemptionFeeOverRedemption', context_id, negate_to_positive=True),
-                    'exchange_fee': extract_tag_value(tag_index, f'{tag_prefix}:ExchangeFeeOverRedemption', context_id),
-                }
-
-                # Upsert ShareholderFee (if any data present)
-                if any(shareholder_fee_data[k] is not None for k in shareholder_fee_data if k not in ('etf_id', 'effective_date', 'filing_date')):
-                    stmt = select(ShareholderFee).where(
-                        ShareholderFee.etf_id == etf.id,
-                        ShareholderFee.effective_date == effective_date,
-                        ShareholderFee.filing_date == filing_date
-                    )
-                    existing = session.execute(stmt).scalar_one_or_none()
-
-                    if existing:
-                        # Update existing record
-                        for field, value in shareholder_fee_data.items():
-                            if field not in ('etf_id', 'effective_date', 'filing_date') and value is not None:
-                                setattr(existing, field, value)
-                        logger.debug(f"CIK {cik}: Updated shareholder fees for {etf.ticker}")
-                    else:
-                        # Insert new record
-                        new_shareholder_fee = ShareholderFee(**shareholder_fee_data)
-                        session.add(new_shareholder_fee)
-                        logger.debug(f"CIK {cik}: Inserted shareholder fees for {etf.ticker}")
-
-                # Extract expense examples
-                expense_example_data = {
-                    'etf_id': etf.id,
-                    'effective_date': effective_date,
-                    'filing_date': filing_date,
-                    'year_01': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear01', context_id),
-                    'year_03': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear03', context_id),
-                    'year_05': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear05', context_id),
-                    'year_10': extract_tag_value(tag_index, f'{tag_prefix}:ExpenseExampleYear10', context_id),
-                }
-
-                # Convert Decimal to int for expense examples (they're dollar amounts)
-                for key in ['year_01', 'year_03', 'year_05', 'year_10']:
-                    if expense_example_data[key] is not None:
-                        expense_example_data[key] = int(expense_example_data[key])
-
-                # Upsert ExpenseExample (if any data present)
-                if any(expense_example_data[k] is not None for k in expense_example_data if k not in ('etf_id', 'effective_date', 'filing_date')):
-                    stmt = select(ExpenseExample).where(
-                        ExpenseExample.etf_id == etf.id,
-                        ExpenseExample.effective_date == effective_date,
-                        ExpenseExample.filing_date == filing_date
-                    )
-                    existing = session.execute(stmt).scalar_one_or_none()
-
-                    if existing:
-                        # Update existing record
-                        for field, value in expense_example_data.items():
-                            if field not in ('etf_id', 'effective_date', 'filing_date') and value is not None:
-                                setattr(existing, field, value)
-                        logger.debug(f"CIK {cik}: Updated expense examples for {etf.ticker}")
-                    else:
-                        # Insert new record
-                        new_expense_example = ExpenseExample(**expense_example_data)
-                        session.add(new_expense_example)
-                        logger.debug(f"CIK {cik}: Inserted expense examples for {etf.ticker}")
 
                 # Mark this class_id as satisfied
                 satisfied.add(class_id)

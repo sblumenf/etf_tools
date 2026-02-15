@@ -314,34 +314,6 @@ class TestExtractTagValue:
         # Displayed: 2.00%, scale=-2, sign="-" → -0.0200, then negate_to_positive → 0.0200
         assert value == Decimal('0.0200')
 
-    def test_extract_expense_example_year_01(self, sample_filing):
-        """Test extracting expense example 1 year."""
-        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
-        value = extract_tag_value(sample_filing, "rr:ExpenseExampleYear01", context_id)
-
-        assert value == Decimal('695')
-
-    def test_extract_expense_example_year_03(self, sample_filing):
-        """Test extracting expense example 3 years."""
-        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
-        value = extract_tag_value(sample_filing, "rr:ExpenseExampleYear03", context_id)
-
-        assert value == Decimal('949')
-
-    def test_extract_expense_example_year_05(self, sample_filing):
-        """Test extracting expense example 5 years."""
-        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
-        value = extract_tag_value(sample_filing, "rr:ExpenseExampleYear05", context_id)
-
-        assert value == Decimal('1223')
-
-    def test_extract_expense_example_year_10(self, sample_filing):
-        """Test extracting expense example 10 years."""
-        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
-        value = extract_tag_value(sample_filing, "rr:ExpenseExampleYear10", context_id)
-
-        assert value == Decimal('2019')
-
     def test_extract_objective_text_block(self, sample_filing):
         """Test extracting objective text block (HTML stripped)."""
         context_id = "AsOf2022-11-03_custom_S000014796Member"
@@ -441,7 +413,7 @@ class TestIntegrationProcessCikProspectus:
     def test_process_cik_full_flow(self, session, sample_filing_path):
         """Test full CIK processing flow with mocked filing."""
         from unittest.mock import Mock, patch
-        from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample
+        from etf_pipeline.models import ETF, FeeExpense
         from etf_pipeline.parsers.prospectus import _process_cik_prospectus
         from datetime import date
 
@@ -504,21 +476,6 @@ class TestIntegrationProcessCikProspectus:
         assert fee_i.distribution_12b1 == Decimal('0')  # zerodash "—"
         assert fee_i.other_expenses == pytest.approx(Decimal('0.0024'))  # 0.24 with scale -2
         assert fee_i.total_expense_gross == pytest.approx(Decimal('0.0094'))  # 0.94 with scale -2
-
-        # Verify ShareholderFee data
-        sh_fee_a = session.query(ShareholderFee).filter_by(etf_id=etf_a.id).one()
-        assert sh_fee_a.front_load == pytest.approx(Decimal('0.0575'))
-        assert sh_fee_a.deferred_load == pytest.approx(Decimal('0.0100'))
-        assert sh_fee_a.redemption_fee == pytest.approx(Decimal('0.0200'))  # Negated from source -2.00
-        assert sh_fee_a.effective_date == date(2022, 11, 3)
-
-        # Verify ExpenseExample data (values from fixture)
-        exp_a = session.query(ExpenseExample).filter_by(etf_id=etf_a.id).one()
-        assert exp_a.year_01 == 695
-        assert exp_a.year_03 == 949
-        assert exp_a.year_05 == 1223
-        assert exp_a.year_10 == 2019
-        assert exp_a.effective_date == date(2022, 11, 3)
 
         # Verify ETF updates (narrative text from series-level context)
         session.refresh(etf_a)
@@ -831,13 +788,6 @@ class TestOEFNamespace:
 
         assert value == Decimal('0.0070')
 
-    def test_extract_oef_expense_example(self, sample_filing_oef):
-        """Test extracting expense example with oef: prefix."""
-        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_C000014542Member"
-        value = extract_tag_value(sample_filing_oef, "oef:ExpenseExampleYear01", context_id)
-
-        assert value == Decimal('695')
-
     def test_extract_oef_objective_text(self, sample_filing_oef):
         """Test extracting objective text with oef: prefix."""
         context_id = "AsOf2022-11-03_custom_S000014796Member"
@@ -849,7 +799,7 @@ class TestOEFNamespace:
     def test_process_cik_oef_full_flow(self, session, sample_filing_oef_path):
         """Test full CIK processing flow with OEF namespace."""
         from unittest.mock import Mock, patch
-        from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample
+        from etf_pipeline.models import ETF, FeeExpense
         from etf_pipeline.parsers.prospectus import _process_cik_prospectus
         from datetime import date
 
@@ -909,18 +859,6 @@ class TestOEFNamespace:
         fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i.id).one()
         assert fee_i.management_fee == pytest.approx(Decimal('0.0070'))
         assert fee_i.distribution_12b1 == Decimal('0')  # zerodash
-
-        # Verify ShareholderFee data
-        sh_fee_a = session.query(ShareholderFee).filter_by(etf_id=etf_a.id).one()
-        assert sh_fee_a.front_load == pytest.approx(Decimal('0.0575'))
-        assert sh_fee_a.redemption_fee == pytest.approx(Decimal('0.0200'))
-
-        # Verify ExpenseExample data
-        exp_a = session.query(ExpenseExample).filter_by(etf_id=etf_a.id).one()
-        assert exp_a.year_01 == 695
-        assert exp_a.year_03 == 949
-        assert exp_a.year_05 == 1223
-        assert exp_a.year_10 == 2019
 
         # Verify narrative text
         session.refresh(etf_a)
@@ -992,7 +930,7 @@ class TestProspectusProcessingLog:
     def test_parse_prospectus_sets_filing_date(self, session, sample_filing_path):
         """Test that prospectus parser sets filing_date on inserted rows."""
         from unittest.mock import Mock, patch
-        from etf_pipeline.models import ETF, FeeExpense, ShareholderFee, ExpenseExample
+        from etf_pipeline.models import ETF, FeeExpense
         from etf_pipeline.parsers.prospectus import _process_cik_prospectus
         from datetime import date
         from sqlalchemy import select
@@ -1035,13 +973,3 @@ class TestProspectusProcessingLog:
         stmt = select(FeeExpense).where(FeeExpense.etf_id == etf.id)
         fee_expense = session.execute(stmt).scalar_one()
         assert fee_expense.filing_date == date(2022, 11, 3)
-
-        # Verify ShareholderFee has filing_date
-        stmt = select(ShareholderFee).where(ShareholderFee.etf_id == etf.id)
-        shareholder_fee = session.execute(stmt).scalar_one()
-        assert shareholder_fee.filing_date == date(2022, 11, 3)
-
-        # Verify ExpenseExample has filing_date
-        stmt = select(ExpenseExample).where(ExpenseExample.etf_id == etf.id)
-        expense_example = session.execute(stmt).scalar_one()
-        assert expense_example.filing_date == date(2022, 11, 3)

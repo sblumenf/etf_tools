@@ -11,8 +11,6 @@ ETF (1) ──< Holding
 ETF (1) ──< Derivative
 ETF (1) ──< Performance
 ETF (1) ──< FeeExpense
-ETF (1) ──< ShareholderFee
-ETF (1) ──< ExpenseExample
 ETF (1) ──< PerShareOperating
 ETF (1) ──< PerShareDistribution
 ETF (1) ──< PerShareRatios
@@ -42,7 +40,6 @@ Central table identifying each ETF share class.
 | `filing_url` | String(1000) | | Source filing URL |
 | `category` | String(100) | | Fund category |
 | `is_active` | Boolean | NOT NULL, default=True | Whether the ETF is active |
-| `last_fetched` | DateTime | | Last pipeline run timestamp |
 | `incomplete_data` | Boolean | NOT NULL, default=False | Flag for partial data loads |
 | `created_at` | DateTime | NOT NULL, server default | Row creation timestamp |
 | `updated_at` | DateTime | NOT NULL, auto-update | Last modification timestamp |
@@ -146,45 +143,6 @@ Annual fee table data from 485BPOS prospectus filings.
 | `fee_waiver` | Numeric(6,5) | | Fee waiver/reimbursement |
 | `total_expense_net` | Numeric(6,5) | | Net total expense ratio |
 | `acquired_fund_fees` | Numeric(6,5) | | Acquired fund fees and expenses |
-
-**Unique:** `(etf_id, effective_date, filing_date)`
-
----
-
-### `shareholder_fee`
-
-Shareholder-level fees from 485BPOS prospectus filings.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer | PK | |
-| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
-| `effective_date` | Date | NOT NULL | Prospectus effective date |
-| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
-| `front_load` | Numeric(6,5) | | Front-end sales load |
-| `deferred_load` | Numeric(6,5) | | Deferred sales load |
-| `reinvestment_charge` | Numeric(6,5) | | Dividend reinvestment charge |
-| `redemption_fee` | Numeric(6,5) | | Redemption fee |
-| `exchange_fee` | Numeric(6,5) | | Exchange fee |
-
-**Unique:** `(etf_id, effective_date, filing_date)`
-
----
-
-### `expense_example`
-
-Dollar-cost examples from 485BPOS prospectus filings ($10,000 investment).
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer | PK | |
-| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
-| `effective_date` | Date | NOT NULL | Prospectus effective date |
-| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
-| `year_01` | Integer | | Cost after 1 year ($) |
-| `year_03` | Integer | | Cost after 3 years ($) |
-| `year_05` | Integer | | Cost after 5 years ($) |
-| `year_10` | Integer | | Cost after 10 years ($) |
 
 **Unique:** `(etf_id, effective_date, filing_date)`
 
@@ -304,8 +262,6 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 | derivative | `derivative_report_date_idx` | INDEX | `report_date` |
 | performance | `performance_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
 | fee_expense | `fee_expense_etf_date_filing_uniq` | UNIQUE | `etf_id, effective_date, filing_date` |
-| shareholder_fee | `shareholder_fee_etf_date_filing_uniq` | UNIQUE | `etf_id, effective_date, filing_date` |
-| expense_example | `expense_example_etf_date_filing_uniq` | UNIQUE | `etf_id, effective_date, filing_date` |
 | flow_data | `flow_data_cik_fy_filing_uniq` | UNIQUE | `cik, fiscal_year_end, filing_date` |
 | flow_data | `flow_data_fy_idx` | INDEX | `fiscal_year_end` |
 | per_share_operating | `per_share_operating_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
@@ -321,5 +277,5 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 |---|---|
 | NPORT-P | `holding`, `derivative` |
 | N-CSR | `performance`, `per_share_operating`, `per_share_distribution`, `per_share_ratios` |
-| 485BPOS | `etf` (objective/strategy), `fee_expense`, `shareholder_fee`, `expense_example` |
+| 485BPOS | `etf` (objective/strategy), `fee_expense` |
 | 24F-2NT | `flow_data` |

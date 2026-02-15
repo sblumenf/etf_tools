@@ -252,8 +252,6 @@ def _process_etf(
             session.add(derivative)
             derivatives_count += 1
 
-    etf.last_fetched = datetime.now()
-
     logger.info(
         f"ETF {etf.ticker}: Inserted {holdings_count} holdings, {derivatives_count} derivatives for {report_date}"
     )
