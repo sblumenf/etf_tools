@@ -1134,15 +1134,15 @@ def _map_investment_to_holding(
 
     if identifiers:
         isin = identifiers.isin
-        if hasattr(identifiers, "other") and identifiers.other and isinstance(identifiers.other, dict):
-            for desc, value in identifiers.other.items():
-                if desc and "currency" in desc.lower():
-                    currency = value
 
     ticker = investment.ticker
 
-    if not currency and hasattr(investment, "currency_code") and investment.currency_code:
+    if hasattr(investment, "currency_code") and investment.currency_code:
         currency = investment.currency_code
+    elif identifiers and hasattr(identifiers, "other") and identifiers.other and isinstance(identifiers.other, dict):
+        for desc, value in identifiers.other.items():
+            if desc and "currency" in desc.lower():
+                currency = value
 
     is_restricted = (
         investment.is_restricted_security
@@ -1309,7 +1309,7 @@ def _map_investment_to_derivative(
         expiration_date = _parse_date(fut.expiration_date)
 
         # Parent-level fields for futures (reference_entity_* + payoff_profile)
-        currency = _clean_str(fut.currency_code) if hasattr(fut, 'currency_code') else None
+        currency = _clean_str(fut.currency) if hasattr(fut, 'currency') else None
         payoff_profile = _clean_str(fut.payoff_profile) if hasattr(fut, 'payoff_profile') else None
         underlying_title = _clean_str(fut.reference_entity_title) if hasattr(fut, 'reference_entity_title') else None
         underlying_lei = _clean_str(fut.reference_entity_lei) if hasattr(fut, 'reference_entity_lei') else None
@@ -1317,14 +1317,6 @@ def _map_investment_to_derivative(
         underlying_ticker = _clean_str(fut.reference_entity_ticker) if hasattr(fut, 'reference_entity_ticker') else None
         underlying_other_id = _clean_str(fut.reference_entity_other_id) if hasattr(fut, 'reference_entity_other_id') else None
         underlying_other_id_type = _clean_str(fut.reference_entity_other_id_type) if hasattr(fut, 'reference_entity_other_id_type') else None
-        underlying_balance = _safe_numeric(fut.reference_entity_balance) if hasattr(fut, 'reference_entity_balance') else None
-        underlying_units = _clean_str(fut.reference_entity_units) if hasattr(fut, 'reference_entity_units') else None
-        underlying_currency = _clean_str(fut.reference_entity_currency) if hasattr(fut, 'reference_entity_currency') else None
-        underlying_value_usd = _safe_numeric(fut.reference_entity_value_usd) if hasattr(fut, 'reference_entity_value_usd') else None
-        underlying_pct_value = _safe_numeric(fut.reference_entity_pct_value) if hasattr(fut, 'reference_entity_pct_value') else None
-        underlying_asset_cat = _clean_str(fut.reference_entity_asset_cat) if hasattr(fut, 'reference_entity_asset_cat') else None
-        underlying_issuer_cat = _clean_str(fut.reference_entity_issuer_cat) if hasattr(fut, 'reference_entity_issuer_cat') else None
-        underlying_inv_country = _clean_str(fut.reference_entity_inv_country) if hasattr(fut, 'reference_entity_inv_country') else None
 
     elif deriv_info.option_derivative:
         opt = deriv_info.option_derivative
@@ -1500,7 +1492,16 @@ def _map_debt_security_detail(investment) -> Optional[DebtSecurityDetail]:
     maturity_date = None
     try:
         if hasattr(debt_sec, 'maturity_date') and debt_sec.maturity_date:
-            maturity_date = _parse_date(debt_sec.maturity_date)
+            mat_date_raw = debt_sec.maturity_date
+            if isinstance(mat_date_raw, str):
+                if mat_date_raw == "N/A":
+                    maturity_date = None
+                else:
+                    maturity_date = _parse_date(mat_date_raw)
+            elif isinstance(mat_date_raw, datetime):
+                maturity_date = mat_date_raw.date()
+            elif isinstance(mat_date_raw, date):
+                maturity_date = mat_date_raw
     except (AttributeError, TypeError):
         pass
 
@@ -1585,21 +1586,21 @@ def _map_security_lending(investment) -> Optional[SecurityLending]:
     is_cash_collateral = False
     try:
         if hasattr(sec_lending, 'is_cash_collateral') and sec_lending.is_cash_collateral is not None:
-            is_cash_collateral = bool(sec_lending.is_cash_collateral)
+            is_cash_collateral = (sec_lending.is_cash_collateral == "Y")
     except (AttributeError, TypeError):
         pass
 
     is_non_cash_collateral = False
     try:
         if hasattr(sec_lending, 'is_non_cash_collateral') and sec_lending.is_non_cash_collateral is not None:
-            is_non_cash_collateral = bool(sec_lending.is_non_cash_collateral)
+            is_non_cash_collateral = (sec_lending.is_non_cash_collateral == "Y")
     except (AttributeError, TypeError):
         pass
 
     is_loan_by_fund = False
     try:
         if hasattr(sec_lending, 'is_loan_by_fund') and sec_lending.is_loan_by_fund is not None:
-            is_loan_by_fund = bool(sec_lending.is_loan_by_fund)
+            is_loan_by_fund = (sec_lending.is_loan_by_fund == "Y")
     except (AttributeError, TypeError):
         pass
 

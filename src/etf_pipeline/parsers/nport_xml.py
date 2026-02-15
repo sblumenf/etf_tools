@@ -14,6 +14,21 @@ logger = logging.getLogger(__name__)
 NPORT_NS = {"ns": "http://www.sec.gov/edgar/nport"}
 
 
+def _clean_str(val):
+    """Return None if val is None, 'N/A', or empty, else str(val).
+
+    This function matches the cleaning logic in nport.py to ensure
+    holding keys are constructed consistently between XML parsing
+    and edgartools FundReport parsing.
+    """
+    if val is None:
+        return None
+    val_str = str(val).strip()
+    if val_str == "N/A" or val_str == "":
+        return None
+    return val_str
+
+
 def extract_liquidity_classification(invst_or_sec_element: ET.Element) -> Optional[str]:
     """Extract liquidity classification from an invstOrSec XML element.
 
@@ -121,12 +136,15 @@ def parse_nport_investments_xml(xml_content: str) -> dict[str, dict]:
             cusip_elem = inv_elem.find("ns:cusip", NPORT_NS)
             lei_elem = inv_elem.find("ns:lei", NPORT_NS)
 
-            name = name_elem.text if name_elem is not None else ""
-            cusip = cusip_elem.text if cusip_elem is not None else ""
-            lei = lei_elem.text if lei_elem is not None else ""
+            name_raw = name_elem.text if name_elem is not None else None
+            cusip_raw = cusip_elem.text if cusip_elem is not None else None
+            lei_raw = lei_elem.text if lei_elem is not None else None
 
-            # Build holding key (same logic as in nport.py _map_investment_to_holding)
-            holding_key = f"{name}|{cusip}|{lei}"
+            name_clean = _clean_str(name_raw) or ""
+            cusip_clean = _clean_str(cusip_raw) or ""
+            lei_clean = _clean_str(lei_raw) or ""
+
+            holding_key = f"{name_clean}|{cusip_clean}|{lei_clean}"
 
             # Extract custom fields
             liquidity = extract_liquidity_classification(inv_elem)

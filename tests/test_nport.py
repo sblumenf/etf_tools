@@ -1628,9 +1628,9 @@ def test_parse_nport_creates_security_lending(session, engine, sample_etfs, mock
 
         # Add security_lending data
         sec_lending = Mock()
-        sec_lending.is_cash_collateral = is_cash
-        sec_lending.is_non_cash_collateral = is_non_cash
-        sec_lending.is_loan_by_fund = is_loan
+        sec_lending.is_cash_collateral = "Y" if is_cash else "N"
+        sec_lending.is_non_cash_collateral = "Y" if is_non_cash else "N"
+        sec_lending.is_loan_by_fund = "Y" if is_loan else "N"
         inv.security_lending = sec_lending
 
         return inv
@@ -3083,7 +3083,7 @@ def test_parse_nport_derivative_parent_fields_future(session, engine, sample_etf
         fut.expiration_date = "2025-03-15"
 
         # Parent-level reference_entity_* fields
-        fut.currency_code = "USD"
+        fut.currency = "USD"
         fut.payoff_profile = "Long"
         fut.reference_entity_title = "S&P 500 Index Future"
         fut.reference_entity_lei = "SPX987654321"
@@ -3091,14 +3091,6 @@ def test_parse_nport_derivative_parent_fields_future(session, engine, sample_etf
         fut.reference_entity_ticker = "SPX"
         fut.reference_entity_other_id = "FUT002"
         fut.reference_entity_other_id_type = "Exchange"
-        fut.reference_entity_balance = Decimal("100.0000")
-        fut.reference_entity_units = "Contracts"
-        fut.reference_entity_currency = "USD"
-        fut.reference_entity_value_usd = Decimal("5025000.00")
-        fut.reference_entity_pct_value = Decimal("10.00000")
-        fut.reference_entity_asset_cat = "IDX"
-        fut.reference_entity_issuer_cat = "INDEX"
-        fut.reference_entity_inv_country = "US"
 
         inv.derivative_info.future_derivative = fut
         inv.derivative_info.forward_derivative = None
@@ -3160,14 +3152,15 @@ def test_parse_nport_derivative_parent_fields_future(session, engine, sample_etf
     assert deriv.underlying_ticker == "SPX"
     assert deriv.underlying_other_id == "FUT002"
     assert deriv.underlying_other_id_type == "Exchange"
-    assert deriv.underlying_balance == Decimal("100.0000")
-    assert deriv.underlying_units == "Contracts"
-    assert deriv.underlying_currency == "USD"
-    assert deriv.underlying_value_usd == Decimal("5025000.00")
-    assert deriv.underlying_pct_value == Decimal("10.00000")
-    assert deriv.underlying_asset_cat == "IDX"
-    assert deriv.underlying_issuer_cat == "INDEX"
-    assert deriv.underlying_inv_country == "US"
+    # The fields below don't exist on FutureDerivative (see Fix 2)
+    assert deriv.underlying_balance is None
+    assert deriv.underlying_units is None
+    assert deriv.underlying_currency is None
+    assert deriv.underlying_value_usd is None
+    assert deriv.underlying_pct_value is None
+    assert deriv.underlying_asset_cat is None
+    assert deriv.underlying_issuer_cat is None
+    assert deriv.underlying_inv_country is None
 
 
 def test_parse_nport_derivative_parent_fields_option(session, engine, sample_etfs, mock_nport_db):
@@ -3511,7 +3504,7 @@ def test_parse_nport_derivative_parent_fields_with_na_values(session, engine, sa
         fut.expiration_date = "2025-03-15"
 
         # N/A values should be converted to None
-        fut.currency_code = "N/A"
+        fut.currency = "N/A"
         fut.payoff_profile = "N/A"
         fut.reference_entity_title = "N/A"
         fut.reference_entity_lei = "N/A"
@@ -3519,14 +3512,6 @@ def test_parse_nport_derivative_parent_fields_with_na_values(session, engine, sa
         fut.reference_entity_ticker = "N/A"
         fut.reference_entity_other_id = "N/A"
         fut.reference_entity_other_id_type = "N/A"
-        fut.reference_entity_balance = None
-        fut.reference_entity_units = "N/A"
-        fut.reference_entity_currency = "N/A"
-        fut.reference_entity_value_usd = None
-        fut.reference_entity_pct_value = None
-        fut.reference_entity_asset_cat = "N/A"
-        fut.reference_entity_issuer_cat = "N/A"
-        fut.reference_entity_inv_country = "N/A"
 
         inv.derivative_info.future_derivative = fut
         inv.derivative_info.forward_derivative = None

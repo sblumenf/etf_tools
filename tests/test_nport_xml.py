@@ -208,8 +208,8 @@ def test_parse_nport_investments_xml_multiple_holdings():
     msft_key = "Microsoft Corp|594918104|INR2EJN1ERAN0W5ZP974"
     assert result[msft_key]["liquidity_classification"] == "MLI"
 
-    # Check Private Security (LEI is "N/A" text in XML, not cleaned)
-    private_key = "Private Security|999999999|N/A"
+    # Check Private Security (LEI is "N/A" which gets cleaned to empty string)
+    private_key = "Private Security|999999999|"
     assert result[private_key]["liquidity_classification"] == "ILI"
 
 
