@@ -397,14 +397,13 @@ def _process_etf(
     _extract_fund_snapshot(session, etf.cik, fund_report, report_date, filing_date)
 
     holdings_count = 0
-    seen_cusips = set()
+    seen_holding_keys = set()
     for investment in fund_report.non_derivatives:
         holding = _map_investment_to_holding(etf, investment, report_date, filing_date)
-        if holding.cusip is not None and holding.cusip in seen_cusips:
-            logger.warning(f"ETF {etf.ticker}: Skipping duplicate CUSIP {holding.cusip} in NPORT filing")
+        if holding.holding_key in seen_holding_keys:
+            logger.warning(f"ETF {etf.ticker}: Skipping duplicate holding_key {holding.holding_key} in NPORT filing")
             continue
-        if holding.cusip is not None:
-            seen_cusips.add(holding.cusip)
+        seen_holding_keys.add(holding.holding_key)
         session.add(holding)
 
         # Check for debt security details and attach to holding
@@ -471,13 +470,33 @@ def _map_investment_to_holding(etf: ETF, investment, report_date, filing_date) -
         except (ValueError, TypeError):
             logger.debug(f"Could not parse fair_value_level: {investment.fair_value_level}")
 
+    # Extract new fields
+    title = _clean_str(investment.title) if hasattr(investment, "title") else None
+
+    payoff_profile = None
+    if hasattr(investment, "payoff_profile"):
+        payoff_profile = _clean_str(investment.payoff_profile)
+
+    exchange_rate = None
+    if hasattr(investment, "exchange_rate") and investment.exchange_rate is not None:
+        try:
+            exchange_rate = Decimal(str(investment.exchange_rate))
+        except (ValueError, TypeError, Exception):
+            logger.debug(f"Could not parse exchange_rate: {investment.exchange_rate}")
+
+    # Compute holding_key: COALESCE(cusip, isin, name)
+    cusip_clean = _clean_str(investment.cusip)
+    isin_clean = _clean_str(isin)
+    name_clean = _clean_str(investment.name) or ""
+    holding_key = cusip_clean or isin_clean or name_clean
+
     return Holding(
         etf_id=etf.id,
         report_date=report_date,
         filing_date=filing_date,
-        name=_clean_str(investment.name) or "",
-        cusip=_clean_str(investment.cusip),
-        isin=_clean_str(isin),
+        name=name_clean,
+        cusip=cusip_clean,
+        isin=isin_clean,
         ticker=_clean_str(ticker),
         lei=_clean_str(investment.lei),
         balance=investment.balance,
@@ -490,6 +509,10 @@ def _map_investment_to_holding(etf: ETF, investment, report_date, filing_date) -
         currency=currency,
         fair_value_level=fair_value_level,
         is_restricted=is_restricted,
+        title=title,
+        payoff_profile=payoff_profile,
+        exchange_rate=exchange_rate,
+        holding_key=holding_key,
     )
 
 

@@ -74,6 +74,7 @@ class TestHolding:
             pct_val=Decimal("0.07500"),
             asset_category="EC",
             currency="USD",
+            holding_key="037833100",
         )
         session.add(holding)
         session.commit()
@@ -103,12 +104,14 @@ class TestHolding:
             report_date=date(2024, 3, 31),
             filing_date=date(2024, 5, 1),
             name="AAPL",
+            holding_key="AAPL",
         )
         h2 = Holding(
             etf_id=etf.id,
             report_date=date(2024, 3, 31),
             filing_date=date(2024, 5, 1),
             name="MSFT",
+            holding_key="MSFT",
         )
         session.add_all([h1, h2])
         session.commit()

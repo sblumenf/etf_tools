@@ -66,7 +66,7 @@ class Holding(Base):
     __tablename__ = "holding"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "report_date", "cusip", "filing_date", name="holding_uniq"
+            "etf_id", "report_date", "holding_key", "filing_date", name="holding_uniq"
         ),
         Index("holding_etf_report_idx", "etf_id", "report_date"),
         Index("holding_cusip_idx", "cusip"),
@@ -92,6 +92,10 @@ class Holding(Base):
     currency: Mapped[Optional[str]] = mapped_column(String(3))
     fair_value_level: Mapped[Optional[int]] = mapped_column(Integer)
     is_restricted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    title: Mapped[Optional[str]] = mapped_column(String(500))
+    payoff_profile: Mapped[Optional[str]] = mapped_column(String(10))
+    exchange_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6))
+    holding_key: Mapped[str] = mapped_column(String(500), nullable=False)
 
     etf: Mapped["ETF"] = relationship(back_populates="holdings")
     debt_security_detail: Mapped[Optional["DebtSecurityDetail"]] = relationship(

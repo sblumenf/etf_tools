@@ -72,9 +72,15 @@ Individual portfolio holdings from NPORT-P filings.
 | `currency` | String(3) | | ISO currency code |
 | `fair_value_level` | Integer | | Fair value hierarchy (1/2/3) |
 | `is_restricted` | Boolean | NOT NULL, default=False | Restricted security flag |
+| `title` | String(500) | | Security title/description |
+| `payoff_profile` | String(10) | | Payoff profile (Long/Short) |
+| `exchange_rate` | Numeric(12,6) | | FX rate used for USD valuation |
+| `holding_key` | String(500) | NOT NULL | Unique identifier: COALESCE(cusip, isin, name) |
 
-**Unique:** `(etf_id, report_date, cusip, filing_date)`
+**Unique:** `(etf_id, report_date, holding_key, filing_date)`
 **Indexes:** `(etf_id, report_date)`, `(cusip)`, `(report_date)`
+
+> Note: `holding_key` is computed as the first non-null value among cusip, isin, and name. This ensures foreign holdings without CUSIP identifiers can be uniquely identified without constraint violations on NULL cusip values.
 
 ---
 
@@ -330,7 +336,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 | etf | — | UNIQUE | `ticker` |
 | etf | — | INDEX | `cik` |
 | etf | — | INDEX | `class_id` |
-| holding | `holding_etf_report_cusip_filing_uniq` | UNIQUE | `etf_id, report_date, cusip, filing_date` |
+| holding | `holding_uniq` | UNIQUE | `etf_id, report_date, holding_key, filing_date` |
 | holding | `holding_etf_report_idx` | INDEX | `etf_id, report_date` |
 | holding | `holding_cusip_idx` | INDEX | `cusip` |
 | holding | `holding_report_date_idx` | INDEX | `report_date` |

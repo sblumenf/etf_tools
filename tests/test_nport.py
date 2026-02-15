@@ -81,7 +81,10 @@ def mock_fund_report():
 
     def create_mock_investment(name, cusip, value_usd, pct_value):
         """Create a mock InvestmentOrSecurity object."""
-        inv = Mock()
+        inv = Mock(spec=['name', 'lei', 'title', 'cusip', 'balance', 'units', 'currency_code',
+                         'value_usd', 'pct_value', 'asset_category', 'issuer_category',
+                         'investment_country', 'is_restricted_security', 'fair_value_level',
+                         'ticker', 'debt_security', 'identifiers'])
         inv.name = name
         inv.lei = "N/A"
         inv.title = "N/A"
@@ -229,6 +232,7 @@ def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_
         name="Existing Holding",
         cusip="123456789",
         value_usd=Decimal("1000"),
+        holding_key="123456789",
     )
     session.add(existing_holding)
     session.commit()
@@ -467,7 +471,7 @@ def test_parse_nport_deduplicates_holdings_with_same_cusip(session, engine, samp
     assert cusips.count("037833100") == 1  # Only one instance of the duplicate CUSIP
 
     # Verify warning was logged about the duplicate
-    assert "Skipping duplicate CUSIP 037833100" in caplog.text
+    assert "Skipping duplicate holding_key 037833100" in caplog.text
 
     # Verify processing_log was still updated (no constraint violation crash)
     from etf_pipeline.models import ProcessingLog
@@ -874,6 +878,7 @@ def test_parse_nport_skips_derivatives_when_holdings_exist(session, engine, samp
         name="Existing Holding",
         cusip="123456789",
         value_usd=Decimal("1000"),
+        holding_key="123456789",
     )
     session.add(existing_holding)
     session.commit()
@@ -1726,3 +1731,340 @@ def test_parse_nport_holding_without_lending_data(session, engine, sample_etfs, 
     stmt = select(SecurityLending)
     lending_details = session.execute(stmt).scalars().all()
     assert len(lending_details) == 0
+
+
+def test_parse_nport_holding_key_with_cusip(session, engine, sample_etfs, mock_nport_db):
+    """Test that holding_key is set to CUSIP when CUSIP is available."""
+    def create_mock_investment_with_cusip():
+        inv = Mock()
+        inv.name = "Apple Inc"
+        inv.lei = None
+        inv.title = "Common Stock"
+        inv.cusip = "037833100"
+        inv.balance = Decimal("100.0")
+        inv.units = "NS"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("1000000.00")
+        inv.pct_value = Decimal("10.0")
+        inv.asset_category = "EC"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "1"
+        inv.ticker = "AAPL"
+        inv.debt_security = None
+
+        identifiers = Mock()
+        identifiers.isin = "US0378331005"
+        inv.identifiers = identifiers
+
+        return inv
+
+    def create_report_with_cusip(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [create_mock_investment_with_cusip()]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_cusip("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 1
+    assert holdings[0].holding_key == "037833100"
+    assert holdings[0].cusip == "037833100"
+    assert holdings[0].isin == "US0378331005"
+    assert holdings[0].name == "Apple Inc"
+
+
+def test_parse_nport_holding_key_with_only_isin(session, engine, sample_etfs, mock_nport_db):
+    """Test that holding_key is set to ISIN when CUSIP is NULL but ISIN is available."""
+    def create_mock_investment_with_only_isin():
+        inv = Mock()
+        inv.name = "Foreign Security"
+        inv.lei = None
+        inv.title = "ADR"
+        inv.cusip = None  # No CUSIP
+        inv.balance = Decimal("50.0")
+        inv.units = "NS"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("500000.00")
+        inv.pct_value = Decimal("5.0")
+        inv.asset_category = "EC"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "GB"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "1"
+        inv.ticker = "BP"
+        inv.debt_security = None
+
+        identifiers = Mock()
+        identifiers.isin = "GB0007980591"
+        inv.identifiers = identifiers
+
+        return inv
+
+    def create_report_with_only_isin(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [create_mock_investment_with_only_isin()]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_only_isin("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 1
+    assert holdings[0].holding_key == "GB0007980591"
+    assert holdings[0].cusip is None
+    assert holdings[0].isin == "GB0007980591"
+    assert holdings[0].name == "Foreign Security"
+
+
+def test_parse_nport_holding_key_with_only_name(session, engine, sample_etfs, mock_nport_db):
+    """Test that holding_key is set to name when both CUSIP and ISIN are NULL."""
+    def create_mock_investment_with_only_name():
+        inv = Mock()
+        inv.name = "Private Equity Investment"
+        inv.lei = None
+        inv.title = "Limited Partnership Interest"
+        inv.cusip = None  # No CUSIP
+        inv.balance = Decimal("1000.0")
+        inv.units = "PA"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("250000.00")
+        inv.pct_value = Decimal("2.5")
+        inv.asset_category = "EC"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = True
+        inv.fair_value_level = "3"
+        inv.ticker = None
+        inv.debt_security = None
+
+        identifiers = Mock()
+        identifiers.isin = None  # No ISIN
+        inv.identifiers = identifiers
+
+        return inv
+
+    def create_report_with_only_name(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [create_mock_investment_with_only_name()]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_only_name("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 1
+    assert holdings[0].holding_key == "Private Equity Investment"
+    assert holdings[0].cusip is None
+    assert holdings[0].isin is None
+    assert holdings[0].name == "Private Equity Investment"
+
+
+def test_parse_nport_holding_constraint_prevents_duplicate_holding_key(session, engine, sample_etfs, mock_nport_db):
+    """Test that unique constraint prevents duplicate holdings with same holding_key."""
+    from sqlalchemy.exc import IntegrityError
+
+    def create_mock_investment_duplicate(name):
+        inv = Mock()
+        inv.name = name
+        inv.lei = None
+        inv.title = "Foreign Bond"
+        inv.cusip = None  # No CUSIP
+        inv.balance = Decimal("100.0")
+        inv.units = "PA"
+        inv.currency_code = "EUR"
+        inv.value_usd = Decimal("100000.00")
+        inv.pct_value = Decimal("1.0")
+        inv.asset_category = "DBT"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "DE"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "2"
+        inv.ticker = None
+        inv.debt_security = None
+
+        identifiers = Mock()
+        identifiers.isin = "DE0001234567"  # Same ISIN for both
+        inv.identifiers = identifiers
+
+        return inv
+
+    def create_report_with_duplicates(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        # Two holdings with same ISIN (which becomes holding_key)
+        mock_report.non_derivatives = [
+            create_mock_investment_duplicate("German Bond A"),
+            create_mock_investment_duplicate("German Bond B"),
+        ]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_duplicates("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # Verify only one holding was inserted (duplicate was skipped by deduplication)
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 1
+    assert holdings[0].holding_key == "DE0001234567"
+
+
+def test_parse_nport_extracts_title_payoff_exchange_rate(session, engine, sample_etfs, mock_nport_db):
+    """Test that title, payoff_profile, and exchange_rate are extracted correctly."""
+    def create_mock_investment_with_new_fields():
+        inv = Mock()
+        inv.name = "Foreign Currency Bond"
+        inv.lei = "123456789012345678XX"
+        inv.title = "Senior Unsecured Note"
+        inv.cusip = "888888888"
+        inv.balance = Decimal("1000.0")
+        inv.units = "PA"
+        inv.currency_code = "EUR"
+        inv.value_usd = Decimal("110000.00")
+        inv.pct_value = Decimal("1.1")
+        inv.asset_category = "DBT"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "FR"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "2"
+        inv.ticker = None
+        inv.debt_security = None
+        inv.payoff_profile = "Long"
+        inv.exchange_rate = Decimal("1.095432")
+
+        identifiers = Mock()
+        identifiers.isin = "FR0001234567"
+        inv.identifiers = identifiers
+
+        return inv
+
+    def create_report_with_new_fields(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [create_mock_investment_with_new_fields()]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_new_fields("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 1
+    holding = holdings[0]
+    assert holding.title == "Senior Unsecured Note"
+    assert holding.payoff_profile == "Long"
+    assert holding.exchange_rate == Decimal("1.095432")
+    assert holding.holding_key == "888888888"
