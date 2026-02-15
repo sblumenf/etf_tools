@@ -328,7 +328,7 @@ def test_parse_nport_handles_na_values(session, engine, sample_etfs, mock_nport_
         general_info.series_id = series_id
         mock_report.general_info = general_info
         # Add fund_info
-        fund_info = Mock()
+        fund_info = Mock(spec=['total_assets', 'total_liabilities', 'net_assets'])
         fund_info.total_assets = Decimal("1000000.00")
         fund_info.total_liabilities = Decimal("50000.00")
         fund_info.net_assets = Decimal("950000.00")
