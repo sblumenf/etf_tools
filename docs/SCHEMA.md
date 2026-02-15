@@ -16,6 +16,7 @@ ETF (1) ──< PerShareDistribution
 ETF (1) ──< PerShareRatios
 ETF (1) ──< NPORTMonthlyReturn
 ETF (1) ──< NPORTMonthlyFlow
+ETF (1) ──< InterestRateRisk
 
 FlowData (standalone, keyed by CIK)
 FundSnapshot (standalone, keyed by CIK)
@@ -306,6 +307,34 @@ Monthly fund flow data from NPORT-P filings.
 
 ---
 
+### `interest_rate_risk`
+
+Interest rate risk metrics (DV01 and DV100) by currency from NPORT-P filings.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `etf_id` | Integer | FK -> etf.id, NOT NULL | Parent ETF |
+| `report_date` | Date | NOT NULL | NPORT filing report date |
+| `filing_date` | Date | NOT NULL | SEC filing date (enables over-time tracking) |
+| `currency_code` | String(3) | NOT NULL | ISO currency code (e.g., USD, EUR) |
+| `dv01_3m` | Numeric(24,2) | | DV01 sensitivity for 3-month period |
+| `dv01_1y` | Numeric(24,2) | | DV01 sensitivity for 1-year period |
+| `dv01_5y` | Numeric(24,2) | | DV01 sensitivity for 5-year period |
+| `dv01_10y` | Numeric(24,2) | | DV01 sensitivity for 10-year period |
+| `dv01_30y` | Numeric(24,2) | | DV01 sensitivity for 30-year period |
+| `dv100_3m` | Numeric(24,2) | | DV100 sensitivity for 3-month period |
+| `dv100_1y` | Numeric(24,2) | | DV100 sensitivity for 1-year period |
+| `dv100_5y` | Numeric(24,2) | | DV100 sensitivity for 5-year period |
+| `dv100_10y` | Numeric(24,2) | | DV100 sensitivity for 10-year period |
+| `dv100_30y` | Numeric(24,2) | | DV100 sensitivity for 30-year period |
+
+**Unique:** `(etf_id, report_date, currency_code, filing_date)`
+
+> Note: Interest rate risk metrics are extracted from the XML at `/edgarSubmission/formData/fundinfo/curMetrics`. DV01 measures the dollar value change for a 1 basis point (0.01%) move in interest rates. DV100 measures the dollar value change for a 100 basis point (1%) move. Each metric has five period buckets: 3-month, 1-year, 5-year, 10-year, and 30-year. Multiple currencies may be reported per filing.
+
+---
+
 ### `per_share_operating`
 
 Per-share operating performance from N-CSR financial highlights.
@@ -410,6 +439,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 | per_share_ratios | `per_share_ratios_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
 | nport_monthly_return | `nport_monthly_return_uniq` | UNIQUE | `etf_id, report_date, class_id, filing_date` |
 | nport_monthly_flow | `nport_monthly_flow_uniq` | UNIQUE | `etf_id, report_date, class_id, filing_date` |
+| interest_rate_risk | `interest_rate_risk_uniq` | UNIQUE | `etf_id, report_date, currency_code, filing_date` |
 | processing_log | `processing_log_cik_parser_uniq` | UNIQUE | `cik, parser_type` |
 
 ---
@@ -418,7 +448,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 
 | Filing Type | Tables Populated |
 |---|---|
-| NPORT-P | `holding`, `debt_security_detail`, `security_lending`, `derivative`, `fund_snapshot`, `nport_monthly_return`, `nport_monthly_flow` |
+| NPORT-P | `holding`, `debt_security_detail`, `security_lending`, `derivative`, `fund_snapshot`, `nport_monthly_return`, `nport_monthly_flow`, `interest_rate_risk` |
 | N-CSR | `performance`, `per_share_operating`, `per_share_distribution`, `per_share_ratios` |
 | 485BPOS | `etf` (objective/strategy), `fee_expense` |
 | 24F-2NT | `flow_data` |

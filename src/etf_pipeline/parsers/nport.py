@@ -20,6 +20,7 @@ from etf_pipeline.models import (
     ETF,
     FundSnapshot,
     Holding,
+    InterestRateRisk,
     NPORTMonthlyFlow,
     NPORTMonthlyReturn,
     SecurityLending,
@@ -594,6 +595,125 @@ def _extract_monthly_flows(filing, etf_id: int, report_date, filing_date) -> lis
     return monthly_flows
 
 
+def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -> list[InterestRateRisk]:
+    """Extract interest rate risk data from NPORT-P filing XML.
+
+    Args:
+        filing: Filing object from edgartools
+        etf_id: ETF ID to associate interest rate risk data with
+        report_date: Report date for the filing
+        filing_date: Filing date
+
+    Returns:
+        List of InterestRateRisk objects
+    """
+    interest_rate_risks = []
+
+    try:
+        # Get raw XML content from filing
+        xml_content = filing.xml
+        if not xml_content:
+            logger.debug(f"No XML content found in filing for etf_id={etf_id}")
+            return interest_rate_risks
+
+        # Parse XML
+        root = ET.fromstring(xml_content)
+
+        # Find curMetrics element
+        # Path: /edgarSubmission/formData/fundinfo/curMetrics
+        cur_metrics = root.find('.//curMetrics')
+
+        if cur_metrics is None:
+            # Try full path
+            for form_data in root.iter('formData'):
+                for fund_info in form_data.iter('fundinfo'):
+                    cur_metrics = fund_info.find('curMetrics')
+                    if cur_metrics is not None:
+                        break
+
+        if cur_metrics is None:
+            logger.debug(f"No curMetrics element found in NPORT XML for etf_id={etf_id}")
+            return interest_rate_risks
+
+        # Extract each curMetric child element
+        for cur_metric_elem in cur_metrics.findall('curMetric'):
+            # Extract currency code
+            cur_cd_elem = cur_metric_elem.find('curCd')
+            if cur_cd_elem is None or not cur_cd_elem.text:
+                logger.warning(f"curMetric missing currency code for etf_id={etf_id}, skipping")
+                continue
+
+            currency_code = cur_cd_elem.text.strip()
+
+            # Extract DV01 risk metrics
+            dv01_elem = cur_metric_elem.find('intrstRtRiskdv01')
+            dv01_3m = None
+            dv01_1y = None
+            dv01_5y = None
+            dv01_10y = None
+            dv01_30y = None
+
+            if dv01_elem is not None:
+                dv01_3m = _parse_decimal(dv01_elem.get('period3Mon'))
+                dv01_1y = _parse_decimal(dv01_elem.get('period1Yr'))
+                dv01_5y = _parse_decimal(dv01_elem.get('period5Yr'))
+                dv01_10y = _parse_decimal(dv01_elem.get('period10Yr'))
+                dv01_30y = _parse_decimal(dv01_elem.get('period30Yr'))
+
+            # Extract DV100 risk metrics
+            dv100_elem = cur_metric_elem.find('intrstRtRiskdv100')
+            dv100_3m = None
+            dv100_1y = None
+            dv100_5y = None
+            dv100_10y = None
+            dv100_30y = None
+
+            if dv100_elem is not None:
+                dv100_3m = _parse_decimal(dv100_elem.get('period3Mon'))
+                dv100_1y = _parse_decimal(dv100_elem.get('period1Yr'))
+                dv100_5y = _parse_decimal(dv100_elem.get('period5Yr'))
+                dv100_10y = _parse_decimal(dv100_elem.get('period10Yr'))
+                dv100_30y = _parse_decimal(dv100_elem.get('period30Yr'))
+
+            # Create InterestRateRisk object
+            interest_rate_risk = InterestRateRisk(
+                etf_id=etf_id,
+                report_date=report_date,
+                filing_date=filing_date,
+                currency_code=currency_code,
+                dv01_3m=dv01_3m,
+                dv01_1y=dv01_1y,
+                dv01_5y=dv01_5y,
+                dv01_10y=dv01_10y,
+                dv01_30y=dv01_30y,
+                dv100_3m=dv100_3m,
+                dv100_1y=dv100_1y,
+                dv100_5y=dv100_5y,
+                dv100_10y=dv100_10y,
+                dv100_30y=dv100_30y,
+            )
+            interest_rate_risks.append(interest_rate_risk)
+
+        if interest_rate_risks:
+            logger.info(f"Extracted {len(interest_rate_risks)} interest rate risk entries for etf_id={etf_id}")
+
+    except Exception as e:
+        logger.warning(f"Failed to extract interest rate risk for etf_id={etf_id}: {e}")
+
+    return interest_rate_risks
+
+
+def _parse_decimal(val: Optional[str]) -> Optional[Decimal]:
+    """Parse a string value to Decimal, handling N/A and None."""
+    if val is None or val.strip().upper() == "N/A":
+        return None
+    try:
+        return Decimal(val)
+    except (ValueError, Exception) as e:
+        logger.warning(f"Could not parse decimal value '{val}': {e}")
+        return None
+
+
 def _process_etf(
     session: Session, etf: ETF, filing, fund_report: FundReport, report_date, filing_date
 ) -> None:
@@ -610,6 +730,11 @@ def _process_etf(
     monthly_flows = _extract_monthly_flows(filing, etf.id, report_date, filing_date)
     for monthly_flow in monthly_flows:
         session.add(monthly_flow)
+
+    # Extract interest rate risk
+    interest_rate_risks = _extract_interest_rate_risk(filing, etf.id, report_date, filing_date)
+    for interest_rate_risk in interest_rate_risks:
+        session.add(interest_rate_risk)
 
     holdings_count = 0
     seen_holding_keys = set()

@@ -14,6 +14,7 @@ from etf_pipeline.models import (
     ETF,
     FundSnapshot,
     Holding,
+    InterestRateRisk,
     SecurityLending,
 )
 from etf_pipeline.parsers.nport import parse_nport
@@ -2810,3 +2811,140 @@ def test_monthly_flows_with_na_values(session, sample_etfs, mock_nport_db):
     assert flow.month_3_sales == Decimal("1100000.00")
     assert flow.month_3_redemptions == Decimal("550000.00")
     assert flow.month_3_reinvestments == Decimal("110000.00")
+
+
+def test_parse_nport_extracts_interest_rate_risk(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport extracts interest rate risk metrics from NPORT XML."""
+    voo = sample_etfs[0]
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000000"
+        filing.xml = """<?xml version="1.0"?>
+<edgarSubmission>
+  <formData>
+    <fundinfo>
+      <curMetrics>
+        <curMetric>
+          <curCd>USD</curCd>
+          <intrstRtRiskdv01 period3Mon="1000.50" period1Yr="2500.75" period5Yr="5000.00" period10Yr="7500.25" period30Yr="10000.50"/>
+          <intrstRtRiskdv100 period3Mon="100000.00" period1Yr="250000.00" period5Yr="500000.00" period10Yr="750000.00" period30Yr="1000000.00"/>
+        </curMetric>
+        <curMetric>
+          <curCd>EUR</curCd>
+          <intrstRtRiskdv01 period3Mon="500.25" period1Yr="1250.50" period5Yr="2500.75" period10Yr="3750.00" period30Yr="5000.25"/>
+          <intrstRtRiskdv100 period3Mon="50000.00" period1Yr="125000.00" period5Yr="250000.00" period10Yr="375000.00" period30Yr="500000.00"/>
+        </curMetric>
+      </curMetrics>
+    </fundinfo>
+  </formData>
+</edgarSubmission>"""
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = voo.series_id
+        mock_report.general_info = general_info
+
+        _add_mock_fund_info(mock_report)
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=mock_report,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(InterestRateRisk).where(InterestRateRisk.etf_id == voo.id).order_by(InterestRateRisk.currency_code)
+    risks = session.execute(stmt).scalars().all()
+
+    assert len(risks) == 2
+
+    # Check EUR metrics
+    eur_risk = risks[0]
+    assert eur_risk.currency_code == "EUR"
+    assert eur_risk.dv01_3m == Decimal("500.25")
+    assert eur_risk.dv01_1y == Decimal("1250.50")
+    assert eur_risk.dv01_5y == Decimal("2500.75")
+    assert eur_risk.dv01_10y == Decimal("3750.00")
+    assert eur_risk.dv01_30y == Decimal("5000.25")
+    assert eur_risk.dv100_3m == Decimal("50000.00")
+    assert eur_risk.dv100_1y == Decimal("125000.00")
+    assert eur_risk.dv100_5y == Decimal("250000.00")
+    assert eur_risk.dv100_10y == Decimal("375000.00")
+    assert eur_risk.dv100_30y == Decimal("500000.00")
+
+    # Check USD metrics
+    usd_risk = risks[1]
+    assert usd_risk.currency_code == "USD"
+    assert usd_risk.dv01_3m == Decimal("1000.50")
+    assert usd_risk.dv01_1y == Decimal("2500.75")
+    assert usd_risk.dv01_5y == Decimal("5000.00")
+    assert usd_risk.dv01_10y == Decimal("7500.25")
+    assert usd_risk.dv01_30y == Decimal("10000.50")
+    assert usd_risk.dv100_3m == Decimal("100000.00")
+    assert usd_risk.dv100_1y == Decimal("250000.00")
+    assert usd_risk.dv100_5y == Decimal("500000.00")
+    assert usd_risk.dv100_10y == Decimal("750000.00")
+    assert usd_risk.dv100_30y == Decimal("1000000.00")
+
+
+def test_parse_nport_handles_missing_interest_rate_risk(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport handles NPORT filings with no interest rate risk data."""
+    voo = sample_etfs[0]
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing = Mock()
+        filing.filing_date = date(2025, 1, 15)
+        filing.accession_number = "0000000000-25-000000"
+        filing.xml = """<?xml version="1.0"?>
+<edgarSubmission>
+  <formData>
+    <fundinfo>
+      <totalAssets>10000000.00</totalAssets>
+    </fundinfo>
+  </formData>
+</edgarSubmission>"""
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = voo.series_id
+        mock_report.general_info = general_info
+
+        _add_mock_fund_info(mock_report)
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=mock_report,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(InterestRateRisk).where(InterestRateRisk.etf_id == voo.id)
+    risks = session.execute(stmt).scalars().all()
+
+    assert len(risks) == 0
