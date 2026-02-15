@@ -13,7 +13,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import Derivative, ETF, FundSnapshot, Holding
+from etf_pipeline.models import DebtSecurityDetail, Derivative, ETF, FundSnapshot, Holding
 from etf_pipeline.parser_utils import ensure_date, update_processing_log
 
 logger = logging.getLogger(__name__)
@@ -399,6 +399,12 @@ def _process_etf(
         if holding.cusip is not None:
             seen_cusips.add(holding.cusip)
         session.add(holding)
+
+        # Check for debt security details and attach to holding
+        debt_detail = _map_debt_security_detail(investment)
+        if debt_detail:
+            holding.debt_security_detail = debt_detail
+
         holdings_count += 1
 
     derivatives_count = 0
@@ -579,3 +585,87 @@ def _parse_delta(delta_value) -> Optional[Decimal]:
         return Decimal(str(delta_value))
     except (ValueError, TypeError):
         return None
+
+
+def _map_debt_security_detail(investment) -> Optional[DebtSecurityDetail]:
+    """Map debt_security data from investment to DebtSecurityDetail model instance."""
+    try:
+        debt_sec = investment.debt_security
+        if debt_sec is None:
+            return None
+        # Check if it's a real debt_security object by verifying it has expected attributes
+        if not hasattr(debt_sec, 'maturity_date'):
+            return None
+    except AttributeError:
+        return None
+
+    # Extract maturity_date
+    maturity_date = None
+    try:
+        if hasattr(debt_sec, 'maturity_date') and debt_sec.maturity_date:
+            maturity_date = _parse_date(debt_sec.maturity_date)
+    except (AttributeError, TypeError):
+        pass
+
+    # Extract coupon_kind
+    coupon_kind = None
+    try:
+        if hasattr(debt_sec, 'coupon_kind') and debt_sec.coupon_kind:
+            coupon_kind = _clean_str(debt_sec.coupon_kind)
+    except (AttributeError, TypeError):
+        pass
+
+    # Extract annualized_rate
+    annualized_rate = None
+    try:
+        if hasattr(debt_sec, 'annualized_rate') and debt_sec.annualized_rate is not None:
+            annualized_rate = debt_sec.annualized_rate
+    except (AttributeError, TypeError):
+        pass
+
+    # Extract boolean fields
+    is_default = False
+    try:
+        if hasattr(debt_sec, 'is_default') and debt_sec.is_default is not None:
+            is_default = bool(debt_sec.is_default)
+    except (AttributeError, TypeError):
+        pass
+
+    is_in_arrears = False
+    try:
+        if hasattr(debt_sec, 'are_instrument_payents_in_arrears') and debt_sec.are_instrument_payents_in_arrears is not None:
+            is_in_arrears = bool(debt_sec.are_instrument_payents_in_arrears)
+    except (AttributeError, TypeError):
+        pass
+
+    is_paid_kind = False
+    try:
+        if hasattr(debt_sec, 'is_paid_kind') and debt_sec.is_paid_kind is not None:
+            is_paid_kind = bool(debt_sec.is_paid_kind)
+    except (AttributeError, TypeError):
+        pass
+
+    is_mandatory_convertible = False
+    try:
+        if hasattr(debt_sec, 'is_mandatory_convertible') and debt_sec.is_mandatory_convertible is not None:
+            is_mandatory_convertible = bool(debt_sec.is_mandatory_convertible)
+    except (AttributeError, TypeError):
+        pass
+
+    is_contingent_convertible = False
+    try:
+        if hasattr(debt_sec, 'is_continuing_convertible') and debt_sec.is_continuing_convertible is not None:
+            is_contingent_convertible = bool(debt_sec.is_continuing_convertible)
+    except (AttributeError, TypeError):
+        pass
+
+    return DebtSecurityDetail(
+        maturity_date=maturity_date,
+        coupon_kind=coupon_kind,
+        annualized_rate=annualized_rate,
+        is_default=is_default,
+        is_in_arrears=is_in_arrears,
+        is_paid_kind=is_paid_kind,
+        is_mandatory_convertible=is_mandatory_convertible,
+        is_contingent_convertible=is_contingent_convertible,
+    )

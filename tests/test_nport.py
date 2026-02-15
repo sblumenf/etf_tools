@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy import select
 
-from etf_pipeline.models import Derivative, ETF, FundSnapshot, Holding
+from etf_pipeline.models import DebtSecurityDetail, Derivative, ETF, FundSnapshot, Holding
 from etf_pipeline.parsers.nport import parse_nport
 
 
@@ -90,6 +90,7 @@ def mock_fund_report():
         inv.is_restricted_security = False
         inv.fair_value_level = "1"
         inv.ticker = name[:4]
+        inv.debt_security = None
 
         identifiers = Mock()
         identifiers.isin = f"{cusip}XX"
@@ -317,6 +318,7 @@ def test_parse_nport_handles_na_values(session, engine, sample_etfs, mock_nport_
         inv.fair_value_level = None
         inv.ticker = None
         inv.identifiers = None
+        inv.debt_security = None
         return inv
 
     def create_report_with_series(series_id):
@@ -399,6 +401,7 @@ def test_parse_nport_deduplicates_holdings_with_same_cusip(session, engine, samp
         inv.is_restricted_security = False
         inv.fair_value_level = "1"
         inv.ticker = name[:4]
+        inv.debt_security = None
 
         identifiers = Mock()
         identifiers.isin = f"{cusip}XX"
@@ -492,6 +495,7 @@ def test_parse_nport_does_not_deduplicate_none_cusip_holdings(session, engine, s
         inv.is_restricted_security = False
         inv.fair_value_level = "1"
         inv.ticker = name[:4]
+        inv.debt_security = None
 
         identifiers = Mock()
         identifiers.isin = None
@@ -1387,3 +1391,197 @@ def test_parse_nport_handles_missing_fund_info(session, engine, sample_etfs, moc
     snapshots = session.execute(stmt).scalars().all()
     assert len(snapshots) == 0
     assert "No fund_info found" in caplog.text
+
+
+def test_parse_nport_creates_debt_security_detail(session, engine, sample_etfs, mock_nport_db):
+    """Test that parse_nport creates DebtSecurityDetail for debt holdings."""
+    def create_mock_bond(name, cusip, maturity_date_str, coupon_rate):
+        """Create a mock InvestmentOrSecurity with debt_security data."""
+        inv = Mock()
+        inv.name = name
+        inv.lei = None
+        inv.title = "Corporate Bond"
+        inv.cusip = cusip
+        inv.balance = Decimal("100000.0")
+        inv.units = "PA"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("105000.00")
+        inv.pct_value = Decimal("10.5")
+        inv.asset_category = "DBT"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "2"
+        inv.ticker = None
+
+        identifiers = Mock()
+        identifiers.isin = f"{cusip}XX"
+        inv.identifiers = identifiers
+
+        # Add debt_security data
+        debt_sec = Mock()
+        debt_sec.maturity_date = maturity_date_str
+        debt_sec.coupon_kind = "Fixed"
+        debt_sec.annualized_rate = Decimal(str(coupon_rate))
+        debt_sec.is_default = False
+        debt_sec.are_instrument_payents_in_arrears = False
+        debt_sec.is_paid_kind = False
+        debt_sec.is_mandatory_convertible = False
+        debt_sec.is_continuing_convertible = False
+        inv.debt_security = debt_sec
+
+        return inv
+
+    def create_report_with_bonds(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [
+            create_mock_bond("Apple Inc Bond", "037833AG3", "2030-05-15", "3.75"),
+            create_mock_bond("Microsoft Corp Bond", "594918BG6", "2035-08-08", "4.25"),
+        ]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_bonds("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # Verify holdings were created
+    stmt = select(Holding).order_by(Holding.name)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 2
+
+    # Verify debt security details were created
+    stmt = select(DebtSecurityDetail).join(Holding).order_by(Holding.name)
+    debt_details = session.execute(stmt).scalars().all()
+    assert len(debt_details) == 2
+
+    # Check first bond details
+    assert debt_details[0].maturity_date == date(2030, 5, 15)
+    assert debt_details[0].coupon_kind == "Fixed"
+    assert debt_details[0].annualized_rate == Decimal("3.75")
+    assert debt_details[0].is_default is False
+    assert debt_details[0].is_in_arrears is False
+    assert debt_details[0].is_paid_kind is False
+    assert debt_details[0].is_mandatory_convertible is False
+    assert debt_details[0].is_contingent_convertible is False
+
+    # Check second bond details
+    assert debt_details[1].maturity_date == date(2035, 8, 8)
+    assert debt_details[1].coupon_kind == "Fixed"
+    assert debt_details[1].annualized_rate == Decimal("4.25")
+
+
+def test_parse_nport_equity_holding_has_no_debt_detail(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
+    """Test that equity holdings do not create DebtSecurityDetail rows."""
+    parse_nport(cik="36405")
+
+    # Verify holdings exist
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) > 0
+
+    # Verify NO debt security details exist (mock investments are equities)
+    stmt = select(DebtSecurityDetail)
+    debt_details = session.execute(stmt).scalars().all()
+    assert len(debt_details) == 0
+
+
+def test_parse_nport_debt_detail_with_null_coupon(session, engine, sample_etfs, mock_nport_db):
+    """Test that debt holdings with NULL coupon rate are handled correctly."""
+    def create_mock_zero_coupon_bond(name, cusip, maturity_date_str):
+        """Create a mock InvestmentOrSecurity with debt_security but no coupon."""
+        inv = Mock()
+        inv.name = name
+        inv.lei = None
+        inv.title = "Zero Coupon Bond"
+        inv.cusip = cusip
+        inv.balance = Decimal("100000.0")
+        inv.units = "PA"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("80000.00")
+        inv.pct_value = Decimal("8.0")
+        inv.asset_category = "DBT"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "2"
+        inv.ticker = None
+
+        identifiers = Mock()
+        identifiers.isin = f"{cusip}XX"
+        inv.identifiers = identifiers
+
+        # Add debt_security data with no coupon
+        debt_sec = Mock()
+        debt_sec.maturity_date = maturity_date_str
+        debt_sec.coupon_kind = "Zero"
+        debt_sec.annualized_rate = None  # NULL coupon
+        debt_sec.is_default = False
+        debt_sec.are_instrument_payents_in_arrears = False
+        debt_sec.is_paid_kind = False
+        debt_sec.is_mandatory_convertible = False
+        debt_sec.is_continuing_convertible = False
+        inv.debt_security = debt_sec
+
+        return inv
+
+    def create_report_with_zero_coupon(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [
+            create_mock_zero_coupon_bond("Zero Coupon Treasury", "912828XY1", "2040-02-15"),
+        ]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_zero_coupon("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # Verify debt security detail was created with NULL coupon rate
+    stmt = select(DebtSecurityDetail)
+    debt_details = session.execute(stmt).scalars().all()
+    assert len(debt_details) == 1
+    assert debt_details[0].maturity_date == date(2040, 2, 15)
+    assert debt_details[0].coupon_kind == "Zero"
+    assert debt_details[0].annualized_rate is None  # NULL coupon
+    assert debt_details[0].is_default is False

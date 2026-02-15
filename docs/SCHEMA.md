@@ -7,7 +7,7 @@ SQLite database managed by SQLAlchemy 2.0. All models defined in `src/etf_pipeli
 ## Entity-Relationship Overview
 
 ```
-ETF (1) ──< Holding
+ETF (1) ──< Holding (1) ──< DebtSecurityDetail (0..1)
 ETF (1) ──< Derivative
 ETF (1) ──< Performance
 ETF (1) ──< FeeExpense
@@ -99,6 +99,29 @@ Derivative positions from NPORT-P filings.
 
 **Unique:** `(etf_id, report_date, derivative_type, underlying_name, filing_date)`
 **Indexes:** `(etf_id, report_date)`, `(report_date)`
+
+---
+
+### `debt_security_detail`
+
+Debt-specific details for bond holdings from NPORT-P filings (one-to-one with holding).
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | Integer | PK | |
+| `holding_id` | Integer | FK -> holding.id CASCADE, NOT NULL | Parent holding (one-to-one) |
+| `maturity_date` | Date | | Bond maturity date |
+| `coupon_kind` | String(50) | | Coupon type (Fixed, Floating, Zero, etc.) |
+| `annualized_rate` | Numeric(8,6) | | Annualized coupon rate (e.g., 0.0375 for 3.75%) |
+| `is_default` | Boolean | NOT NULL, default=False | Whether the bond is in default |
+| `is_in_arrears` | Boolean | NOT NULL, default=False | Whether payments are in arrears |
+| `is_paid_kind` | Boolean | NOT NULL, default=False | Whether paid in kind |
+| `is_mandatory_convertible` | Boolean | NOT NULL, default=False | Whether mandatory convertible |
+| `is_contingent_convertible` | Boolean | NOT NULL, default=False | Whether contingent convertible (CoCo) |
+
+**Unique:** `(holding_id)`
+
+> Note: Only holdings with `debt_security` data in NPORT-P filings will have a corresponding row in this table. Equity holdings will not.
 
 ---
 
@@ -314,7 +337,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 
 | Filing Type | Tables Populated |
 |---|---|
-| NPORT-P | `holding`, `derivative`, `fund_snapshot` |
+| NPORT-P | `holding`, `debt_security_detail`, `derivative`, `fund_snapshot` |
 | N-CSR | `performance`, `per_share_operating`, `per_share_distribution`, `per_share_ratios` |
 | 485BPOS | `etf` (objective/strategy), `fee_expense` |
 | 24F-2NT | `flow_data` |

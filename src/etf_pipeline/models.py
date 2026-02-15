@@ -94,6 +94,9 @@ class Holding(Base):
     is_restricted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     etf: Mapped["ETF"] = relationship(back_populates="holdings")
+    debt_security_detail: Mapped[Optional["DebtSecurityDetail"]] = relationship(
+        back_populates="holding", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class Derivative(Base):
@@ -125,6 +128,32 @@ class Derivative(Base):
     expiration_date: Mapped[Optional[date]] = mapped_column(Date)
 
     etf: Mapped["ETF"] = relationship(back_populates="derivatives")
+
+
+class DebtSecurityDetail(Base):
+    __tablename__ = "debt_security_detail"
+    __table_args__ = (
+        UniqueConstraint("holding_id", name="debt_security_detail_holding_uniq"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    holding_id: Mapped[int] = mapped_column(
+        ForeignKey("holding.id", ondelete="CASCADE"), nullable=False
+    )
+    maturity_date: Mapped[Optional[date]] = mapped_column(Date)
+    coupon_kind: Mapped[Optional[str]] = mapped_column(String(50))
+    annualized_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 6))
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_in_arrears: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_paid_kind: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_mandatory_convertible: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    is_contingent_convertible: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+
+    holding: Mapped["Holding"] = relationship(back_populates="debt_security_detail")
 
 
 class Performance(Base):
