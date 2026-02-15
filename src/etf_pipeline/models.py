@@ -287,6 +287,21 @@ class FundSnapshot(Base):
     total_assets: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
     total_liabilities: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
     net_assets: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    cash_not_reported: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    assets_invested: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    assets_misc_sec: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    amt_pay_one_yr_banks_borr: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    amt_pay_one_yr_ctrld_comp: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    amt_pay_one_yr_oth_affil: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    amt_pay_one_yr_other: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    amt_pay_aft_one_yr_banks_borr: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    amt_pay_aft_one_yr_ctrld_comp: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    amt_pay_aft_one_yr_oth_affil: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    amt_pay_aft_one_yr_other: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    delay_deliv: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    stand_by_commit: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    liquidity_pref: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    is_non_cash_collateral: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class ProcessingLog(Base):
