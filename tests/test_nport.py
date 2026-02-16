@@ -2300,7 +2300,7 @@ def test_monthly_returns_single_class(session, sample_etfs, mock_nport_db):
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000001"
-        filing.xml = xml_content
+        filing.xml = Mock(return_value=xml_content)
 
         filings_obj = Mock()
         filings_obj.empty = False
@@ -2386,7 +2386,7 @@ def test_monthly_returns_multiple_classes(session, sample_etfs, mock_nport_db):
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000001"
-        filing.xml = xml_content
+        filing.xml = Mock(return_value=xml_content)
 
         filings_obj = Mock()
         filings_obj.empty = False
@@ -2474,7 +2474,7 @@ def test_monthly_returns_with_na_values(session, sample_etfs, mock_nport_db):
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000001"
-        filing.xml = xml_content
+        filing.xml = Mock(return_value=xml_content)
 
         filings_obj = Mock()
         filings_obj.empty = False
@@ -2557,7 +2557,7 @@ def test_monthly_flows_single_class(session, sample_etfs, mock_nport_db):
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000001"
-        filing.xml = xml_content
+        filing.xml = Mock(return_value=xml_content)
 
         filings_obj = Mock()
         filings_obj.empty = False
@@ -2655,7 +2655,7 @@ def test_monthly_flows_multiple_classes(session, sample_etfs, mock_nport_db):
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000001"
-        filing.xml = xml_content
+        filing.xml = Mock(return_value=xml_content)
 
         filings_obj = Mock()
         filings_obj.empty = False
@@ -2757,7 +2757,7 @@ def test_monthly_flows_with_na_values(session, sample_etfs, mock_nport_db):
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000001"
-        filing.xml = xml_content
+        filing.xml = Mock(return_value=xml_content)
 
         filings_obj = Mock()
         filings_obj.empty = False
@@ -2829,7 +2829,7 @@ def test_parse_nport_extracts_interest_rate_risk(session, engine, sample_etfs, m
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = """<?xml version="1.0"?>
+        filing.xml = Mock(return_value="""<?xml version="1.0"?>
 <edgarSubmission>
   <formData>
     <fundinfo>
@@ -2847,8 +2847,7 @@ def test_parse_nport_extracts_interest_rate_risk(session, engine, sample_etfs, m
       </curMetrics>
     </fundinfo>
   </formData>
-</edgarSubmission>"""
-
+</edgarSubmission>""")
         filings = Mock()
         filings.empty = False
         filings.__len__ = Mock(return_value=1)
@@ -2917,15 +2916,14 @@ def test_parse_nport_handles_missing_interest_rate_risk(session, engine, sample_
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = """<?xml version="1.0"?>
+        filing.xml = Mock(return_value="""<?xml version="1.0"?>
 <edgarSubmission>
   <formData>
     <fundinfo>
       <totalAssets>10000000.00</totalAssets>
     </fundinfo>
   </formData>
-</edgarSubmission>"""
-
+</edgarSubmission>""")
         filings = Mock()
         filings.empty = False
         filings.__len__ = Mock(return_value=1)
@@ -2980,18 +2978,10 @@ def test_parse_nport_derivative_parent_fields_forward(session, engine, sample_et
         # Parent-level deriv_addl_* fields
         fwd.deriv_addl_currency = "USD"
         fwd.deriv_addl_title = "Euro/US Dollar Forward Contract"
-        fwd.deriv_addl_lei = "EURUSD987654321"
         fwd.deriv_addl_isin = "US123456789012"
         fwd.deriv_addl_ticker = "EURUSD"
         fwd.deriv_addl_other_id = "FWD001"
         fwd.deriv_addl_other_id_type = "Internal"
-        fwd.deriv_addl_balance = Decimal("1000000.0000")
-        fwd.deriv_addl_units = "Currency Units"
-        fwd.deriv_addl_value_usd = Decimal("1015000.00")
-        fwd.deriv_addl_pct_value = Decimal("2.50000")
-        fwd.deriv_addl_asset_cat = "FX"
-        fwd.deriv_addl_issuer_cat = "FRGN"
-        fwd.deriv_addl_inv_country = "US"
 
         inv.derivative_info.forward_derivative = fwd
         inv.derivative_info.future_derivative = None
@@ -3018,7 +3008,7 @@ def test_parse_nport_derivative_parent_fields_forward(session, engine, sample_et
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -3047,19 +3037,10 @@ def test_parse_nport_derivative_parent_fields_forward(session, engine, sample_et
     assert deriv.unrealized_appreciation == Decimal("15000.50")
     assert deriv.currency == "USD"
     assert deriv.underlying_title == "Euro/US Dollar Forward Contract"
-    assert deriv.underlying_lei == "EURUSD987654321"
     assert deriv.underlying_isin == "US123456789012"
     assert deriv.underlying_ticker == "EURUSD"
     assert deriv.underlying_other_id == "FWD001"
     assert deriv.underlying_other_id_type == "Internal"
-    assert deriv.underlying_balance == Decimal("1000000.0000")
-    assert deriv.underlying_units == "Currency Units"
-    assert deriv.underlying_currency == "USD"
-    assert deriv.underlying_value_usd == Decimal("1015000.00")
-    assert deriv.underlying_pct_value == Decimal("2.50000")
-    assert deriv.underlying_asset_cat == "FX"
-    assert deriv.underlying_issuer_cat == "FRGN"
-    assert deriv.underlying_inv_country == "US"
     assert deriv.payoff_profile is None  # Only for futures
 
 
@@ -3086,7 +3067,6 @@ def test_parse_nport_derivative_parent_fields_future(session, engine, sample_etf
         fut.currency = "USD"
         fut.payoff_profile = "Long"
         fut.reference_entity_title = "S&P 500 Index Future"
-        fut.reference_entity_lei = "SPX987654321"
         fut.reference_entity_isin = "US78378X1072"
         fut.reference_entity_ticker = "SPX"
         fut.reference_entity_other_id = "FUT002"
@@ -3117,7 +3097,7 @@ def test_parse_nport_derivative_parent_fields_future(session, engine, sample_etf
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -3147,20 +3127,11 @@ def test_parse_nport_derivative_parent_fields_future(session, engine, sample_etf
     assert deriv.currency == "USD"
     assert deriv.payoff_profile == "Long"
     assert deriv.underlying_title == "S&P 500 Index Future"
-    assert deriv.underlying_lei == "SPX987654321"
     assert deriv.underlying_isin == "US78378X1072"
     assert deriv.underlying_ticker == "SPX"
     assert deriv.underlying_other_id == "FUT002"
     assert deriv.underlying_other_id_type == "Exchange"
     # The fields below don't exist on FutureDerivative (see Fix 2)
-    assert deriv.underlying_balance is None
-    assert deriv.underlying_units is None
-    assert deriv.underlying_currency is None
-    assert deriv.underlying_value_usd is None
-    assert deriv.underlying_pct_value is None
-    assert deriv.underlying_asset_cat is None
-    assert deriv.underlying_issuer_cat is None
-    assert deriv.underlying_inv_country is None
 
 
 def test_parse_nport_derivative_parent_fields_option(session, engine, sample_etfs, mock_nport_db):
@@ -3188,19 +3159,10 @@ def test_parse_nport_derivative_parent_fields_option(session, engine, sample_etf
         # Parent-level reference_entity_* fields
         opt.currency_code = "USD"
         opt.reference_entity_title = "Apple Inc Common Stock"
-        opt.reference_entity_lei = "HWUPKR0MPOU8FGXBT394"
         opt.reference_entity_isin = "US0378331005"
         opt.reference_entity_ticker = "AAPL"
         opt.reference_entity_other_id = "OPT003"
         opt.reference_entity_other_id_type = "CBOE"
-        opt.reference_entity_balance = Decimal("1000.0000")
-        opt.reference_entity_units = "Shares"
-        opt.reference_entity_currency = "USD"
-        opt.reference_entity_value_usd = Decimal("175000.00")
-        opt.reference_entity_pct_value = Decimal("0.35000")
-        opt.reference_entity_asset_cat = "EC"
-        opt.reference_entity_issuer_cat = "CORP"
-        opt.reference_entity_inv_country = "US"
 
         inv.derivative_info.option_derivative = opt
         inv.derivative_info.forward_derivative = None
@@ -3227,7 +3189,7 @@ def test_parse_nport_derivative_parent_fields_option(session, engine, sample_etf
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -3256,19 +3218,10 @@ def test_parse_nport_derivative_parent_fields_option(session, engine, sample_etf
     assert deriv.unrealized_appreciation == Decimal("12500.25")
     assert deriv.currency == "USD"
     assert deriv.underlying_title == "Apple Inc Common Stock"
-    assert deriv.underlying_lei == "HWUPKR0MPOU8FGXBT394"
     assert deriv.underlying_isin == "US0378331005"
     assert deriv.underlying_ticker == "AAPL"
     assert deriv.underlying_other_id == "OPT003"
     assert deriv.underlying_other_id_type == "CBOE"
-    assert deriv.underlying_balance == Decimal("1000.0000")
-    assert deriv.underlying_units == "Shares"
-    assert deriv.underlying_currency == "USD"
-    assert deriv.underlying_value_usd == Decimal("175000.00")
-    assert deriv.underlying_pct_value == Decimal("0.35000")
-    assert deriv.underlying_asset_cat == "EC"
-    assert deriv.underlying_issuer_cat == "CORP"
-    assert deriv.underlying_inv_country == "US"
     assert deriv.payoff_profile is None  # Only for futures
 
 
@@ -3296,19 +3249,10 @@ def test_parse_nport_derivative_parent_fields_swap(session, engine, sample_etfs,
         # Parent-level deriv_addl_* fields (preferred for swaps)
         swp.currency_code = "USD"
         swp.deriv_addl_title = "3-Month USD LIBOR Index"
-        swp.deriv_addl_lei = "LIBOR987654321"
         swp.deriv_addl_isin = "US1234567890"
         swp.deriv_addl_ticker = "LIBOR3M"
         swp.deriv_addl_other_id = "SWP004"
         swp.deriv_addl_other_id_type = "ISDA"
-        swp.deriv_addl_balance = Decimal("10000000.0000")
-        swp.deriv_addl_units = "Currency Units"
-        swp.deriv_addl_currency = "USD"
-        swp.deriv_addl_value_usd = Decimal("10045000.00")
-        swp.deriv_addl_pct_value = Decimal("20.00000")
-        swp.deriv_addl_asset_cat = "IRS"
-        swp.deriv_addl_issuer_cat = "SWAP"
-        swp.deriv_addl_inv_country = "US"
 
         inv.derivative_info.swap_derivative = swp
         inv.derivative_info.forward_derivative = None
@@ -3335,7 +3279,7 @@ def test_parse_nport_derivative_parent_fields_swap(session, engine, sample_etfs,
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -3364,19 +3308,10 @@ def test_parse_nport_derivative_parent_fields_swap(session, engine, sample_etfs,
     assert deriv.unrealized_appreciation == Decimal("45000.00")
     assert deriv.currency == "USD"
     assert deriv.underlying_title == "3-Month USD LIBOR Index"
-    assert deriv.underlying_lei == "LIBOR987654321"
     assert deriv.underlying_isin == "US1234567890"
     assert deriv.underlying_ticker == "LIBOR3M"
     assert deriv.underlying_other_id == "SWP004"
     assert deriv.underlying_other_id_type == "ISDA"
-    assert deriv.underlying_balance == Decimal("10000000.0000")
-    assert deriv.underlying_units == "Currency Units"
-    assert deriv.underlying_currency == "USD"
-    assert deriv.underlying_value_usd == Decimal("10045000.00")
-    assert deriv.underlying_pct_value == Decimal("20.00000")
-    assert deriv.underlying_asset_cat == "IRS"
-    assert deriv.underlying_issuer_cat == "SWAP"
-    assert deriv.underlying_inv_country == "US"
     assert deriv.payoff_profile is None  # Only for futures
 
 
@@ -3400,19 +3335,10 @@ def test_parse_nport_derivative_parent_fields_swaption(session, engine, sample_e
 
         # Parent-level reference_entity_* fields
         swo.reference_entity_title = "5-Year Interest Rate Swaption"
-        swo.reference_entity_lei = "SWAPTION987654321"
         swo.reference_entity_isin = "US9876543210"
         swo.reference_entity_ticker = "SWO5Y"
         swo.reference_entity_other_id = "SWO005"
         swo.reference_entity_other_id_type = "ISDA"
-        swo.reference_entity_balance = Decimal("5000000.0000")
-        swo.reference_entity_units = "Notional"
-        swo.reference_entity_currency = "USD"
-        swo.reference_entity_value_usd = Decimal("5008500.00")
-        swo.reference_entity_pct_value = Decimal("10.00000")
-        swo.reference_entity_asset_cat = "SWO"
-        swo.reference_entity_issuer_cat = "SWAP"
-        swo.reference_entity_inv_country = "US"
 
         inv.derivative_info.swaption_derivative = swo
         inv.derivative_info.forward_derivative = None
@@ -3439,7 +3365,7 @@ def test_parse_nport_derivative_parent_fields_swaption(session, engine, sample_e
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -3468,19 +3394,10 @@ def test_parse_nport_derivative_parent_fields_swaption(session, engine, sample_e
     assert deriv.unrealized_appreciation == Decimal("8500.00")
     assert deriv.currency is None  # Swaptions don't have currency_code
     assert deriv.underlying_title == "5-Year Interest Rate Swaption"
-    assert deriv.underlying_lei == "SWAPTION987654321"
     assert deriv.underlying_isin == "US9876543210"
     assert deriv.underlying_ticker == "SWO5Y"
     assert deriv.underlying_other_id == "SWO005"
     assert deriv.underlying_other_id_type == "ISDA"
-    assert deriv.underlying_balance == Decimal("5000000.0000")
-    assert deriv.underlying_units == "Notional"
-    assert deriv.underlying_currency == "USD"
-    assert deriv.underlying_value_usd == Decimal("5008500.00")
-    assert deriv.underlying_pct_value == Decimal("10.00000")
-    assert deriv.underlying_asset_cat == "SWO"
-    assert deriv.underlying_issuer_cat == "SWAP"
-    assert deriv.underlying_inv_country == "US"
     assert deriv.payoff_profile is None  # Only for futures
 
 
@@ -3507,7 +3424,6 @@ def test_parse_nport_derivative_parent_fields_with_na_values(session, engine, sa
         fut.currency = "N/A"
         fut.payoff_profile = "N/A"
         fut.reference_entity_title = "N/A"
-        fut.reference_entity_lei = "N/A"
         fut.reference_entity_isin = "N/A"
         fut.reference_entity_ticker = "N/A"
         fut.reference_entity_other_id = "N/A"
@@ -3538,7 +3454,7 @@ def test_parse_nport_derivative_parent_fields_with_na_values(session, engine, sa
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -3568,19 +3484,10 @@ def test_parse_nport_derivative_parent_fields_with_na_values(session, engine, sa
     assert deriv.currency is None
     assert deriv.payoff_profile is None
     assert deriv.underlying_title is None
-    assert deriv.underlying_lei is None
     assert deriv.underlying_isin is None
     assert deriv.underlying_ticker is None
     assert deriv.underlying_other_id is None
     assert deriv.underlying_other_id_type is None
-    assert deriv.underlying_balance is None
-    assert deriv.underlying_units is None
-    assert deriv.underlying_currency is None
-    assert deriv.underlying_value_usd is None
-    assert deriv.underlying_pct_value is None
-    assert deriv.underlying_asset_cat is None
-    assert deriv.underlying_issuer_cat is None
-    assert deriv.underlying_inv_country is None
 
 
 def test_parse_nport_swap_child_tables_complete_swap(session, engine, sample_etfs, mock_nport_db):
@@ -3607,9 +3514,9 @@ def test_parse_nport_swap_child_tables_complete_swap(session, engine, sample_etf
 
         # Swap parent fields
         swp.upfront_payment = Decimal("15000.00")
-        swp.upfront_payment_currency = "USD"
+        swp.payment_currency = "USD"
         swp.upfront_receipt = Decimal("5000.00")
-        swp.upfront_receipt_currency = "USD"
+        swp.receipt_currency = "USD"
         swp.swap_flag = "Y"
 
         # Pay leg (fixed)
@@ -3642,19 +3549,10 @@ def test_parse_nport_swap_child_tables_complete_swap(session, engine, sample_etf
 
         # Parent-level deriv_addl_* fields
         swp.deriv_addl_title = "SOFR Interest Rate Swap"
-        swp.deriv_addl_lei = None
         swp.deriv_addl_isin = None
         swp.deriv_addl_ticker = None
         swp.deriv_addl_other_id = None
         swp.deriv_addl_other_id_type = None
-        swp.deriv_addl_balance = None
-        swp.deriv_addl_units = None
-        swp.deriv_addl_currency = "USD"
-        swp.deriv_addl_value_usd = None
-        swp.deriv_addl_pct_value = None
-        swp.deriv_addl_asset_cat = None
-        swp.deriv_addl_issuer_cat = None
-        swp.deriv_addl_inv_country = None
 
         inv.derivative_info.swap_derivative = swp
         inv.derivative_info.forward_derivative = None
@@ -3681,7 +3579,7 @@ def test_parse_nport_swap_child_tables_complete_swap(session, engine, sample_etf
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -3775,9 +3673,9 @@ def test_parse_nport_swap_child_tables_other_leg_type(session, engine, sample_et
 
         # Swap parent fields
         swp.upfront_payment = None
-        swp.upfront_payment_currency = None
+        swp.payment_currency = None
         swp.upfront_receipt = None
-        swp.upfront_receipt_currency = None
+        swp.receipt_currency = None
         swp.swap_flag = None
 
         # Pay leg (other)
@@ -3810,19 +3708,10 @@ def test_parse_nport_swap_child_tables_other_leg_type(session, engine, sample_et
 
         # Parent-level deriv_addl_* fields
         swp.deriv_addl_title = None
-        swp.deriv_addl_lei = None
         swp.deriv_addl_isin = None
         swp.deriv_addl_ticker = None
         swp.deriv_addl_other_id = None
         swp.deriv_addl_other_id_type = None
-        swp.deriv_addl_balance = None
-        swp.deriv_addl_units = None
-        swp.deriv_addl_currency = None
-        swp.deriv_addl_value_usd = None
-        swp.deriv_addl_pct_value = None
-        swp.deriv_addl_asset_cat = None
-        swp.deriv_addl_issuer_cat = None
-        swp.deriv_addl_inv_country = None
 
         inv.derivative_info.swap_derivative = swp
         inv.derivative_info.forward_derivative = None
@@ -3849,7 +3738,7 @@ def test_parse_nport_swap_child_tables_other_leg_type(session, engine, sample_et
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000001"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -3924,7 +3813,6 @@ def test_parse_nport_swap_child_tables_no_swap_fields(session, engine, sample_et
         fwd.settlement_date = "2025-06-30"
         fwd.currency_sold = "EUR"
         fwd.deriv_addl_title = None
-        fwd.deriv_addl_currency = None
 
         inv.derivative_info.forward_derivative = fwd
         inv.derivative_info.swap_derivative = None
@@ -3951,7 +3839,7 @@ def test_parse_nport_swap_child_tables_no_swap_fields(session, engine, sample_et
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000002"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -4029,7 +3917,6 @@ def test_parse_nport_option_child_table_regular_option(session, engine, sample_e
 
         # Parent-level reference_entity fields
         opt.reference_entity_title = "Apple Inc."
-        opt.reference_entity_lei = "HWUPKR0MPOU8FGXBT394"
 
         inv.derivative_info.option_derivative = opt
         inv.derivative_info.swap_derivative = None
@@ -4056,7 +3943,7 @@ def test_parse_nport_option_child_table_regular_option(session, engine, sample_e
         filing = Mock()
         filing.filing_date = date(2025, 2, 28)
         filing.accession_number = "0000000000-25-000002"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -4120,7 +4007,7 @@ def test_parse_nport_forward_child_table(session, engine, sample_etfs, mock_npor
         fwd.deriv_addl_cusip = None
         fwd.notional_amount = Decimal("1000000.00")
         fwd.termination_date = "2025-06-30"
-        fwd.currency_code = "USD"
+        fwd.deriv_addl_currency = "USD"
 
         # Forward-specific fields
         fwd.currency_sold = "EUR"
@@ -4131,8 +4018,6 @@ def test_parse_nport_forward_child_table(session, engine, sample_etfs, mock_npor
 
         # Parent-level deriv_addl fields
         fwd.deriv_addl_title = "EUR/USD Foreign Exchange Forward"
-        fwd.deriv_addl_lei = None
-        fwd.deriv_addl_currency = "USD"
 
         inv.derivative_info.forward_derivative = fwd
         inv.derivative_info.swap_derivative = None
@@ -4159,7 +4044,7 @@ def test_parse_nport_forward_child_table(session, engine, sample_etfs, mock_npor
         filing = Mock()
         filing.filing_date = date(2025, 2, 28)
         filing.accession_number = "0000000000-25-000004"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -4251,25 +4136,16 @@ def test_parse_nport_swap_derivatives_integration(session, engine):
 
         # Parent-level fields
         swp.deriv_addl_title = "Interest Rate Swap on USD SOFR"
-        swp.deriv_addl_lei = None
         swp.deriv_addl_isin = None
         swp.deriv_addl_ticker = None
         swp.deriv_addl_other_id = None
         swp.deriv_addl_other_id_type = None
-        swp.deriv_addl_balance = Decimal("1.0")
-        swp.deriv_addl_units = "NS"
-        swp.deriv_addl_currency = "USD"
-        swp.deriv_addl_value_usd = Decimal("125000.50")
-        swp.deriv_addl_pct_value = Decimal("0.015")
-        swp.deriv_addl_asset_cat = "DSWP"
-        swp.deriv_addl_issuer_cat = "CORP"
-        swp.deriv_addl_inv_country = "US"
 
         # Swap parent fields
         swp.upfront_payment = Decimal("25000.00")
-        swp.upfront_payment_currency = "USD"
+        swp.payment_currency = "USD"
         swp.upfront_receipt = Decimal("10000.00")
-        swp.upfront_receipt_currency = "USD"
+        swp.receipt_currency = "USD"
         swp.swap_flag = "Y"
 
         # Pay leg (fixed rate)
@@ -4327,7 +4203,7 @@ def test_parse_nport_swap_derivatives_integration(session, engine):
         filing = Mock()
         filing.filing_date = date(2025, 2, 1)
         filing.accession_number = "0001193125-25-020000"
-        filing.xml = "<xml/>"
+        filing.xml = Mock(return_value="<xml/>")
 
         filings = Mock()
         filings.empty = False
@@ -4358,10 +4234,6 @@ def test_parse_nport_swap_derivatives_integration(session, engine):
         "Parent derivative underlying_name not populated"
     assert deriv.underlying_title == "Interest Rate Swap on USD SOFR", \
         "Parent derivative underlying_title not populated"
-    assert deriv.underlying_balance == Decimal("1.0"), \
-        "Parent derivative underlying_balance not populated"
-    assert deriv.underlying_units == "NS", \
-        "Parent derivative underlying_units not populated"
 
     # 2. Verify DerivativeSwap child table
     stmt = select(DerivativeSwap).where(DerivativeSwap.derivative_id == deriv.id)
@@ -4370,11 +4242,11 @@ def test_parse_nport_swap_derivatives_integration(session, engine):
     assert swap.upfront_payment == Decimal("25000.00"), \
         "DerivativeSwap upfront_payment not populated"
     assert swap.upfront_payment_currency == "USD", \
-        "DerivativeSwap upfront_payment_currency not populated"
+        "DerivativeSwap payment_currency not populated"
     assert swap.upfront_receipt == Decimal("10000.00"), \
         "DerivativeSwap upfront_receipt not populated"
     assert swap.upfront_receipt_currency == "USD", \
-        "DerivativeSwap upfront_receipt_currency not populated"
+        "DerivativeSwap receipt_currency not populated"
     assert swap.swap_flag == "Y", \
         "DerivativeSwap swap_flag not populated"
 

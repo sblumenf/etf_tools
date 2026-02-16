@@ -67,6 +67,49 @@
       </xbrli:period>
     </xbrli:context>
 
+    <!-- Risk-dimensioned contexts: Series ID + RiskAxis members -->
+    <xbrli:context id="AsOf2022-11-03_custom_S000014796Member_custom_RiskLoseMoneyMember">
+      <xbrli:entity>
+        <xbrli:identifier scheme="http://www.sec.gov/CIK">0001314612</xbrli:identifier>
+        <xbrli:segment>
+          <xbrldi:explicitMember dimension="dei:LegalEntityAxis">oef01:S000014796Member</xbrldi:explicitMember>
+          <xbrldi:explicitMember dimension="oef:RiskAxis">oef:RiskLoseMoneyMember</xbrldi:explicitMember>
+        </xbrli:segment>
+      </xbrli:entity>
+      <xbrli:period>
+        <xbrli:startDate>2022-11-03</xbrli:startDate>
+        <xbrli:endDate>2022-11-03</xbrli:endDate>
+      </xbrli:period>
+    </xbrli:context>
+
+    <xbrli:context id="AsOf2022-11-03_custom_S000014796Member_custom_PerformanceRiskMember">
+      <xbrli:entity>
+        <xbrli:identifier scheme="http://www.sec.gov/CIK">0001314612</xbrli:identifier>
+        <xbrli:segment>
+          <xbrldi:explicitMember dimension="dei:LegalEntityAxis">oef01:S000014796Member</xbrldi:explicitMember>
+          <xbrldi:explicitMember dimension="oef:RiskAxis">oef:PerformanceRiskMember</xbrldi:explicitMember>
+        </xbrli:segment>
+      </xbrli:entity>
+      <xbrli:period>
+        <xbrli:startDate>2022-11-03</xbrli:startDate>
+        <xbrli:endDate>2022-11-03</xbrli:endDate>
+      </xbrli:period>
+    </xbrli:context>
+
+    <xbrli:context id="AsOf2022-11-03_custom_S000014796Member_custom_ForeignExposureRiskMember">
+      <xbrli:entity>
+        <xbrli:identifier scheme="http://www.sec.gov/CIK">0001314612</xbrli:identifier>
+        <xbrli:segment>
+          <xbrldi:explicitMember dimension="dei:LegalEntityAxis">oef01:S000014796Member</xbrldi:explicitMember>
+          <xbrldi:explicitMember dimension="oef:RiskAxis">oef:ForeignExposureRiskMember</xbrldi:explicitMember>
+        </xbrli:segment>
+      </xbrli:entity>
+      <xbrli:period>
+        <xbrli:startDate>2022-11-03</xbrli:startDate>
+        <xbrli:endDate>2022-11-03</xbrli:endDate>
+      </xbrli:period>
+    </xbrli:context>
+
     <xbrli:unit id="USD">
       <xbrli:measure>iso4217:USD</xbrli:measure>
     </xbrli:unit>
@@ -85,9 +128,11 @@
 <b><ix:nonNumeric contextRef="AsOf2022-11-03_custom_S000014796Member" name="oef:StrategyHeading">Investments, risks, and performance</ix:nonNumeric></b>
 <ix:nonNumeric contextRef="AsOf2022-11-03_custom_S000014796Member" escape="true" name="oef:StrategyNarrativeTextBlock"><p style="margin: 0px">The fund invests primarily in <b>common stocks</b> of large U.S. companies.</p></ix:nonNumeric>
 
-<!-- Principal Risks (series-level) -->
+<!-- Principal Risks (series-level, multiple risk dimensions) -->
 <b><ix:nonNumeric contextRef="AsOf2022-11-03_custom_S000014796Member" name="oef:RiskHeading">Principal Investment Risks</ix:nonNumeric></b>
-<ix:nonNumeric contextRef="AsOf2022-11-03_custom_S000014796Member" escape="true" name="oef:RiskTextBlock"><p style="margin: 0px"><b>Stock Market Volatility.</b> Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. <b>Foreign Exposure.</b> Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.</p></ix:nonNumeric>
+<ix:nonNumeric contextRef="AsOf2022-11-03_custom_S000014796Member_custom_RiskLoseMoneyMember" escape="true" name="oef:RiskTextBlock"><p style="margin: 0px"><b>Risk of Loss.</b> It is important to understand that you can lose money by investing in the fund.</p></ix:nonNumeric>
+<ix:nonNumeric contextRef="AsOf2022-11-03_custom_S000014796Member_custom_PerformanceRiskMember" escape="true" name="oef:RiskTextBlock"><p style="margin: 0px"><b>Stock Market Volatility.</b> Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments.</p></ix:nonNumeric>
+<ix:nonNumeric contextRef="AsOf2022-11-03_custom_S000014796Member_custom_ForeignExposureRiskMember" escape="true" name="oef:RiskTextBlock"><p style="margin: 0px"><b>Foreign Exposure.</b> Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.</p></ix:nonNumeric>
 
 <!-- Annual Fund Operating Expenses (Class A: C000014542) -->
 <h3>Annual Fund Operating Expenses - Class A</h3>

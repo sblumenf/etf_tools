@@ -62,7 +62,7 @@ def test_parse_nport_extracts_credit_spread_risk(session, engine, sample_etfs, m
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = """<?xml version="1.0"?>
+        filing.xml = Mock(return_value="""<?xml version="1.0"?>
 <edgarSubmission>
   <formData>
     <fundinfo>
@@ -70,8 +70,7 @@ def test_parse_nport_extracts_credit_spread_risk(session, engine, sample_etfs, m
       <creditSprdRiskNonInvstGrade period3Mon="2500.25" period1Yr="5000.50" period5Yr="10000.75" period10Yr="15000.00" period30Yr="20000.25"/>
     </fundinfo>
   </formData>
-</edgarSubmission>"""
-
+</edgarSubmission>""")
         filings = Mock()
         filings.empty = False
         filings.__len__ = Mock(return_value=1)
@@ -124,14 +123,13 @@ def test_parse_nport_handles_missing_credit_spread_risk(session, engine, sample_
         filing = Mock()
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
-        filing.xml = """<?xml version="1.0"?>
+        filing.xml = Mock(return_value="""<?xml version="1.0"?>
 <edgarSubmission>
   <formData>
     <fundinfo>
     </fundinfo>
   </formData>
-</edgarSubmission>"""
-
+</edgarSubmission>""")
         filings = Mock()
         filings.empty = False
         filings.__len__ = Mock(return_value=1)

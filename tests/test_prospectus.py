@@ -332,15 +332,51 @@ class TestExtractTagValue:
         assert value == "The fund invests primarily in common stocks of large U.S. companies."
 
     def test_extract_principal_risks_text_block(self, sample_filing):
-        """Test extracting principal risks text block (HTML stripped)."""
-        context_id = "AsOf2022-11-03_custom_S000014796Member"
+        """Test extracting a single risk text block with risk dimension context."""
+        # The fixture now has multiple RiskTextBlock elements with risk-dimensioned contexts
+        # Test that we can extract individual risk blocks by their specific context
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_RiskLoseMoneyMember"
         value = extract_tag_value(sample_filing, "rr:RiskTextBlock", context_id)
 
         assert isinstance(value, str)
-        # HTML <b> tags should be stripped
+        assert "Risk of Loss" in value
+        assert value == "Risk of Loss. It is important to understand that you can lose money by investing in the fund."
+
+        # Test another risk dimension
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_PerformanceRiskMember"
+        value = extract_tag_value(sample_filing, "rr:RiskTextBlock", context_id)
+
+        assert isinstance(value, str)
         assert "Stock Market Volatility" in value
+
+        # Test yet another risk dimension
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_ForeignExposureRiskMember"
+        value = extract_tag_value(sample_filing, "rr:RiskTextBlock", context_id)
+
+        assert isinstance(value, str)
         assert "Foreign Exposure" in value
-        assert value == "Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments."
+
+    def test_extract_all_risk_blocks(self, sample_filing):
+        """Test that all RiskTextBlock elements can be found for a series."""
+        # This demonstrates how the parser collects multiple risk blocks
+        # The actual parser uses soup.find_all to get all risk blocks for concatenation
+        series_id = "S000014796"
+        risk_blocks = []
+
+        for element in sample_filing.find_all('ix:nonnumeric'):
+            tag_name = element.get('name', '')
+            element_context_ref = element.get('contextref', '')
+
+            if 'risktextblock' in tag_name.lower() and series_id in element_context_ref:
+                risk_text = element.get_text().strip()
+                if risk_text:
+                    risk_blocks.append(risk_text)
+
+        # Should find all 3 risk blocks from the fixture
+        assert len(risk_blocks) == 3
+        assert any("Risk of Loss" in block for block in risk_blocks)
+        assert any("Stock Market Volatility" in block for block in risk_blocks)
+        assert any("Foreign Exposure" in block for block in risk_blocks)
 
     def test_extract_missing_tag(self, sample_filing):
         """Test extracting non-existent tag returns None."""
@@ -510,12 +546,18 @@ class TestIntegrationProcessCikProspectus:
         session.refresh(etf_i)
         assert etf_a.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_a.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
-        assert etf_a.principal_risks == 'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
+        # Verify all three risk blocks are concatenated with double newlines
+        expected_risks = (
+            'Risk of Loss. It is important to understand that you can lose money by investing in the fund.\n\n'
+            'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments.\n\n'
+            'Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
+        )
+        assert etf_a.principal_risks == expected_risks
         assert etf_a.filing_url == 'https://www.sec.gov/test/filing.htm'
         # Both classes share the same series-level text (both have series_id S000014796)
         assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
-        assert etf_i.principal_risks == 'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
+        assert etf_i.principal_risks == expected_risks
 
     def test_process_cik_multi_filing(self, session, sample_filing_path):
         """Test processing multiple filings - verifies loop can handle multiple files."""
@@ -827,13 +869,20 @@ class TestOEFNamespace:
         assert value == "The fund seeks long-term capital growth."
 
     def test_extract_oef_principal_risks_text(self, sample_filing_oef):
-        """Test extracting principal risks text with oef: prefix."""
-        context_id = "AsOf2022-11-03_custom_S000014796Member"
+        """Test extracting principal risks text with oef: prefix and risk dimensions."""
+        # Test individual risk blocks with risk-dimensioned contexts
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_RiskLoseMoneyMember"
+        value = extract_tag_value(sample_filing_oef, "oef:RiskTextBlock", context_id)
+
+        assert isinstance(value, str)
+        assert "Risk of Loss" in value
+
+        # Test another risk dimension
+        context_id = "AsOf2022-11-03_custom_S000014796Member_custom_PerformanceRiskMember"
         value = extract_tag_value(sample_filing_oef, "oef:RiskTextBlock", context_id)
 
         assert isinstance(value, str)
         assert "Stock Market Volatility" in value
-        assert "Foreign Exposure" in value
 
     def test_process_cik_oef_full_flow(self, session, sample_filing_oef_path):
         """Test full CIK processing flow with OEF namespace."""
@@ -905,10 +954,16 @@ class TestOEFNamespace:
         session.refresh(etf_i)
         assert etf_a.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_a.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
-        assert etf_a.principal_risks == 'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
+        # Verify all three risk blocks are concatenated with double newlines
+        expected_risks = (
+            'Risk of Loss. It is important to understand that you can lose money by investing in the fund.\n\n'
+            'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments.\n\n'
+            'Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
+        )
+        assert etf_a.principal_risks == expected_risks
         assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
         assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
-        assert etf_i.principal_risks == 'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments. Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
+        assert etf_i.principal_risks == expected_risks
 
 
 class TestProspectusProcessingLog:
@@ -1015,3 +1070,266 @@ class TestProspectusProcessingLog:
         stmt = select(FeeExpense).where(FeeExpense.etf_id == etf.id)
         fee_expense = session.execute(stmt).scalar_one()
         assert fee_expense.filing_date == date(2022, 11, 3)
+
+
+class TestFeeExpenseNetFallback:
+    """Tests for total_expense_net fallback logic."""
+
+    def test_net_expense_fallback_no_waiver(self, session):
+        """Test that total_expense_net = total_expense_gross when NetExpensesOverAssets tag is missing and no fee_waiver."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF record
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTFALLBACK',
+            fund_name='Test Fallback Fund',
+            issuer_name='Test Issuer',
+            series_id='S000099999',
+            class_id='C000099999',
+        )
+        session.add(etf)
+        session.commit()
+
+        # HTML with ExpensesOverAssets but NO NetExpensesOverAssets tag and no fee waiver
+        html_no_net = """
+        <html>
+        <ix:resources>
+            <xbrli:context id="AsOf2022-11-03">
+                <xbrli:entity>
+                    <xbrli:identifier>0001314612</xbrli:identifier>
+                </xbrli:entity>
+            </xbrli:context>
+            <xbrli:context id="AsOf2022-11-03_custom_S000099999Member_custom_C000099999Member">
+                <xbrli:entity>
+                    <xbrli:identifier>0001314612</xbrli:identifier>
+                    <xbrli:segment>
+                        <xbrldi:explicitmember dimension="dei:LegalEntityAxis">rr:S000099999Member</xbrldi:explicitmember>
+                        <xbrldi:explicitmember dimension="rr:ProspectusShareClassAxis">rr:C000099999Member</xbrldi:explicitmember>
+                    </xbrli:segment>
+                </xbrli:entity>
+            </xbrli:context>
+        </ix:resources>
+        <body>
+            <ix:nonfraction name="dei:DocumentPeriodEndDate" contextref="AsOf2022-11-03">2022-11-03</ix:nonfraction>
+            <ix:nonfraction name="rr:ManagementFeesOverAssets" contextref="AsOf2022-11-03_custom_S000099999Member_custom_C000099999Member" scale="-2">0.50</ix:nonfraction>
+            <ix:nonfraction name="rr:ExpensesOverAssets" contextref="AsOf2022-11-03_custom_S000099999Member_custom_C000099999Member" scale="-2">0.75</ix:nonfraction>
+        </body>
+        </html>
+        """
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_no_net
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Verify total_expense_net was set to total_expense_gross (0.0075)
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.total_expense_gross == pytest.approx(Decimal('0.0075'))
+        assert fee.total_expense_net == pytest.approx(Decimal('0.0075'))  # Fallback: net = gross
+        assert fee.fee_waiver is None
+
+    def test_net_expense_fallback_with_waiver(self, session):
+        """Test that total_expense_net = total_expense_gross - fee_waiver when NetExpensesOverAssets tag is missing."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF record
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTWAIVER',
+            fund_name='Test Waiver Fund',
+            issuer_name='Test Issuer',
+            series_id='S000099998',
+            class_id='C000099998',
+        )
+        session.add(etf)
+        session.commit()
+
+        # HTML with ExpensesOverAssets, FeeWaiverOrReimbursementOverAssets, but NO NetExpensesOverAssets tag
+        html_with_waiver = """
+        <html>
+        <ix:resources>
+            <xbrli:context id="AsOf2022-11-03">
+                <xbrli:entity>
+                    <xbrli:identifier>0001314612</xbrli:identifier>
+                </xbrli:entity>
+            </xbrli:context>
+            <xbrli:context id="AsOf2022-11-03_custom_S000099998Member_custom_C000099998Member">
+                <xbrli:entity>
+                    <xbrli:identifier>0001314612</xbrli:identifier>
+                    <xbrli:segment>
+                        <xbrldi:explicitmember dimension="dei:LegalEntityAxis">rr:S000099998Member</xbrldi:explicitmember>
+                        <xbrldi:explicitmember dimension="rr:ProspectusShareClassAxis">rr:C000099998Member</xbrldi:explicitmember>
+                    </xbrli:segment>
+                </xbrli:entity>
+            </xbrli:context>
+        </ix:resources>
+        <body>
+            <ix:nonfraction name="dei:DocumentPeriodEndDate" contextref="AsOf2022-11-03">2022-11-03</ix:nonfraction>
+            <ix:nonfraction name="rr:ManagementFeesOverAssets" contextref="AsOf2022-11-03_custom_S000099998Member_custom_C000099998Member" scale="-2">0.60</ix:nonfraction>
+            <ix:nonfraction name="rr:ExpensesOverAssets" contextref="AsOf2022-11-03_custom_S000099998Member_custom_C000099998Member" scale="-2">0.80</ix:nonfraction>
+            <ix:nonfraction name="rr:FeeWaiverOrReimbursementOverAssets" contextref="AsOf2022-11-03_custom_S000099998Member_custom_C000099998Member" scale="-2" sign="-">0.10</ix:nonfraction>
+        </body>
+        </html>
+        """
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_with_waiver
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Verify total_expense_net = gross - waiver (0.0080 - 0.0010 = 0.0070)
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.total_expense_gross == pytest.approx(Decimal('0.0080'))
+        assert fee.fee_waiver == pytest.approx(Decimal('0.0010'))
+        assert fee.total_expense_net == pytest.approx(Decimal('0.0070'))  # Fallback: net = gross - waiver
+
+    def test_net_expense_preserved_when_present(self, session, sample_filing_path):
+        """Test that total_expense_net is preserved when NetExpensesOverAssets tag exists."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF record matching the fixture (which has NetExpensesOverAssets)
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A',
+            issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+
+        # Read fixture HTML (contains NetExpensesOverAssets tag)
+        with open(sample_filing_path) as f:
+            html_content = f.read()
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Verify total_expense_net preserved from tag (not recalculated)
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.total_expense_gross == pytest.approx(Decimal('0.0125'))
+        assert fee.fee_waiver == pytest.approx(Decimal('0.0010'))
+        assert fee.total_expense_net == pytest.approx(Decimal('0.0115'))  # From tag, not gross - waiver
+
+    def test_net_expense_fallback_zero_waiver(self, session):
+        """Test that total_expense_net = total_expense_gross when fee_waiver is zero."""
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        # Create ETF record
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTZERO',
+            fund_name='Test Zero Waiver Fund',
+            issuer_name='Test Issuer',
+            series_id='S000099997',
+            class_id='C000099997',
+        )
+        session.add(etf)
+        session.commit()
+
+        # HTML with ExpensesOverAssets and zero fee_waiver (zerodash)
+        html_zero_waiver = """
+        <html>
+        <ix:resources>
+            <xbrli:context id="AsOf2022-11-03">
+                <xbrli:entity>
+                    <xbrli:identifier>0001314612</xbrli:identifier>
+                </xbrli:entity>
+            </xbrli:context>
+            <xbrli:context id="AsOf2022-11-03_custom_S000099997Member_custom_C000099997Member">
+                <xbrli:entity>
+                    <xbrli:identifier>0001314612</xbrli:identifier>
+                    <xbrli:segment>
+                        <xbrldi:explicitmember dimension="dei:LegalEntityAxis">rr:S000099997Member</xbrldi:explicitmember>
+                        <xbrldi:explicitmember dimension="rr:ProspectusShareClassAxis">rr:C000099997Member</xbrldi:explicitmember>
+                    </xbrli:segment>
+                </xbrli:entity>
+            </xbrli:context>
+        </ix:resources>
+        <body>
+            <ix:nonfraction name="dei:DocumentPeriodEndDate" contextref="AsOf2022-11-03">2022-11-03</ix:nonfraction>
+            <ix:nonfraction name="rr:ManagementFeesOverAssets" contextref="AsOf2022-11-03_custom_S000099997Member_custom_C000099997Member" scale="-2">0.65</ix:nonfraction>
+            <ix:nonfraction name="rr:ExpensesOverAssets" contextref="AsOf2022-11-03_custom_S000099997Member_custom_C000099997Member" scale="-2">0.85</ix:nonfraction>
+            <ix:nonfraction name="rr:FeeWaiverOrReimbursementOverAssets" contextref="AsOf2022-11-03_custom_S000099997Member_custom_C000099997Member" format="ixt:zerodash" scale="-2">—</ix:nonfraction>
+        </body>
+        </html>
+        """
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_zero_waiver
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        # Verify total_expense_net = gross when waiver is zero
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.total_expense_gross == pytest.approx(Decimal('0.0085'))
+        assert fee.fee_waiver == Decimal('0')  # zerodash
+        assert fee.total_expense_net == pytest.approx(Decimal('0.0085'))  # Fallback: net = gross (waiver is 0)

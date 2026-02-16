@@ -482,6 +482,15 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                     'fee_waiver_expiration_date': parse_date_tag(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssetsDateOfTermination', context_id),
                 }
 
+                # Fallback logic: if NetExpensesOverAssets tag is missing, calculate net from gross
+                if fee_data['total_expense_net'] is None and fee_data['total_expense_gross'] is not None:
+                    if fee_data['fee_waiver'] is None or fee_data['fee_waiver'] == 0:
+                        # No fee waiver: net = gross
+                        fee_data['total_expense_net'] = fee_data['total_expense_gross']
+                    else:
+                        # Fee waiver exists: net = gross - waiver
+                        fee_data['total_expense_net'] = fee_data['total_expense_gross'] - fee_data['fee_waiver']
+
                 # Upsert FeeExpense (if any data present)
                 if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date', 'filing_date')):
                     stmt = select(FeeExpense).where(
@@ -523,7 +532,34 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                     # Extract objective and strategy text
                     objective_text = extract_tag_value(tag_index, f'{tag_prefix}:ObjectivePrimaryTextBlock', context_id)
                     strategy_text = extract_tag_value(tag_index, f'{tag_prefix}:StrategyNarrativeTextBlock', context_id)
-                    principal_risks = extract_tag_value(tag_index, f'{tag_prefix}:RiskTextBlock', context_id)
+
+                    # Extract principal risks - use direct search to capture ALL RiskTextBlock elements
+                    # The RR taxonomy uses multiple RiskTextBlock elements per series, each dimensioned
+                    # by a RiskAxis member (e.g., RiskLoseMoneyMember, PerformanceRiskMember, etc.)
+                    principal_risks = None
+                    risk_blocks = []
+
+                    # Search for all ix:nonnumeric elements with name containing RiskTextBlock
+                    for element in soup.find_all('ix:nonnumeric'):
+                        tag_name = element.get('name', '')
+                        element_context_ref = element.get('contextref', '')
+
+                        # Match RiskTextBlock tags (case-insensitive) for this series
+                        if 'risktextblock' in tag_name.lower() and series_id in element_context_ref:
+                            # Extract and strip HTML from the risk block
+                            escape_attr = element.get('escape')
+                            if escape_attr == 'true':
+                                inner_html = element.decode_contents()
+                                risk_text = strip_html_to_text(inner_html)
+                            else:
+                                risk_text = element.get_text().strip()
+
+                            if risk_text:
+                                risk_blocks.append(risk_text)
+
+                    # Concatenate all risk blocks with double newlines
+                    if risk_blocks:
+                        principal_risks = '\n\n'.join(risk_blocks)
 
                     # Update all ETFs with this series_id (multiple share classes can belong to same series)
                     for etf in etf_list:
@@ -537,7 +573,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
 
                         if principal_risks:
                             etf.principal_risks = principal_risks
-                            logger.debug(f"CIK {cik}: Updated principal_risks for {etf.ticker}")
+                            logger.debug(f"CIK {cik}: Updated principal_risks for {etf.ticker} ({len(risk_blocks)} risk blocks)")
 
             # Update filing_url for ETFs processed in this filing
             if filing_url:
