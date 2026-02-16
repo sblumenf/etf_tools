@@ -440,32 +440,18 @@ def _extract_monthly_returns(filing, etf_id: int, report_date, filing_date) -> l
         root = ET.fromstring(xml_content)
 
         # Find monthlyTotReturns element
-        # Path: /edgarSubmission/formData/fundinfo/returnInfo/monthlyTotReturns
-        ns = {'edgar': 'http://www.sec.gov/edgar/nport'}
+        # Path: /edgarSubmission/formData/fundInfo/returnInfo/monthlyTotReturns
+        ns = {'nport': 'http://www.sec.gov/edgar/nport'}
 
-        # Try without namespace first
-        monthly_tot_returns = root.find('.//monthlyTotReturns')
-
-        # If not found, try with namespace
-        if monthly_tot_returns is None:
-            monthly_tot_returns = root.find('.//edgar:monthlyTotReturns', ns)
-
-        # If still not found, try different path variations
-        if monthly_tot_returns is None:
-            # Try full path
-            for form_data in root.iter('formData'):
-                for fund_info in form_data.iter('fundinfo'):
-                    for return_info in fund_info.iter('returnInfo'):
-                        monthly_tot_returns = return_info.find('monthlyTotReturns')
-                        if monthly_tot_returns is not None:
-                            break
+        # Find with namespace
+        monthly_tot_returns = root.find('.//nport:monthlyTotReturns', ns)
 
         if monthly_tot_returns is None:
             logger.debug(f"No monthlyTotReturns element found in NPORT XML for etf_id={etf_id}")
             return monthly_returns
 
         # Extract each monthlyTotReturn child element
-        for monthly_return_elem in monthly_tot_returns.findall('monthlyTotReturn'):
+        for monthly_return_elem in monthly_tot_returns.findall('nport:monthlyTotReturn', ns):
             # Extract attributes
             rtn1 = monthly_return_elem.get('rtn1')
             rtn2 = monthly_return_elem.get('rtn2')
@@ -531,85 +517,71 @@ def _extract_monthly_flows(filing, etf_id: int, report_date, filing_date) -> lis
         # Parse XML
         root = ET.fromstring(xml_content)
 
-        # Find monthlyTotReturns element (same location as returns)
-        # Path: /edgarSubmission/formData/fundinfo/returnInfo/monthlyTotReturns
-        ns = {'edgar': 'http://www.sec.gov/edgar/nport'}
+        # Find fundInfo element which contains monthly flow data
+        # Path: /edgarSubmission/formData/fundInfo
+        ns = {'nport': 'http://www.sec.gov/edgar/nport'}
 
-        # Try without namespace first
-        monthly_tot_returns = root.find('.//monthlyTotReturns')
+        # Find fundInfo element
+        fund_info = root.find('.//nport:fundInfo', ns)
 
-        # If not found, try with namespace
-        if monthly_tot_returns is None:
-            monthly_tot_returns = root.find('.//edgar:monthlyTotReturns', ns)
-
-        # If still not found, try different path variations
-        if monthly_tot_returns is None:
-            # Try full path
-            for form_data in root.iter('formData'):
-                for fund_info in form_data.iter('fundinfo'):
-                    for return_info in fund_info.iter('returnInfo'):
-                        monthly_tot_returns = return_info.find('monthlyTotReturns')
-                        if monthly_tot_returns is not None:
-                            break
-
-        if monthly_tot_returns is None:
-            logger.debug(f"No monthlyTotReturns element found in NPORT XML for etf_id={etf_id}")
+        if fund_info is None:
+            logger.debug(f"No fundInfo element found in NPORT XML for etf_id={etf_id}")
             return monthly_flows
 
-        # Extract each monthlyTotReturn child element
-        for monthly_return_elem in monthly_tot_returns.findall('monthlyTotReturn'):
-            # Extract flow attributes
-            sales_amt_1 = monthly_return_elem.get('salesAmt1')
-            redemption_amt_1 = monthly_return_elem.get('redemptionAmt1')
-            reinvest_amt_1 = monthly_return_elem.get('reinvestAmt1')
-            sales_amt_2 = monthly_return_elem.get('salesAmt2')
-            redemption_amt_2 = monthly_return_elem.get('redemptionAmt2')
-            reinvest_amt_2 = monthly_return_elem.get('reinvestAmt2')
-            sales_amt_3 = monthly_return_elem.get('salesAmt3')
-            redemption_amt_3 = monthly_return_elem.get('redemptionAmt3')
-            reinvest_amt_3 = monthly_return_elem.get('reinvestAmt3')
-            class_id = monthly_return_elem.get('classId')
+        # Extract flow data from three separate elements: mon1Flow, mon2Flow, mon3Flow
+        mon1_flow = fund_info.find('nport:mon1Flow', ns)
+        mon2_flow = fund_info.find('nport:mon2Flow', ns)
+        mon3_flow = fund_info.find('nport:mon3Flow', ns)
 
-            # Convert "N/A" to None, otherwise convert to Decimal
-            def parse_flow(val):
-                if val is None or val.strip().upper() == "N/A":
-                    return None
-                try:
-                    return Decimal(val)
-                except (ValueError, Exception) as e:
-                    logger.warning(f"Could not parse flow value '{val}': {e}")
-                    return None
+        # If no flow elements found, return empty list
+        if mon1_flow is None and mon2_flow is None and mon3_flow is None:
+            logger.debug(f"No monthly flow elements found in NPORT XML for etf_id={etf_id}")
+            return monthly_flows
 
-            month_1_sales = parse_flow(sales_amt_1)
-            month_1_redemptions = parse_flow(redemption_amt_1)
-            month_1_reinvestments = parse_flow(reinvest_amt_1)
-            month_2_sales = parse_flow(sales_amt_2)
-            month_2_redemptions = parse_flow(redemption_amt_2)
-            month_2_reinvestments = parse_flow(reinvest_amt_2)
-            month_3_sales = parse_flow(sales_amt_3)
-            month_3_redemptions = parse_flow(redemption_amt_3)
-            month_3_reinvestments = parse_flow(reinvest_amt_3)
+        # Convert "N/A" to None, otherwise convert to Decimal
+        def parse_flow(val):
+            if val is None or val.strip().upper() == "N/A":
+                return None
+            try:
+                return Decimal(val)
+            except (ValueError, Exception) as e:
+                logger.warning(f"Could not parse flow value '{val}': {e}")
+                return None
 
-            # Create NPORTMonthlyFlow object
-            monthly_flow = NPORTMonthlyFlow(
-                etf_id=etf_id,
-                report_date=report_date,
-                filing_date=filing_date,
-                class_id=class_id if class_id else None,
-                month_1_sales=month_1_sales,
-                month_1_redemptions=month_1_redemptions,
-                month_1_reinvestments=month_1_reinvestments,
-                month_2_sales=month_2_sales,
-                month_2_redemptions=month_2_redemptions,
-                month_2_reinvestments=month_2_reinvestments,
-                month_3_sales=month_3_sales,
-                month_3_redemptions=month_3_redemptions,
-                month_3_reinvestments=month_3_reinvestments,
-            )
-            monthly_flows.append(monthly_flow)
+        # Extract flow data from attributes
+        month_1_sales = parse_flow(mon1_flow.get('sales')) if mon1_flow is not None else None
+        month_1_redemptions = parse_flow(mon1_flow.get('redemption')) if mon1_flow is not None else None
+        month_1_reinvestments = parse_flow(mon1_flow.get('reinvestment')) if mon1_flow is not None else None
+
+        month_2_sales = parse_flow(mon2_flow.get('sales')) if mon2_flow is not None else None
+        month_2_redemptions = parse_flow(mon2_flow.get('redemption')) if mon2_flow is not None else None
+        month_2_reinvestments = parse_flow(mon2_flow.get('reinvestment')) if mon2_flow is not None else None
+
+        month_3_sales = parse_flow(mon3_flow.get('sales')) if mon3_flow is not None else None
+        month_3_redemptions = parse_flow(mon3_flow.get('redemption')) if mon3_flow is not None else None
+        month_3_reinvestments = parse_flow(mon3_flow.get('reinvestment')) if mon3_flow is not None else None
+
+        # Create single NPORTMonthlyFlow object with data from all three months
+        # Monthly flows are fund-level per NPORT XSD (mon1Flow/mon2Flow/mon3Flow), not class-level
+        monthly_flow = NPORTMonthlyFlow(
+            etf_id=etf_id,
+            report_date=report_date,
+            filing_date=filing_date,
+            class_id=None,
+            month_1_sales=month_1_sales,
+            month_1_redemptions=month_1_redemptions,
+            month_1_reinvestments=month_1_reinvestments,
+            month_2_sales=month_2_sales,
+            month_2_redemptions=month_2_redemptions,
+            month_2_reinvestments=month_2_reinvestments,
+            month_3_sales=month_3_sales,
+            month_3_redemptions=month_3_redemptions,
+            month_3_reinvestments=month_3_reinvestments,
+        )
+        monthly_flows.append(monthly_flow)
 
         if monthly_flows:
-            logger.info(f"Extracted {len(monthly_flows)} monthly flow entries for etf_id={etf_id}")
+            logger.info(f"Extracted {len(monthly_flows)} monthly flow entry for etf_id={etf_id}")
 
     except Exception as e:
         logger.warning(f"Failed to extract monthly flows for etf_id={etf_id}: {e}")
@@ -643,24 +615,18 @@ def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -
 
         # Find curMetrics element
         # Path: /edgarSubmission/formData/fundinfo/curMetrics
-        cur_metrics = root.find('.//curMetrics')
+        ns = {'nport': 'http://www.sec.gov/edgar/nport'}
 
-        if cur_metrics is None:
-            # Try full path
-            for form_data in root.iter('formData'):
-                for fund_info in form_data.iter('fundinfo'):
-                    cur_metrics = fund_info.find('curMetrics')
-                    if cur_metrics is not None:
-                        break
+        cur_metrics = root.find('.//nport:curMetrics', ns)
 
         if cur_metrics is None:
             logger.debug(f"No curMetrics element found in NPORT XML for etf_id={etf_id}")
             return interest_rate_risks
 
         # Extract each curMetric child element
-        for cur_metric_elem in cur_metrics.findall('curMetric'):
+        for cur_metric_elem in cur_metrics.findall('nport:curMetric', ns):
             # Extract currency code
-            cur_cd_elem = cur_metric_elem.find('curCd')
+            cur_cd_elem = cur_metric_elem.find('nport:curCd', ns)
             if cur_cd_elem is None or not cur_cd_elem.text:
                 logger.warning(f"curMetric missing currency code for etf_id={etf_id}, skipping")
                 continue
@@ -668,7 +634,7 @@ def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -
             currency_code = cur_cd_elem.text.strip()
 
             # Extract DV01 risk metrics
-            dv01_elem = cur_metric_elem.find('intrstRtRiskdv01')
+            dv01_elem = cur_metric_elem.find('nport:intrstRtRiskdv01', ns)
             dv01_3m = None
             dv01_1y = None
             dv01_5y = None
@@ -683,7 +649,7 @@ def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -
                 dv01_30y = _parse_decimal(dv01_elem.get('period30Yr'))
 
             # Extract DV100 risk metrics
-            dv100_elem = cur_metric_elem.find('intrstRtRiskdv100')
+            dv100_elem = cur_metric_elem.find('nport:intrstRtRiskdv100', ns)
             dv100_3m = None
             dv100_1y = None
             dv100_5y = None
@@ -748,18 +714,11 @@ def _extract_credit_spread_risk(filing, etf_id: int, report_date, filing_date) -
         root = ET.fromstring(xml_content)
 
         # Find credit spread risk elements
-        # Path: /edgarSubmission/formData/fundinfo/creditSprdRiskInvstGrade and creditSprdRiskNonInvstGrade
-        invst_grade_elem = root.find('.//creditSprdRiskInvstGrade')
-        non_invst_grade_elem = root.find('.//creditSprdRiskNonInvstGrade')
+        # Path: /edgarSubmission/formData/fundInfo/creditSprdRiskInvstGrade and creditSprdRiskNonInvstGrade
+        ns = {'nport': 'http://www.sec.gov/edgar/nport'}
 
-        # Try full path if not found
-        if invst_grade_elem is None or non_invst_grade_elem is None:
-            for form_data in root.iter('formData'):
-                for fund_info in form_data.iter('fundinfo'):
-                    if invst_grade_elem is None:
-                        invst_grade_elem = fund_info.find('creditSprdRiskInvstGrade')
-                    if non_invst_grade_elem is None:
-                        non_invst_grade_elem = fund_info.find('creditSprdRiskNonInvstGrade')
+        invst_grade_elem = root.find('.//nport:creditSprdRiskInvstGrade', ns)
+        non_invst_grade_elem = root.find('.//nport:creditSprdRiskNonInvstGrade', ns)
 
         # If neither element is found, return None
         if invst_grade_elem is None and non_invst_grade_elem is None:

@@ -2281,15 +2281,15 @@ def test_monthly_returns_single_class(session, sample_etfs, mock_nport_db):
     from etf_pipeline.parsers.nport import parse_nport
 
     xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-    <edgarSubmission>
+    <edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
         <formData>
-            <fundinfo>
+            <fundInfo>
                 <returnInfo>
                     <monthlyTotReturns>
                         <monthlyTotReturn rtn1="2.50" rtn2="1.75" rtn3="3.20" />
                     </monthlyTotReturns>
                 </returnInfo>
-            </fundinfo>
+            </fundInfo>
         </formData>
     </edgarSubmission>"""
 
@@ -2366,16 +2366,16 @@ def test_monthly_returns_multiple_classes(session, sample_etfs, mock_nport_db):
     from etf_pipeline.parsers.nport import parse_nport
 
     xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-    <edgarSubmission>
+    <edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
         <formData>
-            <fundinfo>
+            <fundInfo>
                 <returnInfo>
                     <monthlyTotReturns>
                         <monthlyTotReturn rtn1="2.50" rtn2="1.75" rtn3="3.20" classId="C000001" />
                         <monthlyTotReturn rtn1="2.45" rtn2="1.70" rtn3="3.15" classId="C000002" />
                     </monthlyTotReturns>
                 </returnInfo>
-            </fundinfo>
+            </fundInfo>
         </formData>
     </edgarSubmission>"""
 
@@ -2455,15 +2455,15 @@ def test_monthly_returns_with_na_values(session, sample_etfs, mock_nport_db):
     from etf_pipeline.parsers.nport import parse_nport
 
     xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-    <edgarSubmission>
+    <edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
         <formData>
-            <fundinfo>
+            <fundInfo>
                 <returnInfo>
                     <monthlyTotReturns>
                         <monthlyTotReturn rtn1="2.50" rtn2="N/A" rtn3="3.20" />
                     </monthlyTotReturns>
                 </returnInfo>
-            </fundinfo>
+            </fundInfo>
         </formData>
     </edgarSubmission>"""
 
@@ -2536,17 +2536,13 @@ def test_monthly_flows_single_class(session, sample_etfs, mock_nport_db):
     from etf_pipeline.parsers.nport import parse_nport
 
     xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-    <edgarSubmission>
+    <edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
         <formData>
-            <fundinfo>
-                <returnInfo>
-                    <monthlyTotReturns>
-                        <monthlyTotReturn salesAmt1="1000000.50" redemptionAmt1="500000.25" reinvestAmt1="100000.00"
-                                          salesAmt2="1200000.75" redemptionAmt2="600000.50" reinvestAmt2="120000.25"
-                                          salesAmt3="1100000.00" redemptionAmt3="550000.00" reinvestAmt3="110000.00" />
-                    </monthlyTotReturns>
-                </returnInfo>
-            </fundinfo>
+            <fundInfo>
+                <mon1Flow sales="1000000.50" redemption="500000.25" reinvestment="100000.00" />
+                <mon2Flow sales="1200000.75" redemption="600000.50" reinvestment="120000.25" />
+                <mon3Flow sales="1100000.00" redemption="550000.00" reinvestment="110000.00" />
+            </fundInfo>
         </formData>
     </edgarSubmission>"""
 
@@ -2629,22 +2625,13 @@ def test_monthly_flows_multiple_classes(session, sample_etfs, mock_nport_db):
     from etf_pipeline.parsers.nport import parse_nport
 
     xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-    <edgarSubmission>
+    <edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
         <formData>
-            <fundinfo>
-                <returnInfo>
-                    <monthlyTotReturns>
-                        <monthlyTotReturn salesAmt1="1000000.50" redemptionAmt1="500000.25" reinvestAmt1="100000.00"
-                                          salesAmt2="1200000.75" redemptionAmt2="600000.50" reinvestAmt2="120000.25"
-                                          salesAmt3="1100000.00" redemptionAmt3="550000.00" reinvestAmt3="110000.00"
-                                          classId="C000001" />
-                        <monthlyTotReturn salesAmt1="900000.00" redemptionAmt1="450000.00" reinvestAmt1="90000.00"
-                                          salesAmt2="1100000.00" redemptionAmt2="550000.00" reinvestAmt2="110000.00"
-                                          salesAmt3="1000000.00" redemptionAmt3="500000.00" reinvestAmt3="100000.00"
-                                          classId="C000002" />
-                    </monthlyTotReturns>
-                </returnInfo>
-            </fundinfo>
+            <fundInfo>
+                <mon1Flow sales="1000000.50" redemption="500000.25" reinvestment="100000.00" />
+                <mon2Flow sales="1200000.75" redemption="600000.50" reinvestment="120000.25" />
+                <mon3Flow sales="1100000.00" redemption="550000.00" reinvestment="110000.00" />
+            </fundInfo>
         </formData>
     </edgarSubmission>"""
 
@@ -2701,33 +2688,22 @@ def test_monthly_flows_multiple_classes(session, sample_etfs, mock_nport_db):
         ):
             parse_nport(cik="36405")
 
-    stmt = select(NPORTMonthlyFlow).where(NPORTMonthlyFlow.etf_id == voo.id).order_by(NPORTMonthlyFlow.class_id)
+    stmt = select(NPORTMonthlyFlow).where(NPORTMonthlyFlow.etf_id == voo.id)
     monthly_flows = session.execute(stmt).scalars().all()
 
-    assert len(monthly_flows) == 2
-    flow1 = monthly_flows[0]
-    assert flow1.class_id == "C000001"
-    assert flow1.month_1_sales == Decimal("1000000.50")
-    assert flow1.month_1_redemptions == Decimal("500000.25")
-    assert flow1.month_1_reinvestments == Decimal("100000.00")
-    assert flow1.month_2_sales == Decimal("1200000.75")
-    assert flow1.month_2_redemptions == Decimal("600000.50")
-    assert flow1.month_2_reinvestments == Decimal("120000.25")
-    assert flow1.month_3_sales == Decimal("1100000.00")
-    assert flow1.month_3_redemptions == Decimal("550000.00")
-    assert flow1.month_3_reinvestments == Decimal("110000.00")
-
-    flow2 = monthly_flows[1]
-    assert flow2.class_id == "C000002"
-    assert flow2.month_1_sales == Decimal("900000.00")
-    assert flow2.month_1_redemptions == Decimal("450000.00")
-    assert flow2.month_1_reinvestments == Decimal("90000.00")
-    assert flow2.month_2_sales == Decimal("1100000.00")
-    assert flow2.month_2_redemptions == Decimal("550000.00")
-    assert flow2.month_2_reinvestments == Decimal("110000.00")
-    assert flow2.month_3_sales == Decimal("1000000.00")
-    assert flow2.month_3_redemptions == Decimal("500000.00")
-    assert flow2.month_3_reinvestments == Decimal("100000.00")
+    # Monthly flows are fund-level, not class-level, so only 1 entry expected
+    assert len(monthly_flows) == 1
+    flow = monthly_flows[0]
+    assert flow.class_id is None
+    assert flow.month_1_sales == Decimal("1000000.50")
+    assert flow.month_1_redemptions == Decimal("500000.25")
+    assert flow.month_1_reinvestments == Decimal("100000.00")
+    assert flow.month_2_sales == Decimal("1200000.75")
+    assert flow.month_2_redemptions == Decimal("600000.50")
+    assert flow.month_2_reinvestments == Decimal("120000.25")
+    assert flow.month_3_sales == Decimal("1100000.00")
+    assert flow.month_3_redemptions == Decimal("550000.00")
+    assert flow.month_3_reinvestments == Decimal("110000.00")
 
 
 def test_monthly_flows_with_na_values(session, sample_etfs, mock_nport_db):
@@ -2736,17 +2712,13 @@ def test_monthly_flows_with_na_values(session, sample_etfs, mock_nport_db):
     from etf_pipeline.parsers.nport import parse_nport
 
     xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-    <edgarSubmission>
+    <edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
         <formData>
-            <fundinfo>
-                <returnInfo>
-                    <monthlyTotReturns>
-                        <monthlyTotReturn salesAmt1="1000000.50" redemptionAmt1="N/A" reinvestAmt1="100000.00"
-                                          salesAmt2="N/A" redemptionAmt2="600000.50" reinvestAmt2="N/A"
-                                          salesAmt3="1100000.00" redemptionAmt3="550000.00" reinvestAmt3="110000.00" />
-                    </monthlyTotReturns>
-                </returnInfo>
-            </fundinfo>
+            <fundInfo>
+                <mon1Flow sales="1000000.50" redemption="N/A" reinvestment="100000.00" />
+                <mon2Flow sales="N/A" redemption="600000.50" reinvestment="N/A" />
+                <mon3Flow sales="1100000.00" redemption="550000.00" reinvestment="110000.00" />
+            </fundInfo>
         </formData>
     </edgarSubmission>"""
 
@@ -2830,9 +2802,9 @@ def test_parse_nport_extracts_interest_rate_risk(session, engine, sample_etfs, m
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
         filing.xml = Mock(return_value="""<?xml version="1.0"?>
-<edgarSubmission>
+<edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
   <formData>
-    <fundinfo>
+    <fundInfo>
       <curMetrics>
         <curMetric>
           <curCd>USD</curCd>
@@ -2845,7 +2817,7 @@ def test_parse_nport_extracts_interest_rate_risk(session, engine, sample_etfs, m
           <intrstRtRiskdv100 period3Mon="50000.00" period1Yr="125000.00" period5Yr="250000.00" period10Yr="375000.00" period30Yr="500000.00"/>
         </curMetric>
       </curMetrics>
-    </fundinfo>
+    </fundInfo>
   </formData>
 </edgarSubmission>""")
         filings = Mock()
@@ -2917,11 +2889,11 @@ def test_parse_nport_handles_missing_interest_rate_risk(session, engine, sample_
         filing.filing_date = date(2025, 1, 15)
         filing.accession_number = "0000000000-25-000000"
         filing.xml = Mock(return_value="""<?xml version="1.0"?>
-<edgarSubmission>
+<edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
   <formData>
-    <fundinfo>
+    <fundInfo>
       <totalAssets>10000000.00</totalAssets>
-    </fundinfo>
+    </fundInfo>
   </formData>
 </edgarSubmission>""")
         filings = Mock()
