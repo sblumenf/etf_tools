@@ -12,7 +12,6 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
 from bs4 import BeautifulSoup
-from dateutil import parser as dateutil_parser
 
 logger = logging.getLogger(__name__)
 
@@ -329,7 +328,6 @@ def parse_date_tag(
     return None
 
 
-
 def _process_cik_prospectus(session, cik: str) -> bool:
     """Process 485BPOS filing for a single CIK.
 
@@ -408,9 +406,13 @@ def _process_cik_prospectus(session, cik: str) -> bool:
             filing_url = filing.document.url if hasattr(filing, 'document') else None
 
             # Get HTML content
-            html = filing.html()
-            if not html:
-                logger.warning(f"CIK {cik}: Filing {filing_idx} failed to fetch HTML content, skipping")
+            try:
+                html = filing.html()
+                if not html:
+                    logger.warning(f"CIK {cik}: Filing {filing_idx} returned empty HTML, skipping")
+                    continue
+            except Exception as e:
+                logger.warning(f"CIK {cik}: Filing {filing_idx} HTML fetch failed: {e}, skipping")
                 continue
 
             # Parse iXBRL

@@ -452,10 +452,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                 consecutive_misses += 1
                 if consecutive_misses >= 2:
                     logger.debug(f"CIK {cik}: No new matches in 2 consecutive filings, stopping early")
-                    try:
-                        del html
-                    except NameError:
-                        pass
+                    del html
                     gc.collect()
                     break
                 continue
@@ -475,11 +472,20 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
 
             logger.info(f"CIK {cik}: Found {len(fh_tables)} Financial Highlights tables in filing {filing_idx}")
 
+            # Collect context and serialized HTML for each table while soup is alive,
+            # then release the large DOM tree before entering the inner parsing loop.
+            table_tuples = []
             for table in fh_tables:
-                try:
-                    # Extract fund name and share class from HTML context
-                    fund_name, class_name = _find_table_context(table)
+                fund_name, class_name = _find_table_context(table)
+                table_tuples.append((fund_name, class_name, str(table)))
 
+            del soup
+            del html
+            del fh_tables
+            gc.collect()
+
+            for fund_name, class_name, table_html_str in table_tuples:
+                try:
                     if not fund_name or not class_name:
                         logger.debug(
                             f"CIK {cik}: Could not extract context from table (fund={fund_name}, class={class_name})"
@@ -527,7 +533,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                     )
 
                     # Parse the table
-                    table_data = parse_financial_highlights_table(str(table))
+                    table_data = parse_financial_highlights_table(table_html_str)
 
                     if not table_data.get('fiscal_year_end'):
                         logger.warning(
@@ -632,25 +638,9 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                 consecutive_misses += 1
                 if consecutive_misses >= 2:
                     logger.debug(f"CIK {cik}: No new matches in 2 consecutive filings, stopping early")
-                    try:
-                        del soup
-                    except NameError:
-                        pass
-                    try:
-                        del html
-                    except NameError:
-                        pass
                     gc.collect()
                     break
 
-            try:
-                del soup
-            except NameError:
-                pass
-            try:
-                del html
-            except NameError:
-                pass
             gc.collect()
 
         # Update processing log after successful processing
