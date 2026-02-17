@@ -1,10 +1,30 @@
-import gc
 import logging
+import multiprocessing
+import queue
+import time
 from datetime import date
 
 import click
 
 logger = logging.getLogger(__name__)
+
+
+def _configure_logging():
+    """Configure logging with external library noise suppressed."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    # Suppress noisy HTTP/cache library loggers — only show warnings and errors
+    for noisy_logger in (
+        "httpx",
+        "httpcore",
+        "httpxthrottlecache",
+        "httpxthrottlecache.controller",
+        "httpxthrottlecache.filecache.transport",
+        "httpxthrottlecache.ratelimiter",
+    ):
+        logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
 
 @click.group()
@@ -28,13 +48,9 @@ def discover():
 @click.option("--limit", type=int, help="Process only the first N CIKs")
 def load_etfs_cmd(cik, limit):
     """Load ETF tickers from etf_tickers.json into the database."""
-    import logging
-
     from etf_pipeline.load_etfs import load_etfs
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    _configure_logging()
 
     load_etfs(cik=cik, limit=limit)
 
@@ -45,13 +61,9 @@ def load_etfs_cmd(cik, limit):
 @click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
 def nport(cik, limit, keep_cache):
     """Parse NPORT-P filings for holdings and derivatives."""
-    import logging
-
     from etf_pipeline.parsers.nport import parse_nport
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    _configure_logging()
 
     parse_nport(cik=cik, limit=limit, clear_cache=not keep_cache)
 
@@ -62,13 +74,9 @@ def nport(cik, limit, keep_cache):
 @click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
 def ncsr(cik, limit, keep_cache):
     """Parse N-CSR filings for performance data."""
-    import logging
-
     from etf_pipeline.parsers.ncsr import parse_ncsr
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    _configure_logging()
 
     parse_ncsr(cik=cik, limit=limit, clear_cache=not keep_cache)
 
@@ -80,12 +88,8 @@ def ncsr(cik, limit, keep_cache):
               help="Keep edgartools HTTP cache after processing (default: clear)")
 def prospectus(cik, limit, keep_cache):
     """Parse 485BPOS filings for fee schedules, shareholder fees, and strategy."""
-    import logging
     from etf_pipeline.parsers.prospectus import parse_prospectus
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    _configure_logging()
     parse_prospectus(cik=cik, limit=limit, clear_cache=not keep_cache)
 
 
@@ -95,13 +99,9 @@ def prospectus(cik, limit, keep_cache):
 @click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
 def flows(cik, limit, keep_cache):
     """Parse 24F-2NT filings for fund flow data."""
-    import logging
-
     from etf_pipeline.parsers.flows import parse_flows
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    _configure_logging()
 
     parse_flows(cik=cik, limit=limit, clear_cache=not keep_cache)
 
@@ -112,13 +112,9 @@ def flows(cik, limit, keep_cache):
 @click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
 def finhigh(cik, limit, keep_cache):
     """Parse N-CSR filings for Financial Highlights data (per-share operating, distributions, ratios)."""
-    import logging
-
     from etf_pipeline.parsers.finhigh import parse_finhigh
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    _configure_logging()
 
     parse_finhigh(cik=cik, limit=limit, clear_cache=not keep_cache)
 
@@ -148,17 +144,22 @@ def get_all_ciks(session, limit):
     return ciks
 
 
-def check_sec_filing_dates(cik: str) -> dict[str, date | None]:
-    """Check SEC for latest filing date per form type using a single API call."""
+def check_sec_filing_dates(cik: str) -> tuple[dict[str, date | None], bool]:
+    """Check SEC for latest filing date per form type using a single API call.
+
+    Returns (result_dict, had_error). If had_error is True, None values
+    in result_dict mean "check failed", not "no filings found".
+    """
     from edgar import Company
     from etf_pipeline.parser_utils import ensure_date
 
     form_types = {"NPORT-P", "N-CSR", "485BPOS", "24F-2NT"}
     result = {ft: None for ft in form_types}
+    had_error = False
 
     try:
         company = Company(cik)
-        filings = company.get_filings()
+        filings = company.get_filings(form=list(form_types))
 
         for filing in filings:
             form = filing.form
@@ -172,8 +173,9 @@ def check_sec_filing_dates(cik: str) -> dict[str, date | None]:
 
     except Exception as e:
         logger.warning("CIK %s: Failed to check SEC filing dates: %s", cik, e)
+        had_error = True
 
-    return result
+    return result, had_error
 
 
 def get_processing_log(session, cik, parser_type):
@@ -191,18 +193,23 @@ def get_processing_log(session, cik, parser_type):
     return session.execute(stmt).scalar_one_or_none()
 
 
-def get_stale_parsers(session, cik, latest_sec_filings):
+def get_stale_parsers(session, cik, latest_sec_filings, check_failed=False):
     """Return list of parser_types that need to run for this CIK.
 
     A parser is needed if:
     - Never processed before (no processing_log entry)
     - New filing available (SEC latest date > log's latest_filing_date_seen)
+    - Filing date check failed and parser was never processed (check_failed=True)
     """
     needed = []
 
     for parser_type, form_type in PARSER_FORM_MAP.items():
         sec_latest_date = latest_sec_filings.get(form_type)
         if sec_latest_date is None:
+            if check_failed:
+                log_entry = get_processing_log(session, cik, parser_type)
+                if log_entry is None:
+                    needed.append(parser_type)
             continue
 
         log_entry = get_processing_log(session, cik, parser_type)
@@ -234,11 +241,78 @@ def run_parser_for_cik(cik, parser_type):
     parser_func(ciks=[cik], clear_cache=True)
 
 
+def process_single_cik(cik, parser_order, parser_form_map):
+    """Subprocess entry point: process a single CIK with its own DB session.
+
+    Returns dict with keys:
+    - status: "processed", "skipped", or "failed"
+    - failed_parsers: list of strings like "nport(CIK)"
+    - warning: optional string if SEC check failed
+    """
+    _configure_logging()
+
+    from sqlalchemy.orm import sessionmaker
+    from etf_pipeline.db import get_engine
+
+    result = {
+        "status": "failed",
+        "failed_parsers": [],
+        "warning": None
+    }
+
+    engine = None
+    session = None
+
+    try:
+        engine = get_engine()
+        session_factory = sessionmaker(bind=engine)
+        session = session_factory()
+
+        latest_sec_filings, check_failed = check_sec_filing_dates(cik)
+        if check_failed:
+            result["warning"] = f"SEC filing date check failed for CIK {cik}, will attempt unprocessed parsers"
+
+        stale_parsers = get_stale_parsers(session, cik, latest_sec_filings, check_failed=check_failed)
+
+        if not stale_parsers:
+            result["status"] = "skipped"
+            session.close()
+            engine.dispose()
+            return result
+
+        for parser_type in parser_order:
+            if parser_type in stale_parsers:
+                try:
+                    run_parser_for_cik(cik, parser_type)
+                except Exception as e:
+                    logger.error(f"Failed {parser_type} for CIK {cik}: {e}")
+                    result["failed_parsers"].append(f"{parser_type}({cik})")
+
+        result["status"] = "processed"
+
+    except Exception as e:
+        logger.error(f"Failed to process CIK {cik}: {e}")
+        result["status"] = "failed"
+
+    finally:
+        if session is not None:
+            session.close()
+        if engine is not None:
+            engine.dispose()
+
+    return result
+
+
+def _worker_process_cik(result_queue, cik, parser_order, parser_form_map):
+    """Worker function for multiprocessing: calls process_single_cik and puts result in queue."""
+    result = process_single_cik(cik, parser_order, parser_form_map)
+    result_queue.put(result)
+
+
 @main.command()
 @click.option("--limit", type=int, help="Process only the first N CIKs")
 def run_all(limit):
     """Run the full pipeline with per-CIK orchestration and freshness detection."""
-    import logging
     from sqlalchemy.orm import sessionmaker
 
     from etf_pipeline.db import get_engine
@@ -246,9 +320,7 @@ def run_all(limit):
     from etf_pipeline.discover import fetch
     from etf_pipeline.load_etfs import load_etfs
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    _configure_logging()
 
     click.echo("--- Step 0: Ensuring database tables exist ---")
     engine = get_engine()
@@ -275,36 +347,64 @@ def run_all(limit):
     processed = 0
     skipped = 0
     failed = 0
+    failed_parsers = []
+
+    ctx = multiprocessing.get_context('spawn')
 
     for cik in ciks:
-        try:
-            with session_factory() as session:
-                click.echo(f"\nChecking CIK {cik}...")
+        click.echo(f"\nChecking CIK {cik}...")
+        start_time = time.time()
 
-                latest_sec_filings = check_sec_filing_dates(cik)
-                stale_parsers = get_stale_parsers(session, cik, latest_sec_filings)
+        result_queue = ctx.Queue()
 
-                if not stale_parsers:
-                    click.echo(f"  No new filings for CIK {cik}, skipping")
-                    skipped += 1
-                    continue
+        proc = ctx.Process(target=_worker_process_cik, args=(result_queue, cik, PARSER_ORDER, PARSER_FORM_MAP))
+        proc.start()
+        proc.join(timeout=600)
 
-                click.echo(f"  Running parsers for CIK {cik}: {', '.join(stale_parsers)}")
-
-                for parser_type in PARSER_ORDER:
-                    if parser_type in stale_parsers:
-                        try:
-                            run_parser_for_cik(cik, parser_type)
-                        except Exception as e:
-                            click.echo(f"  Failed {parser_type} for CIK {cik}: {e}")
-                            raise
-
-                gc.collect()
-                processed += 1
-
-        except Exception as e:
-            click.echo(f"  Failed to process CIK {cik}: {e}")
+        if proc.is_alive():
+            proc.terminate()
+            proc.join()
+            duration = time.time() - start_time
+            click.echo(f"  Process timed out for CIK {cik} ({duration:.1f}s)")
             failed += 1
+            continue
+
+        if proc.exitcode != 0:
+            duration = time.time() - start_time
+            click.echo(f"  Process crashed for CIK {cik} (exit code: {proc.exitcode}, {duration:.1f}s)")
+            failed += 1
+            continue
+
+        try:
+            result = result_queue.get(timeout=5)
+        except queue.Empty:
+            duration = time.time() - start_time
+            click.echo(f"  No result received from subprocess for CIK {cik} ({duration:.1f}s)")
+            failed += 1
+            continue
+
+        duration = time.time() - start_time
+
+        if result["warning"]:
+            click.echo(f"  Warning: {result['warning']}")
+
+        if result["status"] == "skipped":
+            click.echo(f"  No new filings for CIK {cik}, skipping ({duration:.1f}s)")
+            skipped += 1
+        elif result["status"] == "processed":
+            click.echo(f"  Completed processing for CIK {cik} in {duration:.1f}s")
+            processed += 1
+            if result["failed_parsers"]:
+                for fp in result["failed_parsers"]:
+                    click.echo(f"  Failed parser: {fp}")
+                failed_parsers.extend(result["failed_parsers"])
+        elif result["status"] == "failed":
+            click.echo(f"  Failed to process CIK {cik} ({duration:.1f}s)")
+            failed += 1
+            if result["failed_parsers"]:
+                failed_parsers.extend(result["failed_parsers"])
 
     click.echo("\n--- Step 4: Pipeline complete ---")
     click.echo(f"Summary: {processed} CIKs processed, {skipped} CIKs skipped (no new filings), {failed} CIKs failed")
+    if failed_parsers:
+        click.echo(f"Failed parsers: {', '.join(failed_parsers)}")

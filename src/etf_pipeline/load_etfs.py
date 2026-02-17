@@ -110,6 +110,8 @@ def _process_cik(session_factory, cik_int: int, entries: list[dict]) -> None:
 
     logger.info(f"CIK {cik_padded}: issuer_name = {issuer_name}")
 
+    inserted_count = 0
+    updated_count = 0
     with session_factory() as session:
         for entry in entries:
             # Look up fund_name by series_id, fall back to issuer_name
@@ -118,16 +120,24 @@ def _process_cik(session_factory, cik_int: int, entries: list[dict]) -> None:
 
             logger.debug(f"CIK {cik_padded}, {entry['ticker']}: series_id={series_id}, fund_name={fund_name}")
 
-            _upsert_etf(session, entry, cik_padded, issuer_name, fund_name)
+            is_new = _upsert_etf(session, entry, cik_padded, issuer_name, fund_name)
+            if is_new:
+                inserted_count += 1
+            else:
+                updated_count += 1
         session.commit()
 
-    logger.info(f"CIK {cik_padded}: committed {len(entries)} ETF(s)")
+    logger.info(f"CIK {cik_padded}: Inserted {inserted_count} ETFs, updated {updated_count} ETFs")
 
 
 def _upsert_etf(
     session: Session, entry: dict, cik_padded: str, issuer_name: str, fund_name: str
-) -> None:
-    """Upsert a single ETF record (match on ticker)."""
+) -> bool:
+    """Upsert a single ETF record (match on ticker).
+
+    Returns:
+        True if new record was inserted, False if existing record was updated.
+    """
     ticker = entry["ticker"]
 
     stmt = select(ETF).where(ETF.ticker == ticker)
@@ -139,7 +149,7 @@ def _upsert_etf(
         existing.class_id = entry["class_id"]
         existing.issuer_name = issuer_name
         existing.fund_name = fund_name
-        logger.info(f"Updated ETF: {ticker}")
+        return False
     else:
         etf = ETF(
             ticker=ticker,
@@ -150,4 +160,4 @@ def _upsert_etf(
             fund_name=fund_name,
         )
         session.add(etf)
-        logger.info(f"Inserted ETF: {ticker}")
+        return True

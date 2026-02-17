@@ -358,12 +358,13 @@ def test_parse_flows_with_ciks_param(session, sample_etfs, mock_flows_db):
         mock_company_class.assert_called_once_with("0001100663")
 
 
-def test_parse_flows_no_etfs_in_db(session, capsys, mock_flows_db):
+def test_parse_flows_no_etfs_in_db(session, caplog, mock_flows_db):
     """Test handling empty ETF table."""
-    parse_flows(clear_cache=False)
+    import logging
+    with caplog.at_level(logging.WARNING):
+        parse_flows(clear_cache=False)
 
-    captured = capsys.readouterr()
-    assert "No CIKs found in ETF table" in captured.out
+    assert "No CIKs found in ETF table" in caplog.text
 
 
 def test_parse_flows_date_parsing(session, sample_etfs, mock_flows_db):

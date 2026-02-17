@@ -4,7 +4,7 @@ import logging
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from edgar import Company
@@ -82,7 +82,6 @@ def parse_nport(
 
         if not etfs:
             logger.warning("No ETFs found in database. Run 'load-etfs' first.")
-            print("No ETFs found in database. Run 'load-etfs' first.")
             return
 
         by_cik = defaultdict(list)
@@ -97,7 +96,6 @@ def parse_nport(
             valid_ciks = [c for c in ciks_padded if c in ciks_to_process]
             if not valid_ciks:
                 logger.warning(f"None of the provided CIKs found in database: {ciks}")
-                print(f"None of the provided CIKs found in database: {ciks}")
                 return
             ciks_to_process = valid_ciks
             logger.info(f"Processing {len(valid_ciks)} CIK(s) from ciks parameter")
@@ -108,7 +106,6 @@ def parse_nport(
                 logger.info(f"Processing single CIK: {cik}")
             else:
                 logger.warning(f"CIK {cik} not found in database")
-                print(f"CIK {cik} not found in database")
                 return
 
         if limit is not None and ciks is None:
@@ -126,7 +123,6 @@ def parse_nport(
             failed += 1
             logger.error(f"Failed to process CIK {cik_str}: {e}", exc_info=True)
 
-    print(f"\nSummary: {succeeded} CIKs succeeded, {failed} CIKs failed")
     logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
 
     if clear_cache:
@@ -135,7 +131,6 @@ def parse_nport(
         bytes_freed = result.get('bytes_freed', 0)
         mb_freed = bytes_freed / (1024 * 1024)
         logger.info(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
-        print(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
 
 
 def _get_latest_filings_per_series(filings):
@@ -1009,10 +1004,11 @@ def _process_etf(
 
     holdings_count = 0
     seen_holding_keys = set()
+    dup_holdings_count = 0
     for investment in fund_report.non_derivatives:
         holding = _map_investment_to_holding(etf, investment, report_date, filing_date, xml_custom_fields)
         if holding.holding_key in seen_holding_keys:
-            logger.warning(f"ETF {etf.ticker}: Skipping duplicate holding_key {holding.holding_key} in NPORT filing")
+            dup_holdings_count += 1
             continue
         seen_holding_keys.add(holding.holding_key)
         session.add(holding)
@@ -1031,12 +1027,13 @@ def _process_etf(
 
     derivatives_count = 0
     seen_derivative_keys = set()
+    dup_derivatives_count = 0
     for investment in fund_report.derivatives:
         derivative = _map_investment_to_derivative(etf, investment, report_date, filing_date)
         if derivative:
             deriv_key = (derivative.derivative_type, derivative.underlying_name)
             if deriv_key != (None, None) and deriv_key in seen_derivative_keys:
-                logger.warning(f"ETF {etf.ticker}: Skipping duplicate derivative {deriv_key} in NPORT filing")
+                dup_derivatives_count += 1
                 continue
             if deriv_key != (None, None):
                 seen_derivative_keys.add(deriv_key)
@@ -1075,6 +1072,10 @@ def _process_etf(
                 session.add(derivative_forward)
 
             derivatives_count += 1
+
+    # Log summary of duplicate skips if any
+    if dup_holdings_count > 0 or dup_derivatives_count > 0:
+        logger.info(f"ETF {etf.ticker}: Skipped {dup_holdings_count} duplicate holdings, {dup_derivatives_count} duplicate derivatives")
 
     logger.info(
         f"ETF {etf.ticker}: Inserted {holdings_count} holdings, {derivatives_count} derivatives for {report_date}"
@@ -1361,7 +1362,7 @@ def _parse_delta(delta_value) -> Optional[Decimal]:
         return delta_value
     try:
         return Decimal(str(delta_value))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, InvalidOperation):
         return None
 
 

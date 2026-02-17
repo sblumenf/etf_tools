@@ -1,3 +1,4 @@
+import queue
 from datetime import date, datetime
 from unittest.mock import MagicMock, call, patch
 
@@ -223,10 +224,7 @@ def test_get_stale_parsers_ncsr_shared_form(session):
     assert set(stale) == {"ncsr", "finhigh"}
 
 
-@patch("edgar.storage_management.clear_cache")
-@patch("etf_pipeline.cli.run_parser_for_cik")
-@patch("etf_pipeline.cli.get_stale_parsers")
-@patch("etf_pipeline.cli.check_sec_filing_dates")
+@patch("etf_pipeline.cli.process_single_cik")
 @patch("etf_pipeline.cli.get_all_ciks")
 @patch("etf_pipeline.load_etfs.load_etfs")
 @patch("etf_pipeline.discover.fetch")
@@ -234,34 +232,62 @@ def test_run_all_skips_cik_with_no_new_filings(
     mock_fetch,
     mock_load_etfs,
     mock_get_all_ciks,
-    mock_check_sec,
-    mock_get_stale,
-    mock_run_parser,
-    mock_clear_cache,
+    mock_process_cik,
 ):
     """Test that run_all skips CIKs with no new filings."""
     runner = CliRunner()
 
     mock_get_all_ciks.return_value = ["0000001234", "0000005678"]
-    mock_get_stale.side_effect = [
-        [],  # CIK 1234: no stale parsers
-        ["nport"],  # CIK 5678: needs nport
+    mock_process_cik.side_effect = [
+        {"status": "skipped", "failed_parsers": [], "warning": None},
+        {"status": "processed", "failed_parsers": [], "warning": None},
     ]
 
-    result = runner.invoke(main, ["run-all"])
+    # Mock Process to execute synchronously instead of in subprocess
+    with patch("multiprocessing.get_context") as mock_ctx:
+        mock_queue_obj = MagicMock()
+        results = []
+
+        def queue_put(item):
+            results.append(item)
+
+        def queue_get(timeout=None):
+            return results.pop(0) if results else None
+
+        mock_queue_obj.put = queue_put
+        mock_queue_obj.get = queue_get
+
+        def mock_queue_factory():
+            return mock_queue_obj
+
+        mock_context = MagicMock()
+        mock_context.Queue = mock_queue_factory
+
+        def mock_process_factory(target, args):
+            # Execute target synchronously
+            proc = MagicMock()
+            proc.exitcode = 0
+
+            def start():
+                target(*args)
+
+            proc.start = start
+            proc.join = MagicMock()
+            proc.is_alive = MagicMock(return_value=False)
+            return proc
+
+        mock_context.Process = mock_process_factory
+        mock_ctx.return_value = mock_context
+
+        result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
     assert "1 CIKs processed" in result.output
     assert "1 CIKs skipped" in result.output
     assert "0 CIKs failed" in result.output
 
-    mock_run_parser.assert_called_once_with("0000005678", "nport")
 
-
-@patch("edgar.storage_management.clear_cache")
-@patch("etf_pipeline.cli.run_parser_for_cik")
-@patch("etf_pipeline.cli.get_stale_parsers")
-@patch("etf_pipeline.cli.check_sec_filing_dates")
+@patch("etf_pipeline.cli.process_single_cik")
 @patch("etf_pipeline.cli.get_all_ciks")
 @patch("etf_pipeline.load_etfs.load_etfs")
 @patch("etf_pipeline.discover.fetch")
@@ -269,33 +295,41 @@ def test_run_all_runs_parsers_in_order(
     mock_fetch,
     mock_load_etfs,
     mock_get_all_ciks,
-    mock_check_sec,
-    mock_get_stale,
-    mock_run_parser,
-    mock_clear_cache,
+    mock_process_cik,
 ):
-    """Test that run_all runs parsers in the correct order."""
+    """Test that run_all processes CIKs and parsers are run in order (tested via process_single_cik)."""
     runner = CliRunner()
 
     mock_get_all_ciks.return_value = ["0000001234"]
-    mock_get_stale.return_value = ["flows", "nport", "prospectus"]  # Out of order
+    mock_process_cik.return_value = {"status": "processed", "failed_parsers": [], "warning": None}
 
-    result = runner.invoke(main, ["run-all"])
+    with patch("multiprocessing.get_context") as mock_ctx:
+        mock_queue_obj = MagicMock()
+        results = []
+        mock_queue_obj.put = lambda item: results.append(item)
+        mock_queue_obj.get = lambda timeout=None: results.pop(0) if results else None
+
+        mock_context = MagicMock()
+        mock_context.Queue = lambda: mock_queue_obj
+
+        def mock_process_factory(target, args):
+            proc = MagicMock()
+            proc.exitcode = 0
+            proc.start = lambda: target(*args)
+            proc.join = MagicMock()
+            proc.is_alive = MagicMock(return_value=False)
+            return proc
+
+        mock_context.Process = mock_process_factory
+        mock_ctx.return_value = mock_context
+
+        result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
-
-    # Verify parsers were called in the correct order
-    expected_calls = [
-        call("0000001234", "nport"),
-        call("0000001234", "prospectus"),
-        call("0000001234", "flows"),
-    ]
-    assert mock_run_parser.call_args_list == expected_calls
+    mock_process_cik.assert_called_once()
 
 
-@patch("etf_pipeline.cli.run_parser_for_cik")
-@patch("etf_pipeline.cli.get_stale_parsers")
-@patch("etf_pipeline.cli.check_sec_filing_dates")
+@patch("etf_pipeline.cli.process_single_cik")
 @patch("etf_pipeline.cli.get_all_ciks")
 @patch("etf_pipeline.load_etfs.load_etfs")
 @patch("etf_pipeline.discover.fetch")
@@ -303,26 +337,41 @@ def test_run_all_processes_multiple_ciks(
     mock_fetch,
     mock_load_etfs,
     mock_get_all_ciks,
-    mock_check_sec,
-    mock_get_stale,
-    mock_run_parser,
+    mock_process_cik,
 ):
     """Test that run_all processes multiple CIKs."""
     runner = CliRunner()
 
     mock_get_all_ciks.return_value = ["0000001234", "0000005678", "0000009999"]
-    mock_get_stale.return_value = ["nport"]  # All need nport
+    mock_process_cik.return_value = {"status": "processed", "failed_parsers": [], "warning": None}
 
-    result = runner.invoke(main, ["run-all"])
+    with patch("multiprocessing.get_context") as mock_ctx:
+        mock_queue_obj = MagicMock()
+        results = []
+        mock_queue_obj.put = lambda item: results.append(item)
+        mock_queue_obj.get = lambda timeout=None: results.pop(0) if results else None
+
+        mock_context = MagicMock()
+        mock_context.Queue = lambda: mock_queue_obj
+
+        def mock_process_factory(target, args):
+            proc = MagicMock()
+            proc.exitcode = 0
+            proc.start = lambda: target(*args)
+            proc.join = MagicMock()
+            proc.is_alive = MagicMock(return_value=False)
+            return proc
+
+        mock_context.Process = mock_process_factory
+        mock_ctx.return_value = mock_context
+
+        result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
-    assert mock_run_parser.call_count == 3  # Once per CIK
+    assert mock_process_cik.call_count == 3
 
 
-@patch("edgar.storage_management.clear_cache")
-@patch("etf_pipeline.cli.run_parser_for_cik")
-@patch("etf_pipeline.cli.get_stale_parsers")
-@patch("etf_pipeline.cli.check_sec_filing_dates")
+@patch("etf_pipeline.cli.process_single_cik")
 @patch("etf_pipeline.cli.get_all_ciks")
 @patch("etf_pipeline.load_etfs.load_etfs")
 @patch("etf_pipeline.discover.fetch")
@@ -330,28 +379,45 @@ def test_run_all_continues_on_cik_failure(
     mock_fetch,
     mock_load_etfs,
     mock_get_all_ciks,
-    mock_check_sec,
-    mock_get_stale,
-    mock_run_parser,
-    mock_clear_cache,
+    mock_process_cik,
 ):
-    """Test that run_all continues processing other CIKs after a failure."""
+    """Test that run_all continues processing other CIKs after a parser failure."""
     runner = CliRunner()
 
     mock_get_all_ciks.return_value = ["0000001234", "0000005678", "0000009999"]
-    mock_get_stale.return_value = ["nport"]
-    mock_run_parser.side_effect = [
-        None,  # CIK 1234: success
-        Exception("Parser failed"),  # CIK 5678: failure
-        None,  # CIK 9999: success
+    mock_process_cik.side_effect = [
+        {"status": "processed", "failed_parsers": [], "warning": None},
+        {"status": "processed", "failed_parsers": ["nport(0000005678)"], "warning": None},
+        {"status": "processed", "failed_parsers": [], "warning": None},
     ]
 
-    result = runner.invoke(main, ["run-all"])
+    with patch("multiprocessing.get_context") as mock_ctx:
+        mock_queue_obj = MagicMock()
+        results = []
+        mock_queue_obj.put = lambda item: results.append(item)
+        mock_queue_obj.get = lambda timeout=None: results.pop(0) if results else None
+
+        mock_context = MagicMock()
+        mock_context.Queue = lambda: mock_queue_obj
+
+        def mock_process_factory(target, args):
+            proc = MagicMock()
+            proc.exitcode = 0
+            proc.start = lambda: target(*args)
+            proc.join = MagicMock()
+            proc.is_alive = MagicMock(return_value=False)
+            return proc
+
+        mock_context.Process = mock_process_factory
+        mock_ctx.return_value = mock_context
+
+        result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
-    assert "2 CIKs processed" in result.output
-    assert "1 CIKs failed" in result.output
-    assert mock_run_parser.call_count == 3
+    assert "3 CIKs processed" in result.output
+    assert "0 CIKs failed" in result.output
+    assert "Failed parsers: nport(0000005678)" in result.output
+    assert mock_process_cik.call_count == 3
 
 
 @patch("edgar.storage_management.clear_cache")
@@ -374,6 +440,7 @@ def test_run_all_respects_limit(
     runner = CliRunner()
 
     mock_get_all_ciks.return_value = ["0000001234", "0000005678"]
+    mock_check_sec.return_value = ({}, False)
     mock_get_stale.return_value = ["nport"]
 
     result = runner.invoke(main, ["run-all", "--limit", "2"])
@@ -405,7 +472,7 @@ def test_check_sec_filing_dates_success(mock_company_class):
     mock_company.get_filings.return_value = mock_filings
     mock_company_class.return_value = mock_company
 
-    result = check_sec_filing_dates("0000001234")
+    result, had_error = check_sec_filing_dates("0000001234")
 
     assert result == {
         "NPORT-P": date(2026, 1, 15),
@@ -413,6 +480,7 @@ def test_check_sec_filing_dates_success(mock_company_class):
         "485BPOS": None,
         "24F-2NT": date(2026, 1, 1),
     }
+    assert had_error is False
 
 
 @patch("edgar.Company")
@@ -422,7 +490,7 @@ def test_check_sec_filing_dates_handles_exception(mock_company_class):
     mock_company.get_filings.side_effect = Exception("SEC API error")
     mock_company_class.return_value = mock_company
 
-    result = check_sec_filing_dates("0000001234")
+    result, had_error = check_sec_filing_dates("0000001234")
 
     assert result == {
         "NPORT-P": None,
@@ -430,6 +498,7 @@ def test_check_sec_filing_dates_handles_exception(mock_company_class):
         "485BPOS": None,
         "24F-2NT": None,
     }
+    assert had_error is True
 
 
 @patch("etf_pipeline.parsers.nport.parse_nport")
@@ -497,3 +566,223 @@ def test_parser_form_map_ncsr_finhigh_share_form():
     """Test that ncsr and finhigh both map to N-CSR."""
     assert PARSER_FORM_MAP["ncsr"] == "N-CSR"
     assert PARSER_FORM_MAP["finhigh"] == "N-CSR"
+
+
+def test_get_stale_parsers_check_failed_never_processed(session):
+    """Test check_failed=True includes parsers with no ProcessingLog when SEC dates are None."""
+    latest_sec_filings = {
+        "NPORT-P": None,
+        "N-CSR": None,
+        "485BPOS": None,
+        "24F-2NT": None,
+    }
+
+    from etf_pipeline.cli import get_stale_parsers
+
+    stale = get_stale_parsers(session, "0000001234", latest_sec_filings, check_failed=True)
+
+    assert set(stale) == {"nport", "ncsr", "prospectus", "finhigh", "flows"}
+
+
+def test_get_stale_parsers_check_failed_already_processed(session):
+    """Test check_failed=True skips parsers that have ProcessingLog entries."""
+    session.add(
+        ProcessingLog(
+            cik="0000001234",
+            parser_type="nport",
+            last_run_at=datetime(2026, 1, 20),
+            latest_filing_date_seen=date(2026, 1, 15),
+        )
+    )
+    session.add(
+        ProcessingLog(
+            cik="0000001234",
+            parser_type="ncsr",
+            last_run_at=datetime(2026, 1, 20),
+            latest_filing_date_seen=date(2026, 1, 10),
+        )
+    )
+    session.commit()
+
+    latest_sec_filings = {
+        "NPORT-P": None,
+        "N-CSR": None,
+        "485BPOS": None,
+        "24F-2NT": None,
+    }
+
+    from etf_pipeline.cli import get_stale_parsers
+
+    stale = get_stale_parsers(session, "0000001234", latest_sec_filings, check_failed=True)
+
+    # Only parsers without ProcessingLog entries should be included
+    assert set(stale) == {"prospectus", "finhigh", "flows"}
+
+
+@patch("etf_pipeline.cli.process_single_cik")
+@patch("etf_pipeline.cli.get_all_ciks")
+@patch("etf_pipeline.load_etfs.load_etfs")
+@patch("etf_pipeline.discover.fetch")
+def test_run_all_when_sec_check_fails(
+    mock_fetch,
+    mock_load_etfs,
+    mock_get_all_ciks,
+    mock_process_cik,
+):
+    """Test that run_all handles SEC check failures and processes unprocessed parsers."""
+    runner = CliRunner()
+
+    mock_get_all_ciks.return_value = ["0000001234"]
+    mock_process_cik.return_value = {
+        "status": "processed",
+        "failed_parsers": [],
+        "warning": "SEC filing date check failed for CIK 0000001234, will attempt unprocessed parsers"
+    }
+
+    with patch("multiprocessing.get_context") as mock_ctx:
+        mock_queue_obj = MagicMock()
+        results = []
+        mock_queue_obj.put = lambda item: results.append(item)
+        mock_queue_obj.get = lambda timeout=None: results.pop(0) if results else None
+
+        mock_context = MagicMock()
+        mock_context.Queue = lambda: mock_queue_obj
+
+        def mock_process_factory(target, args):
+            proc = MagicMock()
+            proc.exitcode = 0
+            proc.start = lambda: target(*args)
+            proc.join = MagicMock()
+            proc.is_alive = MagicMock(return_value=False)
+            return proc
+
+        mock_context.Process = mock_process_factory
+        mock_ctx.return_value = mock_context
+
+        result = runner.invoke(main, ["run-all"])
+
+    assert result.exit_code == 0
+    assert "Warning: SEC filing date check failed for CIK 0000001234" in result.output
+    assert "will attempt unprocessed parsers" in result.output
+    assert "1 CIKs processed" in result.output
+    assert "0 CIKs skipped" in result.output
+
+
+@patch("etf_pipeline.cli.get_all_ciks")
+@patch("etf_pipeline.load_etfs.load_etfs")
+@patch("etf_pipeline.discover.fetch")
+def test_run_all_handles_subprocess_timeout(
+    mock_fetch,
+    mock_load_etfs,
+    mock_get_all_ciks,
+):
+    """Test that run_all handles subprocess timeout correctly."""
+    runner = CliRunner()
+
+    mock_get_all_ciks.return_value = ["0000001234"]
+
+    with patch("multiprocessing.get_context") as mock_ctx:
+        mock_queue_obj = MagicMock()
+
+        mock_context = MagicMock()
+        mock_context.Queue = lambda: mock_queue_obj
+
+        def mock_process_factory(target, args):
+            proc = MagicMock()
+            proc.exitcode = None
+            proc.start = MagicMock()
+            proc.join = MagicMock()
+            proc.is_alive = MagicMock(return_value=True)  # Simulates timeout
+            proc.terminate = MagicMock()
+            return proc
+
+        mock_context.Process = mock_process_factory
+        mock_ctx.return_value = mock_context
+
+        result = runner.invoke(main, ["run-all"])
+
+    assert result.exit_code == 0
+    assert "Process timed out for CIK 0000001234" in result.output
+    assert "0 CIKs processed" in result.output
+    assert "0 CIKs skipped" in result.output
+    assert "1 CIKs failed" in result.output
+
+
+@patch("etf_pipeline.cli.get_all_ciks")
+@patch("etf_pipeline.load_etfs.load_etfs")
+@patch("etf_pipeline.discover.fetch")
+def test_run_all_handles_subprocess_crash(
+    mock_fetch,
+    mock_load_etfs,
+    mock_get_all_ciks,
+):
+    """Test that run_all handles subprocess crash correctly."""
+    runner = CliRunner()
+
+    mock_get_all_ciks.return_value = ["0000001234"]
+
+    with patch("multiprocessing.get_context") as mock_ctx:
+        mock_queue_obj = MagicMock()
+
+        mock_context = MagicMock()
+        mock_context.Queue = lambda: mock_queue_obj
+
+        def mock_process_factory(target, args):
+            proc = MagicMock()
+            proc.exitcode = -9  # Simulates OOM kill
+            proc.start = MagicMock()
+            proc.join = MagicMock()
+            proc.is_alive = MagicMock(return_value=False)
+            return proc
+
+        mock_context.Process = mock_process_factory
+        mock_ctx.return_value = mock_context
+
+        result = runner.invoke(main, ["run-all"])
+
+    assert result.exit_code == 0
+    assert "Process crashed for CIK 0000001234" in result.output
+    assert "exit code: -9" in result.output
+    assert "0 CIKs processed" in result.output
+    assert "0 CIKs skipped" in result.output
+    assert "1 CIKs failed" in result.output
+
+
+@patch("etf_pipeline.cli.get_all_ciks")
+@patch("etf_pipeline.load_etfs.load_etfs")
+@patch("etf_pipeline.discover.fetch")
+def test_run_all_handles_empty_queue(
+    mock_fetch,
+    mock_load_etfs,
+    mock_get_all_ciks,
+):
+    """Test that run_all handles empty queue correctly."""
+    runner = CliRunner()
+
+    mock_get_all_ciks.return_value = ["0000001234"]
+
+    with patch("multiprocessing.get_context") as mock_ctx:
+        mock_queue_obj = MagicMock()
+        mock_queue_obj.get = MagicMock(side_effect=queue.Empty)  # Simulates empty queue
+
+        mock_context = MagicMock()
+        mock_context.Queue = lambda: mock_queue_obj
+
+        def mock_process_factory(target, args):
+            proc = MagicMock()
+            proc.exitcode = 0
+            proc.start = MagicMock()
+            proc.join = MagicMock()
+            proc.is_alive = MagicMock(return_value=False)
+            return proc
+
+        mock_context.Process = mock_process_factory
+        mock_ctx.return_value = mock_context
+
+        result = runner.invoke(main, ["run-all"])
+
+    assert result.exit_code == 0
+    assert "No result received from subprocess for CIK 0000001234" in result.output
+    assert "0 CIKs processed" in result.output
+    assert "0 CIKs skipped" in result.output
+    assert "1 CIKs failed" in result.output

@@ -23,7 +23,11 @@ from etf_pipeline.models import (
     InterestRateRisk,
     SecurityLending,
 )
-from etf_pipeline.parsers.nport import parse_nport
+from etf_pipeline.parsers.nport import _parse_delta, parse_nport
+
+
+def test_parse_delta_invalid_string_returns_none():
+    assert _parse_delta("XXXX") is None
 
 
 def _add_mock_fund_info(mock_report):
@@ -295,24 +299,26 @@ def test_parse_nport_with_cik_filter(session, engine, sample_etfs, mock_edgar_co
     assert all(h.etf_id == spy.id for h in holdings)
 
 
-def test_parse_nport_invalid_cik(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, capsys):
+def test_parse_nport_invalid_cik(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, caplog):
     """Test behavior when requested CIK is not in database."""
-    parse_nport(cik="99999")
+    import logging
+    with caplog.at_level(logging.WARNING):
+        parse_nport(cik="99999")
 
-    captured = capsys.readouterr()
-    assert "not found in database" in captured.out
+    assert "not found in database" in caplog.text
 
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
     assert len(holdings) == 0
 
 
-def test_parse_nport_no_etfs_in_db(session, engine, mock_nport_db, capsys):
+def test_parse_nport_no_etfs_in_db(session, engine, mock_nport_db, caplog):
     """Test behavior when no ETFs exist in database."""
-    parse_nport()
+    import logging
+    with caplog.at_level(logging.WARNING):
+        parse_nport()
 
-    captured = capsys.readouterr()
-    assert "No ETFs found in database" in captured.out
+    assert "No ETFs found in database" in caplog.text
 
 
 def test_parse_nport_handles_na_values(session, engine, sample_etfs, mock_nport_db):
@@ -400,7 +406,7 @@ def test_parse_nport_handles_na_values(session, engine, sample_etfs, mock_nport_
 def test_parse_nport_deduplicates_holdings_with_same_cusip(session, engine, sample_etfs, mock_nport_db, caplog):
     """Test that parse_nport deduplicates holdings with duplicate CUSIPs and logs a warning."""
     import logging
-    caplog.set_level(logging.WARNING)
+    caplog.set_level(logging.INFO)
 
     def create_mock_investment_with_cusip(name, cusip, value_usd):
         inv = Mock()
@@ -477,8 +483,8 @@ def test_parse_nport_deduplicates_holdings_with_same_cusip(session, engine, samp
     assert "594918104" in cusips
     assert cusips.count("037833100") == 1  # Only one instance of the duplicate CUSIP
 
-    # Verify warning was logged about the duplicate
-    assert "Skipping duplicate holding_key 037833100" in caplog.text
+    # Verify aggregated duplicate message was logged
+    assert "Skipped 1 duplicate holdings" in caplog.text
 
     # Verify processing_log was still updated (no constraint violation crash)
     from etf_pipeline.models import ProcessingLog
@@ -578,7 +584,7 @@ def test_parse_nport_does_not_deduplicate_none_cusip_holdings(session, engine, s
 def test_parse_nport_deduplicates_derivatives_with_same_key(session, engine, sample_etfs, mock_nport_db, caplog):
     """Test that parse_nport deduplicates derivatives with same derivative_type and underlying_name."""
     import logging
-    caplog.set_level(logging.WARNING)
+    caplog.set_level(logging.INFO)
 
     def create_mock_derivative(deriv_type, underlying_name, underlying_cusip, counterparty):
         """Create a mock InvestmentOrSecurity object with derivative_info."""
@@ -649,8 +655,8 @@ def test_parse_nport_deduplicates_derivatives_with_same_key(session, engine, sam
     underlying_names = sorted([d.underlying_name for d in derivatives])
     assert underlying_names == ["NASDAQ Index", "S&P 500 Index"]
 
-    # Verify warning was logged about the duplicate
-    assert "Skipping duplicate derivative ('FUT', 'S&P 500 Index')" in caplog.text
+    # Verify aggregated duplicate message was logged
+    assert "Skipped 0 duplicate holdings, 1 duplicate derivatives" in caplog.text
 
 
 def test_parse_nport_fundreport_parse_error(session, engine, sample_etfs, mock_nport_db, caplog):
@@ -1196,12 +1202,13 @@ def test_parse_nport_ciks_overrides_cik(session, engine, sample_etfs, mock_edgar
     assert all(h.etf_id == spy.id for h in holdings)
 
 
-def test_parse_nport_ciks_invalid_ciks(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, capsys):
+def test_parse_nport_ciks_invalid_ciks(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, caplog):
     """Test behavior when all provided CIKs are invalid."""
-    parse_nport(ciks=["99999", "88888"])
+    import logging
+    with caplog.at_level(logging.WARNING):
+        parse_nport(ciks=["99999", "88888"])
 
-    captured = capsys.readouterr()
-    assert "None of the provided CIKs found in database" in captured.out
+    assert "None of the provided CIKs found in database" in caplog.text
 
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()

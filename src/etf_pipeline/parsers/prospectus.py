@@ -12,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
 from bs4 import BeautifulSoup
+from dateutil import parser as dateutil_parser
 
 logger = logging.getLogger(__name__)
 
@@ -317,6 +318,12 @@ def parse_date_tag(
             return datetime.strptime(value, fmt).date()
         except ValueError:
             continue
+
+    try:
+        from dateutil.parser import parse as dateutil_parse
+        return dateutil_parse(value).date()
+    except (ValueError, TypeError):
+        pass
 
     logger.warning(f"Failed to parse date: '{value}'")
     return None
@@ -639,7 +646,6 @@ def parse_prospectus(
 
             if not cik_list:
                 logger.warning("No CIKs found in ETF table. Run 'load-etfs' first.")
-                print("No CIKs found in ETF table. Run 'load-etfs' first.")
                 return
 
         if limit is not None and ciks is None:
@@ -656,7 +662,6 @@ def parse_prospectus(
             else:
                 failed += 1
 
-    print(f"\nSummary: {succeeded} CIKs succeeded, {failed} CIKs failed")
     logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
 
     if clear_cache:
@@ -665,4 +670,3 @@ def parse_prospectus(
         bytes_freed = result.get('bytes_freed', 0)
         mb_freed = bytes_freed / (1024 * 1024)
         logger.info(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
-        print(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")

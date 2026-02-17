@@ -470,7 +470,6 @@ def parse_ncsr(
 
             if not cik_list:
                 logger.warning("No CIKs found in ETF table. Run 'load-etfs' first.")
-                print("No CIKs found in ETF table. Run 'load-etfs' first.")
                 return
 
         if limit is not None:
@@ -487,7 +486,6 @@ def parse_ncsr(
             else:
                 failed += 1
 
-    print(f"\nSummary: {succeeded} CIKs succeeded, {failed} CIKs failed")
     logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
 
     if clear_cache:
@@ -496,4 +494,3 @@ def parse_ncsr(
         bytes_freed = result.get('bytes_freed', 0)
         mb_freed = bytes_freed / (1024 * 1024)
         logger.info(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
-        print(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")

@@ -429,6 +429,54 @@ class TestParseDateTag:
         assert date_value is None
 
 
+class TestParseDateTagFormats:
+    """Test parse_date_tag() with various date format strings."""
+
+    def _make_soup(self, date_text: str, context_id: str = "ctx1", tag_name: str = "dei:DocumentPeriodEndDate") -> BeautifulSoup:
+        """Create a minimal BeautifulSoup with one ix:nonnumeric date tag."""
+        html = (
+            f'<html><body>'
+            f'<ix:nonnumeric name="{tag_name}" contextref="{context_id}">{date_text}</ix:nonnumeric>'
+            f'</body></html>'
+        )
+        return BeautifulSoup(html, 'html.parser')
+
+    def test_iso_format(self):
+        """Test ISO format: 2024-12-31."""
+        from datetime import date
+        soup = self._make_soup("2024-12-31")
+        result = parse_date_tag(soup, "dei:DocumentPeriodEndDate", "ctx1")
+        assert result == date(2024, 12, 31)
+
+    def test_us_slash_format(self):
+        """Test US slash format: 12/31/2024."""
+        from datetime import date
+        soup = self._make_soup("12/31/2024")
+        result = parse_date_tag(soup, "dei:DocumentPeriodEndDate", "ctx1")
+        assert result == date(2024, 12, 31)
+
+    def test_full_month_name(self):
+        """Test full month name: February 6, 2026."""
+        from datetime import date
+        soup = self._make_soup("February 6, 2026")
+        result = parse_date_tag(soup, "dei:DocumentPeriodEndDate", "ctx1")
+        assert result == date(2026, 2, 6)
+
+    def test_abbreviated_month_with_period(self):
+        """Test abbreviated month with period: Dec. 31, 2024."""
+        from datetime import date
+        soup = self._make_soup("Dec. 31, 2024")
+        result = parse_date_tag(soup, "dei:DocumentPeriodEndDate", "ctx1")
+        assert result == date(2024, 12, 31)
+
+    def test_full_month_name_variant(self):
+        """Test full month name variant: August 20, 2025."""
+        from datetime import date
+        soup = self._make_soup("August 20, 2025")
+        result = parse_date_tag(soup, "dei:DocumentPeriodEndDate", "ctx1")
+        assert result == date(2025, 8, 20)
+
+
 class TestEdgeCases:
     """Test edge cases and error handling."""
 
