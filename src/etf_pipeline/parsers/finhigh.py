@@ -5,6 +5,7 @@ distribution data, and fund ratios that are NOT available in XBRL. This parser
 extracts that data using positional HTML table parsing.
 """
 
+import gc
 import logging
 import re
 from datetime import date, datetime
@@ -407,6 +408,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
         skipped_etfs = 0
 
         num_filings = min(len(filings), MAX_FILINGS)
+        consecutive_misses = 0
         for filing_idx in range(num_filings):
             # Stop early if all class_ids have been satisfied
             if not (needed_class_ids - {cid for cid, _ in satisfied}):
@@ -417,6 +419,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
 
             filing = filings[filing_idx]
             filing_date = ensure_date(filing.filing_date)
+            satisfied_before_this_filing = len(satisfied)
 
             # Track the latest filing date
             if latest_filing_date is None or filing_date > latest_filing_date:
@@ -443,6 +446,19 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
             except Exception as e:
                 logger.warning(f"CIK {cik}: Failed to parse SGML header: {e}")
                 series_class_mapping = {'classes': {}, 'tickers': {}}
+
+            if not re.search(r'financial\s+highlights', html, re.IGNORECASE):
+                logger.debug(f"CIK {cik}: Filing {filing_idx} has no Financial Highlights content, skipping")
+                consecutive_misses += 1
+                if consecutive_misses >= 2:
+                    logger.debug(f"CIK {cik}: No new matches in 2 consecutive filings, stopping early")
+                    try:
+                        del html
+                    except NameError:
+                        pass
+                    gc.collect()
+                    break
+                continue
 
             # Parse HTML to find Financial Highlights tables
             soup = BeautifulSoup(html, 'html.parser')
@@ -608,6 +624,34 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                     logger.warning(f"CIK {cik}: Failed to parse table: {e}")
                     skipped_etfs += 1
                     continue
+
+            # Exit early if no new matches for 2 consecutive filings
+            if len(satisfied) > satisfied_before_this_filing:
+                consecutive_misses = 0
+            else:
+                consecutive_misses += 1
+                if consecutive_misses >= 2:
+                    logger.debug(f"CIK {cik}: No new matches in 2 consecutive filings, stopping early")
+                    try:
+                        del soup
+                    except NameError:
+                        pass
+                    try:
+                        del html
+                    except NameError:
+                        pass
+                    gc.collect()
+                    break
+
+            try:
+                del soup
+            except NameError:
+                pass
+            try:
+                del html
+            except NameError:
+                pass
+            gc.collect()
 
         # Update processing log after successful processing
         if latest_filing_date is not None:
