@@ -645,6 +645,11 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
             del table_tuples
             gc.collect()
             session.commit()
+            session.expunge_all()
+            class_id_to_etf = {
+                cid: session.merge(etf_obj)
+                for cid, etf_obj in class_id_to_etf.items()
+            }
             logger.debug(f"CIK {cik}: Committed data for filing {filing_idx}")
 
         # Update processing log after successful processing

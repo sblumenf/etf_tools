@@ -544,6 +544,8 @@ class TestIntegrationProcessCikProspectus:
         )
         session.add_all([etf_a, etf_i])
         session.commit()
+        etf_a_id = etf_a.id
+        etf_i_id = etf_i.id
 
         # Read fixture HTML
         with open(sample_filing_path) as f:
@@ -570,7 +572,7 @@ class TestIntegrationProcessCikProspectus:
         assert result is True
 
         # Verify FeeExpense data for Class A (values from fixture: 0.70 → 0.0070, etc.)
-        fee_a = session.query(FeeExpense).filter_by(etf_id=etf_a.id).one()
+        fee_a = session.query(FeeExpense).filter_by(etf_id=etf_a_id).one()
         assert fee_a.management_fee == pytest.approx(Decimal('0.0070'))
         assert fee_a.distribution_12b1 == pytest.approx(Decimal('0.0025'))
         assert fee_a.other_expenses == pytest.approx(Decimal('0.0030'))
@@ -582,7 +584,7 @@ class TestIntegrationProcessCikProspectus:
         assert fee_a.effective_date == date(2022, 11, 3)
 
         # Verify FeeExpense data for Class I (values from fixture)
-        fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i.id).one()
+        fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i_id).one()
         assert fee_i.management_fee == pytest.approx(Decimal('0.0070'))
         assert fee_i.distribution_12b1 == Decimal('0')  # zerodash "—"
         assert fee_i.other_expenses == pytest.approx(Decimal('0.0024'))  # 0.24 with scale -2
@@ -590,22 +592,23 @@ class TestIntegrationProcessCikProspectus:
         assert fee_i.fee_waiver_expiration_date is None  # Not in fixture for Class I
 
         # Verify ETF updates (narrative text from series-level context)
-        session.refresh(etf_a)
-        session.refresh(etf_i)
-        assert etf_a.objective_text == 'The fund seeks long-term capital growth.'
-        assert etf_a.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        from etf_pipeline.models import ETF as ETFModel
+        etf_a_refreshed = session.get(ETFModel, etf_a_id)
+        etf_i_refreshed = session.get(ETFModel, etf_i_id)
+        assert etf_a_refreshed.objective_text == 'The fund seeks long-term capital growth.'
+        assert etf_a_refreshed.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
         # Verify all three risk blocks are concatenated with double newlines
         expected_risks = (
             'Risk of Loss. It is important to understand that you can lose money by investing in the fund.\n\n'
             'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments.\n\n'
             'Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
         )
-        assert etf_a.principal_risks == expected_risks
-        assert etf_a.filing_url == 'https://www.sec.gov/test/filing.htm'
+        assert etf_a_refreshed.principal_risks == expected_risks
+        assert etf_a_refreshed.filing_url == 'https://www.sec.gov/test/filing.htm'
         # Both classes share the same series-level text (both have series_id S000014796)
-        assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
-        assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
-        assert etf_i.principal_risks == expected_risks
+        assert etf_i_refreshed.objective_text == 'The fund seeks long-term capital growth.'
+        assert etf_i_refreshed.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        assert etf_i_refreshed.principal_risks == expected_risks
 
     def test_process_cik_multi_filing(self, session, sample_filing_path):
         """Test processing multiple filings - verifies loop can handle multiple files."""
@@ -631,6 +634,8 @@ class TestIntegrationProcessCikProspectus:
         )
         session.add_all([etf_a, etf_i])
         session.commit()
+        etf_a_id = etf_a.id
+        etf_i_id = etf_i.id
 
         # Read fixture HTML (contains both classes)
         with open(sample_filing_path) as f:
@@ -662,20 +667,21 @@ class TestIntegrationProcessCikProspectus:
         assert result is True
 
         # Both ETFs should have data
-        fee_a = session.query(FeeExpense).filter_by(etf_id=etf_a.id).one()
+        fee_a = session.query(FeeExpense).filter_by(etf_id=etf_a_id).one()
         assert fee_a.management_fee == pytest.approx(Decimal('0.0070'))
         assert fee_a.effective_date == date(2022, 11, 3)
 
-        fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i.id).one()
+        fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i_id).one()
         assert fee_i.management_fee == pytest.approx(Decimal('0.0070'))
         assert fee_i.effective_date == date(2022, 11, 3)
 
         # Verify both ETFs have filing URLs (from whichever filing processed them)
-        session.refresh(etf_a)
-        assert etf_a.filing_url is not None
+        from etf_pipeline.models import ETF as ETFModel
+        etf_a_refreshed = session.get(ETFModel, etf_a_id)
+        assert etf_a_refreshed.filing_url is not None
 
-        session.refresh(etf_i)
-        assert etf_i.filing_url is not None
+        etf_i_refreshed = session.get(ETFModel, etf_i_id)
+        assert etf_i_refreshed.filing_url is not None
 
     def test_process_cik_no_filings(self, session):
         """Test CIK with no 485BPOS filings."""
@@ -956,6 +962,8 @@ class TestOEFNamespace:
         )
         session.add_all([etf_a, etf_i])
         session.commit()
+        etf_a_id = etf_a.id
+        etf_i_id = etf_i.id
 
         # Read fixture HTML
         with open(sample_filing_oef_path) as f:
@@ -982,7 +990,7 @@ class TestOEFNamespace:
         assert result is True
 
         # Verify FeeExpense data for Class A (should work identically to RR namespace)
-        fee_a = session.query(FeeExpense).filter_by(etf_id=etf_a.id).one()
+        fee_a = session.query(FeeExpense).filter_by(etf_id=etf_a_id).one()
         assert fee_a.management_fee == pytest.approx(Decimal('0.0070'))
         assert fee_a.distribution_12b1 == pytest.approx(Decimal('0.0025'))
         assert fee_a.other_expenses == pytest.approx(Decimal('0.0030'))
@@ -993,25 +1001,26 @@ class TestOEFNamespace:
         assert fee_a.effective_date == date(2022, 11, 3)
 
         # Verify FeeExpense data for Class I
-        fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i.id).one()
+        fee_i = session.query(FeeExpense).filter_by(etf_id=etf_i_id).one()
         assert fee_i.management_fee == pytest.approx(Decimal('0.0070'))
         assert fee_i.distribution_12b1 == Decimal('0')  # zerodash
 
         # Verify narrative text
-        session.refresh(etf_a)
-        session.refresh(etf_i)
-        assert etf_a.objective_text == 'The fund seeks long-term capital growth.'
-        assert etf_a.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        from etf_pipeline.models import ETF as ETFModel
+        etf_a_refreshed = session.get(ETFModel, etf_a_id)
+        etf_i_refreshed = session.get(ETFModel, etf_i_id)
+        assert etf_a_refreshed.objective_text == 'The fund seeks long-term capital growth.'
+        assert etf_a_refreshed.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
         # Verify all three risk blocks are concatenated with double newlines
         expected_risks = (
             'Risk of Loss. It is important to understand that you can lose money by investing in the fund.\n\n'
             'Stock Market Volatility. Stock markets are volatile and can decline significantly in response to adverse issuer, political, regulatory, market, or economic developments.\n\n'
             'Foreign Exposure. Foreign markets can be more volatile than the U.S. market due to increased risks of adverse issuer, political, regulatory, market, or economic developments.'
         )
-        assert etf_a.principal_risks == expected_risks
-        assert etf_i.objective_text == 'The fund seeks long-term capital growth.'
-        assert etf_i.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
-        assert etf_i.principal_risks == expected_risks
+        assert etf_a_refreshed.principal_risks == expected_risks
+        assert etf_i_refreshed.objective_text == 'The fund seeks long-term capital growth.'
+        assert etf_i_refreshed.strategy_text == 'The fund invests primarily in common stocks of large U.S. companies.'
+        assert etf_i_refreshed.principal_risks == expected_risks
 
 
 class TestProspectusProcessingLog:
@@ -1090,6 +1099,7 @@ class TestProspectusProcessingLog:
         )
         session.add(etf)
         session.commit()
+        etf_id = etf.id
 
         # Read fixture HTML
         with open(sample_filing_path) as f:
@@ -1115,7 +1125,7 @@ class TestProspectusProcessingLog:
         assert result is True
 
         # Verify FeeExpense has filing_date
-        stmt = select(FeeExpense).where(FeeExpense.etf_id == etf.id)
+        stmt = select(FeeExpense).where(FeeExpense.etf_id == etf_id)
         fee_expense = session.execute(stmt).scalar_one()
         assert fee_expense.filing_date == date(2022, 11, 3)
 
@@ -1141,6 +1151,7 @@ class TestFeeExpenseNetFallback:
         )
         session.add(etf)
         session.commit()
+        etf_id = etf.id
 
         # HTML with ExpensesOverAssets but NO NetExpensesOverAssets tag and no fee waiver
         html_no_net = """
@@ -1188,7 +1199,7 @@ class TestFeeExpenseNetFallback:
         assert result is True
 
         # Verify total_expense_net was set to total_expense_gross (0.0075)
-        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        fee = session.query(FeeExpense).filter_by(etf_id=etf_id).one()
         assert fee.total_expense_gross == pytest.approx(Decimal('0.0075'))
         assert fee.total_expense_net == pytest.approx(Decimal('0.0075'))  # Fallback: net = gross
         assert fee.fee_waiver is None
@@ -1211,6 +1222,7 @@ class TestFeeExpenseNetFallback:
         )
         session.add(etf)
         session.commit()
+        etf_id = etf.id
 
         # HTML with ExpensesOverAssets, FeeWaiverOrReimbursementOverAssets, but NO NetExpensesOverAssets tag
         html_with_waiver = """
@@ -1259,7 +1271,7 @@ class TestFeeExpenseNetFallback:
         assert result is True
 
         # Verify total_expense_net = gross - waiver (0.0080 - 0.0010 = 0.0070)
-        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        fee = session.query(FeeExpense).filter_by(etf_id=etf_id).one()
         assert fee.total_expense_gross == pytest.approx(Decimal('0.0080'))
         assert fee.fee_waiver == pytest.approx(Decimal('0.0010'))
         assert fee.total_expense_net == pytest.approx(Decimal('0.0070'))  # Fallback: net = gross - waiver
@@ -1282,6 +1294,7 @@ class TestFeeExpenseNetFallback:
         )
         session.add(etf)
         session.commit()
+        etf_id = etf.id
 
         # Read fixture HTML (contains NetExpensesOverAssets tag)
         with open(sample_filing_path) as f:
@@ -1306,7 +1319,7 @@ class TestFeeExpenseNetFallback:
         assert result is True
 
         # Verify total_expense_net preserved from tag (not recalculated)
-        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        fee = session.query(FeeExpense).filter_by(etf_id=etf_id).one()
         assert fee.total_expense_gross == pytest.approx(Decimal('0.0125'))
         assert fee.fee_waiver == pytest.approx(Decimal('0.0010'))
         assert fee.total_expense_net == pytest.approx(Decimal('0.0115'))  # From tag, not gross - waiver
@@ -1329,6 +1342,7 @@ class TestFeeExpenseNetFallback:
         )
         session.add(etf)
         session.commit()
+        etf_id = etf.id
 
         # HTML with ExpensesOverAssets and zero fee_waiver (zerodash)
         html_zero_waiver = """
@@ -1377,7 +1391,7 @@ class TestFeeExpenseNetFallback:
         assert result is True
 
         # Verify total_expense_net = gross when waiver is zero
-        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        fee = session.query(FeeExpense).filter_by(etf_id=etf_id).one()
         assert fee.total_expense_gross == pytest.approx(Decimal('0.0085'))
         assert fee.fee_waiver == Decimal('0')  # zerodash
         assert fee.total_expense_net == pytest.approx(Decimal('0.0085'))  # Fallback: net = gross (waiver is 0)

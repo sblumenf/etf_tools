@@ -622,6 +622,15 @@ def _process_cik_prospectus(session, cik: str) -> bool:
             del all_nonnumeric, soup, html
             gc.collect()
             session.commit()
+            session.expunge_all()
+            class_id_to_etf = {
+                cid: session.merge(etf_obj)
+                for cid, etf_obj in class_id_to_etf.items()
+            }
+            series_id_to_etfs = {
+                sid: [session.merge(etf_obj) for etf_obj in etf_list]
+                for sid, etf_list in series_id_to_etfs.items()
+            }
             logger.debug(f"CIK {cik}: Committed data for filing {filing_idx}")
 
         # Update processing log after successful processing

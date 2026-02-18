@@ -267,6 +267,7 @@ class TestProcessCikFinhigh:
         )
         session.add(etf)
         session.commit()
+        etf_id = etf.id
 
         # Load fixture HTML
         fixture_path = FIXTURES_DIR / "vanguard_sample.html"
@@ -322,7 +323,7 @@ class TestProcessCikFinhigh:
             assert result is True
 
             # Verify data was inserted
-            operating = session.query(PerShareOperating).filter_by(etf_id=etf.id).first()
+            operating = session.query(PerShareOperating).filter_by(etf_id=etf_id).first()
             assert operating is not None
             assert operating.nav_beginning == Decimal("102.18")
             assert operating.nav_end == Decimal("115.15")
@@ -332,12 +333,12 @@ class TestProcessCikFinhigh:
             assert operating.total_return == Decimal("0.1410")
             assert operating.math_validated is True
 
-            distribution = session.query(PerShareDistribution).filter_by(etf_id=etf.id).first()
+            distribution = session.query(PerShareDistribution).filter_by(etf_id=etf_id).first()
             assert distribution is not None
             assert distribution.dist_net_investment_income == Decimal("-1.367")
             assert distribution.dist_total == Decimal("-1.367")
 
-            ratios = session.query(PerShareRatios).filter_by(etf_id=etf.id).first()
+            ratios = session.query(PerShareRatios).filter_by(etf_id=etf_id).first()
             assert ratios is not None
             assert ratios.expense_ratio == Decimal("0.0017")
             assert ratios.portfolio_turnover == Decimal("0.13")
@@ -359,6 +360,7 @@ class TestProcessCikFinhigh:
         )
         session.add(etf)
         session.commit()
+        etf_id = etf.id
 
         # Load fixture HTML with mismatched heading
         fixture_path = FIXTURES_DIR / "vanguard_sample.html"
@@ -413,7 +415,7 @@ class TestProcessCikFinhigh:
             assert result is True
 
             # Verify no data was inserted
-            operating = session.query(PerShareOperating).filter_by(etf_id=etf.id).first()
+            operating = session.query(PerShareOperating).filter_by(etf_id=etf_id).first()
             assert operating is None
 
     def test_process_cik_finhigh_upsert(self, session):
@@ -433,10 +435,11 @@ class TestProcessCikFinhigh:
         )
         session.add(etf)
         session.flush()
+        etf_id = etf.id
 
         # Insert old data
         old_operating = PerShareOperating(
-            etf_id=etf.id,
+            etf_id=etf_id,
             fiscal_year_end=date(2024, 12, 31),
             filing_date=date(2024, 12, 31),
             nav_beginning=Decimal("100.00"),
@@ -499,7 +502,7 @@ class TestProcessCikFinhigh:
             assert result is True
 
             # Verify data was updated (not duplicated)
-            operating_records = session.query(PerShareOperating).filter_by(etf_id=etf.id).all()
+            operating_records = session.query(PerShareOperating).filter_by(etf_id=etf_id).all()
             assert len(operating_records) == 1
 
             operating = operating_records[0]
@@ -608,6 +611,7 @@ class TestProcessCikFinhigh:
         )
         session.add(etf)
         session.commit()
+        etf_id = etf.id
 
         # Load fixture HTML
         fixture_path = FIXTURES_DIR / "vanguard_sample.html"
@@ -661,16 +665,16 @@ class TestProcessCikFinhigh:
             assert result is True
 
             # Verify PerShareOperating has filing_date
-            stmt = select(PerShareOperating).where(PerShareOperating.etf_id == etf.id)
+            stmt = select(PerShareOperating).where(PerShareOperating.etf_id == etf_id)
             operating = session.execute(stmt).scalar_one()
             assert operating.filing_date == date(2024, 12, 31)
 
             # Verify PerShareDistribution has filing_date
-            stmt = select(PerShareDistribution).where(PerShareDistribution.etf_id == etf.id)
+            stmt = select(PerShareDistribution).where(PerShareDistribution.etf_id == etf_id)
             distribution = session.execute(stmt).scalar_one()
             assert distribution.filing_date == date(2024, 12, 31)
 
             # Verify PerShareRatios has filing_date
-            stmt = select(PerShareRatios).where(PerShareRatios.etf_id == etf.id)
+            stmt = select(PerShareRatios).where(PerShareRatios.etf_id == etf_id)
             ratios = session.execute(stmt).scalar_one()
             assert ratios.filing_date == date(2024, 12, 31)
