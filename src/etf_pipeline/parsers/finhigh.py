@@ -638,10 +638,14 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                 consecutive_misses += 1
                 if consecutive_misses >= 2:
                     logger.debug(f"CIK {cik}: No new matches in 2 consecutive filings, stopping early")
+                    del table_tuples
                     gc.collect()
                     break
 
+            del table_tuples
             gc.collect()
+            session.commit()
+            logger.debug(f"CIK {cik}: Committed data for filing {filing_idx}")
 
         # Update processing log after successful processing
         if latest_filing_date is not None:

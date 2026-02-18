@@ -5,8 +5,10 @@ which uses the RR (Risk/Return) XBRL taxonomy. Data is embedded in HTML using
 inline XBRL (iXBRL) tags.
 """
 
+import gc
 import logging
 import re
+import signal
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
@@ -16,6 +18,14 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 LOOKBACK_DAYS = 547  # 18-month window for prospectus filings
+
+
+class HtmlFetchTimeout(Exception):
+    pass
+
+
+def _html_timeout_handler(signum, frame):
+    raise HtmlFetchTimeout("filing.html() timed out")
 
 
 def parse_contexts(soup: BeautifulSoup) -> dict[str, dict[str, Optional[str]]]:
@@ -407,11 +417,17 @@ def _process_cik_prospectus(session, cik: str) -> bool:
 
             # Get HTML content
             try:
+                old_handler = signal.signal(signal.SIGALRM, _html_timeout_handler)
+                signal.alarm(120)  # 120 second timeout
                 html = filing.html()
+                signal.alarm(0)  # Cancel alarm
+                signal.signal(signal.SIGALRM, old_handler)  # Restore handler
                 if not html:
                     logger.warning(f"CIK {cik}: Filing {filing_idx} returned empty HTML, skipping")
                     continue
-            except Exception as e:
+            except (HtmlFetchTimeout, Exception) as e:
+                signal.alarm(0)  # Cancel alarm on error
+                signal.signal(signal.SIGALRM, old_handler)
                 logger.warning(f"CIK {cik}: Filing {filing_idx} HTML fetch failed: {e}, skipping")
                 continue
 
@@ -431,7 +447,11 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 tag_prefix = 'oef'
             else:
                 logger.warning(f"CIK {cik}: Filing {filing_idx} has no RR or OEF iXBRL tags, skipping")
+                del rr_tags, oef_tags, soup, html
+                gc.collect()
                 continue
+
+            del rr_tags, oef_tags
 
             # Build tag index for O(1) lookups (performance optimization)
             tag_index = build_tag_index(soup)
@@ -527,62 +547,69 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 satisfied.add(class_id)
 
             # Extract narrative text (series-level, not class-level)
-            for context_id, context_data in context_map.items():
-                series_id = context_data.get('series_id')
-                class_id = context_data.get('class_id')
+            all_nonnumeric = soup.find_all('ix:nonnumeric')
 
-                # Series-level context (no class dimension)
-                if series_id and not class_id:
-                    etf_list = series_id_to_etfs.get(series_id)
-                    if not etf_list:
-                        logger.debug(f"CIK {cik}: series_id {series_id} not found in database, skipping narrative text")
-                        continue
+            # Build series_id -> context_id mapping (plain series contexts only, no class dimension)
+            series_context_map = {}
+            for ctx_id, ctx_data in context_map.items():
+                sid = ctx_data.get('series_id')
+                cid = ctx_data.get('class_id')
+                if sid and not cid and sid not in series_context_map:
+                    series_context_map[sid] = ctx_id
 
-                    # Extract objective and strategy text
+            # Iterate known series from the database to avoid redundant RiskAxis-dimensioned iterations
+            for series_id, etf_list in series_id_to_etfs.items():
+                context_id = series_context_map.get(series_id)
+
+                # Extract objective and strategy text using tag_index (needs context_id)
+                objective_text = None
+                strategy_text = None
+                if context_id:
                     objective_text = extract_tag_value(tag_index, f'{tag_prefix}:ObjectivePrimaryTextBlock', context_id)
                     strategy_text = extract_tag_value(tag_index, f'{tag_prefix}:StrategyNarrativeTextBlock', context_id)
 
-                    # Extract principal risks - use direct search to capture ALL RiskTextBlock elements
-                    # The RR taxonomy uses multiple RiskTextBlock elements per series, each dimensioned
-                    # by a RiskAxis member (e.g., RiskLoseMoneyMember, PerformanceRiskMember, etc.)
-                    principal_risks = None
-                    risk_blocks = []
+                # Extract principal risks - use direct search to capture ALL RiskTextBlock elements
+                # The RR taxonomy uses multiple RiskTextBlock elements per series, each dimensioned
+                # by a RiskAxis member (e.g., RiskLoseMoneyMember, PerformanceRiskMember, etc.)
+                risk_blocks = []
 
-                    # Search for all ix:nonnumeric elements with name containing RiskTextBlock
-                    for element in soup.find_all('ix:nonnumeric'):
-                        tag_name = element.get('name', '')
-                        element_context_ref = element.get('contextref', '')
+                # Search for all ix:nonnumeric elements with name containing RiskTextBlock
+                for element in all_nonnumeric:
+                    tag_name = element.get('name', '')
+                    element_context_ref = element.get('contextref', '')
 
-                        # Match RiskTextBlock tags (case-insensitive) for this series
-                        if 'risktextblock' in tag_name.lower() and series_id in element_context_ref:
-                            # Extract and strip HTML from the risk block
-                            escape_attr = element.get('escape')
-                            if escape_attr == 'true':
-                                inner_html = element.decode_contents()
-                                risk_text = strip_html_to_text(inner_html)
-                            else:
-                                risk_text = element.get_text().strip()
+                    # Match RiskTextBlock tags (case-insensitive) for this series
+                    if ('risktextblock' in tag_name.lower() or 'risknarrativetextblock' in tag_name.lower()) and series_id in element_context_ref:
+                        # Extract and strip HTML from the risk block
+                        escape_attr = element.get('escape')
+                        if escape_attr == 'true':
+                            inner_html = element.decode_contents()
+                            risk_text = strip_html_to_text(inner_html)
+                        else:
+                            risk_text = element.get_text().strip()
 
-                            if risk_text:
-                                risk_blocks.append(risk_text)
+                        if risk_text:
+                            risk_blocks.append(risk_text)
 
-                    # Concatenate all risk blocks with double newlines
-                    if risk_blocks:
-                        principal_risks = '\n\n'.join(risk_blocks)
+                principal_risks = '\n\n'.join(risk_blocks) if risk_blocks else None
 
-                    # Update all ETFs with this series_id (multiple share classes can belong to same series)
-                    for etf in etf_list:
-                        if objective_text:
-                            etf.objective_text = objective_text
-                            logger.debug(f"CIK {cik}: Updated objective_text for {etf.ticker}")
+                if not etf_list:
+                    logger.debug(f"CIK {cik}: series_id {series_id} not found in database, skipping narrative text")
+                    continue
 
-                        if strategy_text:
-                            etf.strategy_text = strategy_text
-                            logger.debug(f"CIK {cik}: Updated strategy_text for {etf.ticker}")
+                # Update all ETFs with this series_id (multiple share classes can belong to same series)
+                for etf in etf_list:
+                    if objective_text:
+                        etf.objective_text = objective_text
+                        logger.debug(f"CIK {cik}: Updated objective_text for {etf.ticker}")
 
-                        if principal_risks:
-                            etf.principal_risks = principal_risks
-                            logger.debug(f"CIK {cik}: Updated principal_risks for {etf.ticker} ({len(risk_blocks)} risk blocks)")
+                    if strategy_text:
+                        etf.strategy_text = strategy_text
+                        logger.debug(f"CIK {cik}: Updated strategy_text for {etf.ticker}")
+
+                    if principal_risks:
+                        etf.principal_risks = principal_risks
+                        logger.debug(f"CIK {cik}: Updated principal_risks for {etf.ticker} ({len(risk_blocks)} risk blocks)")
 
             # Update filing_url for ETFs processed in this filing
             if filing_url:
@@ -591,6 +618,11 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                     if etf:
                         etf.filing_url = filing_url
                         logger.debug(f"CIK {cik}: Updated filing_url for {etf.ticker}")
+
+            del all_nonnumeric, soup, html
+            gc.collect()
+            session.commit()
+            logger.debug(f"CIK {cik}: Committed data for filing {filing_idx}")
 
         # Update processing log after successful processing
         if latest_filing_date is not None:

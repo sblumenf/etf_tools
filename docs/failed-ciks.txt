@@ -1,0 +1,2211 @@
+[===========] Ready
+sergeblumenfeld@penguin:~$ ls
+ComplexETF  docs  etf_tools  investR  investR.db  logs  mcp_global_setup_complete.md  neo4j  podcastknowledge  portfolio.duckdb  R  test-file.txt
+sergeblumenfeld@penguin:~$ cd etf_tools
+sergeblumenfeld@penguin:~/etf_tools$ source /home/sergeblumenfeld/etf_tools/.venv/bin/activate && etf-pipeline run-all
+--- Step 0: Ensuring database tables exist ---
+--- Step 1: Discovering ETF tickers ---
+--- Step 2: Loading ETFs into database ---
+2026-02-17 21:25:14,439 - etf_pipeline.load_etfs - INFO - Processing CIK 0000036405: 9 ETF(s)
+2026-02-17 21:25:15,866 - etf_pipeline.load_etfs - INFO - CIK 0000036405: Extracted 12 series from 24F-2NT (total: 12)
+2026-02-17 21:25:15,866 - etf_pipeline.load_etfs - INFO - CIK 0000036405: All 9 needed series covered, stopping early
+2026-02-17 21:25:15,866 - etf_pipeline.load_etfs - INFO - CIK 0000036405: issuer_name = VANGUARD INDEX FUNDS
+2026-02-17 21:25:16,104 - etf_pipeline.load_etfs - INFO - CIK 0000036405: Inserted 0 ETFs, updated 9 ETFs
+2026-02-17 21:25:16,104 - etf_pipeline.load_etfs - INFO - Processing CIK 0000052848: 18 ETF(s)
+2026-02-17 21:25:16,771 - etf_pipeline.load_etfs - INFO - CIK 0000052848: Extracted 25 series from 24F-2NT (total: 25)
+2026-02-17 21:25:16,771 - etf_pipeline.load_etfs - INFO - CIK 0000052848: All 18 needed series covered, stopping early
+2026-02-17 21:25:16,777 - etf_pipeline.load_etfs - INFO - CIK 0000052848: issuer_name = VANGUARD WORLD FUND
+2026-02-17 21:25:16,889 - etf_pipeline.load_etfs - INFO - CIK 0000052848: Inserted 0 ETFs, updated 18 ETFs
+2026-02-17 21:25:16,889 - etf_pipeline.load_etfs - INFO - Processing CIK 0000105544: 3 ETF(s)
+2026-02-17 21:25:17,125 - etf_pipeline.load_etfs - INFO - CIK 0000105544: Extracted 14 series from 24F-2NT (total: 14)
+2026-02-17 21:25:17,125 - etf_pipeline.load_etfs - INFO - CIK 0000105544: All 3 needed series covered, stopping early
+2026-02-17 21:25:17,125 - etf_pipeline.load_etfs - INFO - CIK 0000105544: issuer_name = VANGUARD WELLESLEY INCOME FUND
+2026-02-17 21:25:17,136 - etf_pipeline.load_etfs - INFO - CIK 0000105544: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:25:17,136 - etf_pipeline.load_etfs - INFO - Processing CIK 0000105563: 7 ETF(s)
+2026-02-17 21:25:17,340 - etf_pipeline.load_etfs - INFO - CIK 0000105563: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:25:17,340 - etf_pipeline.load_etfs - INFO - CIK 0000105563: All 7 needed series covered, stopping early
+2026-02-17 21:25:17,340 - etf_pipeline.load_etfs - INFO - CIK 0000105563: issuer_name = VANGUARD WELLINGTON FUND
+2026-02-17 21:25:17,375 - etf_pipeline.load_etfs - INFO - CIK 0000105563: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:25:17,376 - etf_pipeline.load_etfs - INFO - Processing CIK 0000106444: 1 ETF(s)
+2026-02-17 21:25:17,930 - etf_pipeline.load_etfs - INFO - CIK 0000106444: Extracted 11 series from 24F-2NT (total: 11)
+2026-02-17 21:25:18,176 - etf_pipeline.load_etfs - INFO - CIK 0000106444: Extracted 1 series from 485BPOS (total: 12)
+2026-02-17 21:25:18,176 - etf_pipeline.load_etfs - INFO - CIK 0000106444: All 1 needed series covered, stopping early
+2026-02-17 21:25:18,177 - etf_pipeline.load_etfs - INFO - CIK 0000106444: issuer_name = VANGUARD FIXED INCOME SECURITIES FUNDS
+2026-02-17 21:25:18,182 - etf_pipeline.load_etfs - INFO - CIK 0000106444: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:18,182 - etf_pipeline.load_etfs - INFO - Processing CIK 0000205323: 1 ETF(s)
+2026-02-17 21:25:18,554 - etf_pipeline.load_etfs - INFO - CIK 0000205323: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:25:18,554 - etf_pipeline.load_etfs - INFO - CIK 0000205323: All 1 needed series covered, stopping early
+2026-02-17 21:25:18,554 - etf_pipeline.load_etfs - INFO - CIK 0000205323: issuer_name = FIDELITY COMMONWEALTH TRUST
+2026-02-17 21:25:18,569 - etf_pipeline.load_etfs - INFO - CIK 0000205323: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:18,569 - etf_pipeline.load_etfs - INFO - Processing CIK 0000225997: 5 ETF(s)
+2026-02-17 21:25:18,985 - etf_pipeline.load_etfs - INFO - CIK 0000225997: Extracted 11 series from 24F-2NT (total: 11)
+2026-02-17 21:25:18,985 - etf_pipeline.load_etfs - INFO - CIK 0000225997: All 5 needed series covered, stopping early
+2026-02-17 21:25:18,985 - etf_pipeline.load_etfs - INFO - CIK 0000225997: issuer_name = VANGUARD MUNICIPAL BOND FUNDS
+2026-02-17 21:25:19,002 - etf_pipeline.load_etfs - INFO - CIK 0000225997: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:25:19,004 - etf_pipeline.load_etfs - INFO - Processing CIK 0000357204: 1 ETF(s)
+2026-02-17 21:25:19,417 - etf_pipeline.load_etfs - INFO - CIK 0000357204: Extracted 16 series from 24F-2NT (total: 16)
+2026-02-17 21:25:19,417 - etf_pipeline.load_etfs - INFO - CIK 0000357204: All 1 needed series covered, stopping early
+2026-02-17 21:25:19,417 - etf_pipeline.load_etfs - INFO - CIK 0000357204: issuer_name = Segall Bryant & Hamill Trust
+2026-02-17 21:25:19,437 - etf_pipeline.load_etfs - INFO - CIK 0000357204: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:19,439 - etf_pipeline.load_etfs - INFO - Processing CIK 0000734383: 2 ETF(s)
+2026-02-17 21:25:19,881 - etf_pipeline.load_etfs - INFO - CIK 0000734383: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:25:19,881 - etf_pipeline.load_etfs - INFO - CIK 0000734383: All 2 needed series covered, stopping early
+2026-02-17 21:25:19,882 - etf_pipeline.load_etfs - INFO - CIK 0000734383: issuer_name = VANGUARD SPECIALIZED FUNDS
+2026-02-17 21:25:19,903 - etf_pipeline.load_etfs - INFO - CIK 0000734383: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:25:19,904 - etf_pipeline.load_etfs - INFO - Processing CIK 0000736054: 1 ETF(s)
+2026-02-17 21:25:20,260 - etf_pipeline.load_etfs - INFO - CIK 0000736054: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:25:20,260 - etf_pipeline.load_etfs - INFO - CIK 0000736054: All 1 needed series covered, stopping early
+2026-02-17 21:25:20,260 - etf_pipeline.load_etfs - INFO - CIK 0000736054: issuer_name = VANGUARD STAR FUNDS
+2026-02-17 21:25:20,261 - etf_pipeline.load_etfs - INFO - CIK 0000736054: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:20,262 - etf_pipeline.load_etfs - INFO - Processing CIK 0000768847: 2 ETF(s)
+2026-02-17 21:25:20,591 - etf_pipeline.load_etfs - INFO - CIK 0000768847: Extracted 6 series from 24F-2NT (total: 6)
+2026-02-17 21:25:21,229 - etf_pipeline.load_etfs - INFO - CIK 0000768847: Extracted 1 series from 485BPOS (total: 7)
+2026-02-17 21:25:22,996 - etf_pipeline.load_etfs - INFO - CIK 0000768847: Extracted 6 series from N-CSR (total: 7)
+2026-02-17 21:25:23,119 - etf_pipeline.load_etfs - INFO - CIK 0000768847: Extracted 1 series from NPORT-P (total: 8)
+2026-02-17 21:25:23,119 - etf_pipeline.load_etfs - INFO - CIK 0000768847: issuer_name = VanEck Funds
+2026-02-17 21:25:23,127 - etf_pipeline.load_etfs - INFO - CIK 0000768847: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:25:23,128 - etf_pipeline.load_etfs - INFO - Processing CIK 0000783401: 1 ETF(s)
+2026-02-17 21:25:23,308 - etf_pipeline.load_etfs - INFO - CIK 0000783401: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:25:23,308 - etf_pipeline.load_etfs - INFO - CIK 0000783401: All 1 needed series covered, stopping early
+2026-02-17 21:25:23,308 - etf_pipeline.load_etfs - INFO - CIK 0000783401: issuer_name = VANGUARD CALIFORNIA TAX-FREE FUNDS
+2026-02-17 21:25:23,327 - etf_pipeline.load_etfs - INFO - CIK 0000783401: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:23,327 - etf_pipeline.load_etfs - INFO - Processing CIK 0000788599: 1 ETF(s)
+2026-02-17 21:25:23,514 - etf_pipeline.load_etfs - INFO - CIK 0000788599: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:25:23,664 - etf_pipeline.load_etfs - INFO - CIK 0000788599: Extracted 1 series from 485BPOS (total: 3)
+2026-02-17 21:25:23,676 - etf_pipeline.load_etfs - INFO - CIK 0000788599: All 1 needed series covered, stopping early
+2026-02-17 21:25:23,676 - etf_pipeline.load_etfs - INFO - CIK 0000788599: issuer_name = VANGUARD NEW YORK TAX-FREE FUNDS
+2026-02-17 21:25:23,684 - etf_pipeline.load_etfs - INFO - CIK 0000788599: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:23,684 - etf_pipeline.load_etfs - INFO - Processing CIK 0000794105: 5 ETF(s)
+2026-02-17 21:25:24,130 - etf_pipeline.load_etfs - INFO - CIK 0000794105: Extracted 8 series from 24F-2NT (total: 8)
+2026-02-17 21:25:24,130 - etf_pipeline.load_etfs - INFO - CIK 0000794105: All 5 needed series covered, stopping early
+2026-02-17 21:25:24,130 - etf_pipeline.load_etfs - INFO - CIK 0000794105: issuer_name = VANGUARD BOND INDEX FUNDS
+2026-02-17 21:25:24,267 - etf_pipeline.load_etfs - INFO - CIK 0000794105: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:25:24,267 - etf_pipeline.load_etfs - INFO - Processing CIK 0000799127: 1 ETF(s)
+2026-02-17 21:25:24,584 - etf_pipeline.load_etfs - INFO - CIK 0000799127: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:25:24,585 - etf_pipeline.load_etfs - INFO - CIK 0000799127: All 1 needed series covered, stopping early
+2026-02-17 21:25:24,585 - etf_pipeline.load_etfs - INFO - CIK 0000799127: issuer_name = VANGUARD QUANTITATIVE FUNDS
+2026-02-17 21:25:24,616 - etf_pipeline.load_etfs - INFO - CIK 0000799127: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:24,616 - etf_pipeline.load_etfs - INFO - Processing CIK 0000811030: 5 ETF(s)
+2026-02-17 21:25:25,614 - etf_pipeline.load_etfs - INFO - CIK 0000811030: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:25:25,823 - etf_pipeline.load_etfs - INFO - CIK 0000811030: Extracted 1 series from 485BPOS (total: 8)
+2026-02-17 21:25:25,977 - etf_pipeline.load_etfs - INFO - CIK 0000811030: Extracted 1 series from N-CSR (total: 8)
+2026-02-17 21:25:26,014 - etf_pipeline.load_etfs - INFO - CIK 0000811030: Extracted 1 series from NPORT-P (total: 9)
+2026-02-17 21:25:26,014 - etf_pipeline.load_etfs - INFO - CIK 0000811030: issuer_name = PROFESSIONALLY MANAGED PORTFOLIOS
+2026-02-17 21:25:26,037 - etf_pipeline.load_etfs - INFO - CIK 0000811030: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:25:26,041 - etf_pipeline.load_etfs - INFO - Processing CIK 0000831114: 40 ETF(s)
+2026-02-17 21:25:26,723 - etf_pipeline.load_etfs - INFO - CIK 0000831114: Extracted 62 series from 24F-2NT (total: 62)
+2026-02-17 21:25:26,939 - etf_pipeline.load_etfs - INFO - CIK 0000831114: Extracted 1 series from 485BPOS (total: 62)
+2026-02-17 21:25:28,790 - etf_pipeline.load_etfs - INFO - CIK 0000831114: Extracted 59 series from N-CSR (total: 62)
+2026-02-17 21:25:28,906 - etf_pipeline.load_etfs - INFO - CIK 0000831114: Extracted 1 series from NPORT-P (total: 62)
+2026-02-17 21:25:28,907 - etf_pipeline.load_etfs - INFO - CIK 0000831114: issuer_name = RBB FUND, INC.
+2026-02-17 21:25:29,259 - etf_pipeline.load_etfs - INFO - CIK 0000831114: Inserted 0 ETFs, updated 40 ETFs
+2026-02-17 21:25:29,260 - etf_pipeline.load_etfs - INFO - Processing CIK 0000836906: 8 ETF(s)
+2026-02-17 21:25:29,586 - etf_pipeline.load_etfs - INFO - CIK 0000836906: Extracted 14 series from 24F-2NT (total: 14)
+2026-02-17 21:25:29,586 - etf_pipeline.load_etfs - INFO - CIK 0000836906: All 8 needed series covered, stopping early
+2026-02-17 21:25:29,587 - etf_pipeline.load_etfs - INFO - CIK 0000836906: issuer_name = VANGUARD MALVERN FUNDS
+2026-02-17 21:25:29,609 - etf_pipeline.load_etfs - INFO - CIK 0000836906: Inserted 0 ETFs, updated 8 ETFs
+2026-02-17 21:25:29,614 - etf_pipeline.load_etfs - INFO - Processing CIK 0000857489: 6 ETF(s)
+2026-02-17 21:25:30,264 - etf_pipeline.load_etfs - INFO - CIK 0000857489: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:25:30,264 - etf_pipeline.load_etfs - INFO - CIK 0000857489: All 6 needed series covered, stopping early
+2026-02-17 21:25:30,264 - etf_pipeline.load_etfs - INFO - CIK 0000857489: issuer_name = VANGUARD INTERNATIONAL EQUITY INDEX FUNDS
+2026-02-17 21:25:30,318 - etf_pipeline.load_etfs - INFO - CIK 0000857489: Inserted 0 ETFs, updated 6 ETFs
+2026-02-17 21:25:30,319 - etf_pipeline.load_etfs - INFO - Processing CIK 0000862084: 2 ETF(s)
+2026-02-17 21:25:30,961 - etf_pipeline.load_etfs - INFO - CIK 0000862084: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:25:30,961 - etf_pipeline.load_etfs - INFO - CIK 0000862084: All 2 needed series covered, stopping early
+2026-02-17 21:25:30,961 - etf_pipeline.load_etfs - INFO - CIK 0000862084: issuer_name = VANGUARD INSTITUTIONAL INDEX FUNDS
+2026-02-17 21:25:30,973 - etf_pipeline.load_etfs - INFO - CIK 0000862084: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:25:30,978 - etf_pipeline.load_etfs - INFO - Processing CIK 0000866256: 2 ETF(s)
+2026-02-17 21:25:31,190 - etf_pipeline.load_etfs - INFO - CIK 0000866256: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:25:31,191 - etf_pipeline.load_etfs - INFO - CIK 0000866256: All 2 needed series covered, stopping early
+2026-02-17 21:25:31,191 - etf_pipeline.load_etfs - INFO - CIK 0000866256: issuer_name = PARNASSUS FUNDS II
+2026-02-17 21:25:31,246 - etf_pipeline.load_etfs - INFO - CIK 0000866256: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:25:31,249 - etf_pipeline.load_etfs - INFO - Processing CIK 0000875186: 2 ETF(s)
+2026-02-17 21:25:31,911 - etf_pipeline.load_etfs - INFO - CIK 0000875186: Extracted 13 series from 24F-2NT (total: 13)
+2026-02-17 21:25:31,911 - etf_pipeline.load_etfs - INFO - CIK 0000875186: All 2 needed series covered, stopping early
+2026-02-17 21:25:31,911 - etf_pipeline.load_etfs - INFO - CIK 0000875186: issuer_name = MORGAN STANLEY PATHWAY FUNDS
+2026-02-17 21:25:31,949 - etf_pipeline.load_etfs - INFO - CIK 0000875186: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:25:31,949 - etf_pipeline.load_etfs - INFO - Processing CIK 0000878719: 2 ETF(s)
+2026-02-17 21:25:33,701 - etf_pipeline.load_etfs - INFO - CIK 0000878719: Extracted 24 series from 24F-2NT (total: 24)
+2026-02-17 21:25:34,118 - etf_pipeline.load_etfs - INFO - CIK 0000878719: Extracted 1 series from 485BPOS (total: 25)
+2026-02-17 21:25:34,336 - etf_pipeline.load_etfs - INFO - CIK 0000878719: Extracted 1 series from N-CSR (total: 25)
+2026-02-17 21:25:34,391 - etf_pipeline.load_etfs - INFO - CIK 0000878719: Extracted 1 series from NPORT-P (total: 25)
+2026-02-17 21:25:34,391 - etf_pipeline.load_etfs - INFO - CIK 0000878719: issuer_name = ADVISORS' INNER CIRCLE FUND
+2026-02-17 21:25:34,427 - etf_pipeline.load_etfs - INFO - CIK 0000878719: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:25:34,443 - etf_pipeline.load_etfs - INFO - Processing CIK 0000879947: 1 ETF(s)
+2026-02-17 21:25:34,728 - etf_pipeline.load_etfs - INFO - CIK 0000879947: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:25:35,057 - etf_pipeline.load_etfs - INFO - CIK 0000879947: Extracted 1 series from 485BPOS (total: 3)
+2026-02-17 21:25:35,058 - etf_pipeline.load_etfs - INFO - CIK 0000879947: All 1 needed series covered, stopping early
+2026-02-17 21:25:35,058 - etf_pipeline.load_etfs - INFO - CIK 0000879947: issuer_name = AMG ETF Trust
+2026-02-17 21:25:35,070 - etf_pipeline.load_etfs - INFO - CIK 0000879947: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:35,070 - etf_pipeline.load_etfs - INFO - Processing CIK 0000890540: 15 ETF(s)
+2026-02-17 21:25:35,674 - etf_pipeline.load_etfs - INFO - CIK 0000890540: Extracted 10 series from 24F-2NT (total: 10)
+2026-02-17 21:25:36,067 - etf_pipeline.load_etfs - INFO - CIK 0000890540: Extracted 6 series from 485BPOS (total: 16)
+2026-02-17 21:25:36,249 - etf_pipeline.load_etfs - INFO - CIK 0000890540: Extracted 1 series from N-CSR (total: 16)
+2026-02-17 21:25:36,293 - etf_pipeline.load_etfs - INFO - CIK 0000890540: Extracted 1 series from NPORT-P (total: 16)
+2026-02-17 21:25:36,293 - etf_pipeline.load_etfs - INFO - CIK 0000890540: issuer_name = Advisors' Inner Circle Fund II
+2026-02-17 21:25:36,343 - etf_pipeline.load_etfs - INFO - CIK 0000890540: Inserted 0 ETFs, updated 15 ETFs
+2026-02-17 21:25:36,343 - etf_pipeline.load_etfs - INFO - Processing CIK 0000891190: 8 ETF(s)
+2026-02-17 21:25:36,890 - etf_pipeline.load_etfs - INFO - CIK 0000891190: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:25:36,890 - etf_pipeline.load_etfs - INFO - CIK 0000891190: All 8 needed series covered, stopping early
+2026-02-17 21:25:36,890 - etf_pipeline.load_etfs - INFO - CIK 0000891190: issuer_name = VANGUARD ADMIRAL FUNDS
+2026-02-17 21:25:36,966 - etf_pipeline.load_etfs - INFO - CIK 0000891190: Inserted 0 ETFs, updated 8 ETFs
+2026-02-17 21:25:36,966 - etf_pipeline.load_etfs - INFO - Processing CIK 0000891944: 1 ETF(s)
+2026-02-17 21:25:37,575 - etf_pipeline.load_etfs - INFO - CIK 0000891944: Extracted 17 series from 24F-2NT (total: 17)
+2026-02-17 21:25:37,575 - etf_pipeline.load_etfs - INFO - CIK 0000891944: All 1 needed series covered, stopping early
+2026-02-17 21:25:37,575 - etf_pipeline.load_etfs - INFO - CIK 0000891944: issuer_name = HENNESSY FUNDS TRUST
+2026-02-17 21:25:37,577 - etf_pipeline.load_etfs - INFO - CIK 0000891944: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:37,577 - etf_pipeline.load_etfs - INFO - Processing CIK 0000897111: 4 ETF(s)
+2026-02-17 21:25:37,943 - etf_pipeline.load_etfs - INFO - CIK 0000897111: Extracted 16 series from 24F-2NT (total: 16)
+2026-02-17 21:25:38,252 - etf_pipeline.load_etfs - INFO - CIK 0000897111: Extracted 4 series from 485BPOS (total: 20)
+2026-02-17 21:25:38,252 - etf_pipeline.load_etfs - INFO - CIK 0000897111: All 4 needed series covered, stopping early
+2026-02-17 21:25:38,252 - etf_pipeline.load_etfs - INFO - CIK 0000897111: issuer_name = CARILLON SERIES TRUST
+2026-02-17 21:25:38,256 - etf_pipeline.load_etfs - INFO - CIK 0000897111: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:25:38,257 - etf_pipeline.load_etfs - INFO - Processing CIK 0000915802: 1 ETF(s)
+2026-02-17 21:25:38,753 - etf_pipeline.load_etfs - INFO - CIK 0000915802: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:25:38,753 - etf_pipeline.load_etfs - INFO - CIK 0000915802: All 1 needed series covered, stopping early
+2026-02-17 21:25:38,753 - etf_pipeline.load_etfs - INFO - CIK 0000915802: issuer_name = FINANCIAL INVESTORS TRUST
+2026-02-17 21:25:38,758 - etf_pipeline.load_etfs - INFO - CIK 0000915802: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:38,759 - etf_pipeline.load_etfs - INFO - Processing CIK 0000916490: 7 ETF(s)
+2026-02-17 21:25:39,376 - etf_pipeline.load_etfs - INFO - CIK 0000916490: Extracted 12 series from 24F-2NT (total: 12)
+2026-02-17 21:25:39,811 - etf_pipeline.load_etfs - INFO - CIK 0000916490: Extracted 12 series from 485BPOS (total: 12)
+2026-02-17 21:25:41,725 - etf_pipeline.load_etfs - INFO - CIK 0000916490: Extracted 12 series from N-CSR (total: 12)
+2026-02-17 21:25:41,951 - etf_pipeline.load_etfs - INFO - CIK 0000916490: Extracted 1 series from NPORT-P (total: 13)
+2026-02-17 21:25:41,953 - etf_pipeline.load_etfs - INFO - CIK 0000916490: issuer_name = TIMOTHY PLAN
+2026-02-17 21:25:41,987 - etf_pipeline.load_etfs - INFO - CIK 0000916490: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:25:41,987 - etf_pipeline.load_etfs - INFO - Processing CIK 0000919160: 8 ETF(s)
+2026-02-17 21:25:42,457 - etf_pipeline.load_etfs - INFO - CIK 0000919160: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:25:42,686 - etf_pipeline.load_etfs - INFO - CIK 0000919160: Extracted 1 series from 485BPOS (total: 10)
+2026-02-17 21:25:43,699 - etf_pipeline.load_etfs - INFO - CIK 0000919160: Extracted 4 series from N-CSR (total: 10)
+2026-02-17 21:25:43,899 - etf_pipeline.load_etfs - INFO - CIK 0000919160: Extracted 1 series from NPORT-P (total: 10)
+2026-02-17 21:25:43,899 - etf_pipeline.load_etfs - INFO - CIK 0000919160: issuer_name = GUINNESS ATKINSON FUNDS
+2026-02-17 21:25:43,950 - etf_pipeline.load_etfs - INFO - CIK 0000919160: Inserted 0 ETFs, updated 8 ETFs
+2026-02-17 21:25:43,950 - etf_pipeline.load_etfs - INFO - Processing CIK 0000923184: 12 ETF(s)
+2026-02-17 21:25:44,359 - etf_pipeline.load_etfs - INFO - CIK 0000923184: Extracted 28 series from 24F-2NT (total: 28)
+2026-02-17 21:25:44,359 - etf_pipeline.load_etfs - INFO - CIK 0000923184: All 12 needed series covered, stopping early
+2026-02-17 21:25:44,359 - etf_pipeline.load_etfs - INFO - CIK 0000923184: issuer_name = MATTHEWS INTERNATIONAL FUNDS
+2026-02-17 21:25:44,480 - etf_pipeline.load_etfs - INFO - CIK 0000923184: Inserted 0 ETFs, updated 12 ETFs
+2026-02-17 21:25:44,481 - etf_pipeline.load_etfs - INFO - Processing CIK 0000923202: 1 ETF(s)
+2026-02-17 21:25:45,041 - etf_pipeline.load_etfs - INFO - CIK 0000923202: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:25:45,041 - etf_pipeline.load_etfs - INFO - CIK 0000923202: All 1 needed series covered, stopping early
+2026-02-17 21:25:45,041 - etf_pipeline.load_etfs - INFO - CIK 0000923202: issuer_name = VANGUARD TAX-MANAGED FUNDS
+2026-02-17 21:25:45,048 - etf_pipeline.load_etfs - INFO - CIK 0000923202: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:45,048 - etf_pipeline.load_etfs - INFO - Processing CIK 0000924727: 2 ETF(s)
+2026-02-17 21:25:45,466 - etf_pipeline.load_etfs - INFO - CIK 0000924727: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:25:45,665 - etf_pipeline.load_etfs - INFO - CIK 0000924727: Extracted 1 series from 485BPOS (total: 3)
+2026-02-17 21:25:45,905 - etf_pipeline.load_etfs - INFO - CIK 0000924727: Extracted 2 series from N-CSR (total: 3)
+2026-02-17 21:25:45,992 - etf_pipeline.load_etfs - INFO - CIK 0000924727: Extracted 1 series from NPORT-P (total: 4)
+2026-02-17 21:25:45,992 - etf_pipeline.load_etfs - INFO - CIK 0000924727: issuer_name = Investment Managers Series Trust III
+2026-02-17 21:25:45,994 - etf_pipeline.load_etfs - INFO - CIK 0000924727: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:25:45,994 - etf_pipeline.load_etfs - INFO - Processing CIK 0000930667: 53 ETF(s)
+2026-02-17 21:25:46,829 - etf_pipeline.load_etfs - INFO - CIK 0000930667: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:25:46,963 - etf_pipeline.load_etfs - INFO - CIK 0000930667: Extracted 1 series from 485BPOS (total: 6)
+2026-02-17 21:25:47,369 - etf_pipeline.load_etfs - INFO - CIK 0000930667: Extracted 5 series from N-CSR (total: 6)
+2026-02-17 21:25:47,561 - etf_pipeline.load_etfs - INFO - CIK 0000930667: Extracted 1 series from NPORT-P (total: 7)
+2026-02-17 21:25:47,561 - etf_pipeline.load_etfs - INFO - CIK 0000930667: issuer_name = iShares, Inc.
+2026-02-17 21:25:47,670 - etf_pipeline.load_etfs - INFO - CIK 0000930667: Inserted 0 ETFs, updated 53 ETFs
+2026-02-17 21:25:47,672 - etf_pipeline.load_etfs - INFO - Processing CIK 0000945908: 60 ETF(s)
+2026-02-17 21:25:48,499 - etf_pipeline.load_etfs - INFO - CIK 0000945908: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:25:48,601 - etf_pipeline.load_etfs - INFO - CIK 0000945908: Extracted 1 series from 485BPOS (total: 8)
+2026-02-17 21:25:48,991 - etf_pipeline.load_etfs - INFO - CIK 0000945908: Extracted 7 series from N-CSR (total: 8)
+2026-02-17 21:25:49,092 - etf_pipeline.load_etfs - INFO - CIK 0000945908: Extracted 1 series from NPORT-P (total: 9)
+2026-02-17 21:25:49,094 - etf_pipeline.load_etfs - INFO - CIK 0000945908: issuer_name = FIDELITY COVINGTON TRUST
+2026-02-17 21:25:49,180 - etf_pipeline.load_etfs - INFO - CIK 0000945908: Inserted 0 ETFs, updated 60 ETFs
+2026-02-17 21:25:49,181 - etf_pipeline.load_etfs - INFO - Processing CIK 0001004655: 4 ETF(s)
+2026-02-17 21:25:49,649 - etf_pipeline.load_etfs - INFO - CIK 0001004655: Extracted 12 series from 24F-2NT (total: 12)
+2026-02-17 21:25:49,649 - etf_pipeline.load_etfs - INFO - CIK 0001004655: All 4 needed series covered, stopping early
+2026-02-17 21:25:49,649 - etf_pipeline.load_etfs - INFO - CIK 0001004655: issuer_name = VANGUARD WHITEHALL FUNDS
+2026-02-17 21:25:49,668 - etf_pipeline.load_etfs - INFO - CIK 0001004655: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:25:49,668 - etf_pipeline.load_etfs - INFO - Processing CIK 0001020425: 5 ETF(s)
+2026-02-17 21:25:50,078 - etf_pipeline.load_etfs - INFO - CIK 0001020425: Extracted 16 series from 24F-2NT (total: 16)
+2026-02-17 21:25:50,078 - etf_pipeline.load_etfs - INFO - CIK 0001020425: All 5 needed series covered, stopping early
+2026-02-17 21:25:50,078 - etf_pipeline.load_etfs - INFO - CIK 0001020425: issuer_name = LITMAN GREGORY FUNDS TRUST
+2026-02-17 21:25:50,155 - etf_pipeline.load_etfs - INFO - CIK 0001020425: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:25:50,156 - etf_pipeline.load_etfs - INFO - Processing CIK 0001021882: 16 ETF(s)
+2026-02-17 21:25:50,489 - etf_pipeline.load_etfs - INFO - CIK 0001021882: Extracted 17 series from 24F-2NT (total: 17)
+2026-02-17 21:25:50,490 - etf_pipeline.load_etfs - INFO - CIK 0001021882: All 16 needed series covered, stopping early
+2026-02-17 21:25:50,490 - etf_pipeline.load_etfs - INFO - CIK 0001021882: issuer_name = VANGUARD SCOTTSDALE FUNDS
+2026-02-17 21:25:50,567 - etf_pipeline.load_etfs - INFO - CIK 0001021882: Inserted 0 ETFs, updated 16 ETFs
+2026-02-17 21:25:50,567 - etf_pipeline.load_etfs - INFO - Processing CIK 0001026634: 2 ETF(s)
+2026-02-17 21:25:50,838 - etf_pipeline.load_etfs - INFO - CIK 0001026634: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:25:50,838 - etf_pipeline.load_etfs - INFO - CIK 0001026634: All 2 needed series covered, stopping early
+2026-02-17 21:25:50,838 - etf_pipeline.load_etfs - INFO - CIK 0001026634: issuer_name = RENAISSANCE CAPITAL GREENWICH FUNDS
+2026-02-17 21:25:50,842 - etf_pipeline.load_etfs - INFO - CIK 0001026634: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:25:50,851 - etf_pipeline.load_etfs - INFO - Processing CIK 0001027596: 5 ETF(s)
+2026-02-17 21:25:52,014 - etf_pipeline.load_etfs - INFO - CIK 0001027596: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:25:52,406 - etf_pipeline.load_etfs - INFO - CIK 0001027596: Extracted 2 series from 485BPOS (total: 9)
+2026-02-17 21:25:52,710 - etf_pipeline.load_etfs - INFO - CIK 0001027596: Extracted 5 series from N-CSR (total: 14)
+2026-02-17 21:25:52,759 - etf_pipeline.load_etfs - INFO - CIK 0001027596: Extracted 1 series from NPORT-P (total: 15)
+2026-02-17 21:25:52,759 - etf_pipeline.load_etfs - INFO - CIK 0001027596: issuer_name = ADVISORS SERIES TRUST
+2026-02-17 21:25:52,764 - etf_pipeline.load_etfs - INFO - CIK 0001027596: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:25:52,765 - etf_pipeline.load_etfs - INFO - Processing CIK 0001064641: 22 ETF(s)
+2026-02-17 21:25:53,074 - etf_pipeline.load_etfs - INFO - CIK 0001064641: Extracted 11 series from 24F-2NT (total: 11)
+2026-02-17 21:25:53,509 - etf_pipeline.load_etfs - INFO - CIK 0001064641: Extracted 11 series from 485BPOS (total: 11)
+2026-02-17 21:25:53,898 - etf_pipeline.load_etfs - INFO - CIK 0001064641: Extracted 11 series from N-CSR (total: 11)
+2026-02-17 21:25:53,936 - etf_pipeline.load_etfs - INFO - CIK 0001064641: Extracted 1 series from NPORT-P (total: 11)
+2026-02-17 21:25:53,936 - etf_pipeline.load_etfs - INFO - CIK 0001064641: issuer_name = SELECT SECTOR SPDR TRUST
+2026-02-17 21:25:53,957 - etf_pipeline.load_etfs - INFO - CIK 0001064641: Inserted 0 ETFs, updated 22 ETFs
+2026-02-17 21:25:53,958 - etf_pipeline.load_etfs - INFO - Processing CIK 0001064642: 87 ETF(s)
+2026-02-17 21:25:54,603 - etf_pipeline.load_etfs - INFO - CIK 0001064642: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:25:54,749 - etf_pipeline.load_etfs - INFO - CIK 0001064642: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:25:54,831 - etf_pipeline.load_etfs - INFO - CIK 0001064642: Extracted 1 series from N-CSR (total: 2)
+2026-02-17 21:25:54,879 - etf_pipeline.load_etfs - INFO - CIK 0001064642: Extracted 1 series from NPORT-P (total: 2)
+2026-02-17 21:25:54,879 - etf_pipeline.load_etfs - INFO - CIK 0001064642: issuer_name = SPDR SERIES TRUST
+2026-02-17 21:25:54,992 - etf_pipeline.load_etfs - INFO - CIK 0001064642: Inserted 0 ETFs, updated 87 ETFs
+2026-02-17 21:25:54,993 - etf_pipeline.load_etfs - INFO - Processing CIK 0001090372: 1 ETF(s)
+2026-02-17 21:25:55,282 - etf_pipeline.load_etfs - INFO - CIK 0001090372: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:25:55,283 - etf_pipeline.load_etfs - INFO - CIK 0001090372: All 1 needed series covered, stopping early
+2026-02-17 21:25:55,283 - etf_pipeline.load_etfs - INFO - CIK 0001090372: issuer_name = Jacob Funds Inc.
+2026-02-17 21:25:55,290 - etf_pipeline.load_etfs - INFO - CIK 0001090372: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:25:55,291 - etf_pipeline.load_etfs - INFO - Processing CIK 0001096012: 3 ETF(s)
+2026-02-17 21:25:55,494 - etf_pipeline.load_etfs - INFO - CIK 0001096012: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:25:55,629 - etf_pipeline.load_etfs - INFO - CIK 0001096012: Extracted 1 series from 485BPOS (total: 1)
+2026-02-17 21:25:55,819 - etf_pipeline.load_etfs - INFO - CIK 0001096012: Extracted 1 series from N-CSR (total: 1)
+2026-02-17 21:25:55,865 - etf_pipeline.load_etfs - INFO - CIK 0001096012: Extracted 1 series from NPORT-P (total: 1)
+2026-02-17 21:25:55,865 - etf_pipeline.load_etfs - INFO - CIK 0001096012: issuer_name = AMERICAN BEACON SELECT FUNDS
+2026-02-17 21:25:55,871 - etf_pipeline.load_etfs - INFO - CIK 0001096012: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:25:55,872 - etf_pipeline.load_etfs - INFO - Processing CIK 0001100663: 371 ETF(s)
+2026-02-17 21:25:57,770 - etf_pipeline.load_etfs - INFO - CIK 0001100663: Extracted 90 series from 24F-2NT (total: 90)
+2026-02-17 21:25:57,871 - etf_pipeline.load_etfs - INFO - CIK 0001100663: Extracted 1 series from 485BPOS (total: 91)
+2026-02-17 21:26:00,040 - etf_pipeline.load_etfs - INFO - CIK 0001100663: Extracted 42 series from N-CSR (total: 92)
+2026-02-17 21:26:00,127 - etf_pipeline.load_etfs - INFO - CIK 0001100663: Extracted 1 series from NPORT-P (total: 93)
+2026-02-17 21:26:00,128 - etf_pipeline.load_etfs - INFO - CIK 0001100663: issuer_name = iSHARES TRUST
+2026-02-17 21:26:01,028 - etf_pipeline.load_etfs - INFO - CIK 0001100663: Inserted 0 ETFs, updated 371 ETFs
+2026-02-17 21:26:01,033 - etf_pipeline.load_etfs - INFO - Processing CIK 0001137360: 77 ETF(s)
+2026-02-17 21:26:01,886 - etf_pipeline.load_etfs - INFO - CIK 0001137360: Extracted 24 series from 24F-2NT (total: 24)
+2026-02-17 21:26:03,032 - etf_pipeline.load_etfs - INFO - CIK 0001137360: Extracted 25 series from 485BPOS (total: 25)
+2026-02-17 21:26:03,808 - etf_pipeline.load_etfs - INFO - CIK 0001137360: Extracted 24 series from N-CSR (total: 25)
+2026-02-17 21:26:03,865 - etf_pipeline.load_etfs - INFO - CIK 0001137360: Extracted 1 series from NPORT-P (total: 26)
+2026-02-17 21:26:03,865 - etf_pipeline.load_etfs - INFO - CIK 0001137360: issuer_name = VanEck ETF Trust
+2026-02-17 21:26:04,044 - etf_pipeline.load_etfs - INFO - CIK 0001137360: Inserted 0 ETFs, updated 77 ETFs
+2026-02-17 21:26:04,045 - etf_pipeline.load_etfs - INFO - Processing CIK 0001141819: 9 ETF(s)
+2026-02-17 21:26:04,905 - etf_pipeline.load_etfs - INFO - CIK 0001141819: Extracted 6 series from 24F-2NT (total: 6)
+2026-02-17 21:26:05,388 - etf_pipeline.load_etfs - INFO - CIK 0001141819: Extracted 5 series from 485BPOS (total: 6)
+2026-02-17 21:26:05,510 - etf_pipeline.load_etfs - INFO - CIK 0001141819: Extracted 1 series from N-CSR (total: 7)
+2026-02-17 21:26:05,678 - etf_pipeline.load_etfs - INFO - CIK 0001141819: Extracted 1 series from NPORT-P (total: 8)
+2026-02-17 21:26:05,678 - etf_pipeline.load_etfs - INFO - CIK 0001141819: issuer_name = TRUST FOR PROFESSIONAL MANAGERS
+2026-02-17 21:26:05,948 - etf_pipeline.load_etfs - INFO - CIK 0001141819: Inserted 0 ETFs, updated 9 ETFs
+2026-02-17 21:26:05,948 - etf_pipeline.load_etfs - INFO - Processing CIK 0001145022: 1 ETF(s)
+2026-02-17 21:26:06,189 - etf_pipeline.load_etfs - INFO - CIK 0001145022: Extracted 12 series from 24F-2NT (total: 12)
+2026-02-17 21:26:06,189 - etf_pipeline.load_etfs - INFO - CIK 0001145022: All 1 needed series covered, stopping early
+2026-02-17 21:26:06,189 - etf_pipeline.load_etfs - INFO - CIK 0001145022: issuer_name = HOTCHKIS & WILEY FUNDS /DE/
+2026-02-17 21:26:06,194 - etf_pipeline.load_etfs - INFO - CIK 0001145022: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:26:06,194 - etf_pipeline.load_etfs - INFO - Processing CIK 0001168164: 25 ETF(s)
+2026-02-17 21:26:06,546 - etf_pipeline.load_etfs - INFO - CIK 0001168164: Extracted 99 series from 24F-2NT (total: 99)
+2026-02-17 21:26:06,546 - etf_pipeline.load_etfs - INFO - CIK 0001168164: All 25 needed series covered, stopping early
+2026-02-17 21:26:06,546 - etf_pipeline.load_etfs - INFO - CIK 0001168164: issuer_name = SPDR INDEX SHARES FUNDS
+2026-02-17 21:26:06,580 - etf_pipeline.load_etfs - INFO - CIK 0001168164: Inserted 0 ETFs, updated 25 ETFs
+2026-02-17 21:26:06,580 - etf_pipeline.load_etfs - INFO - Processing CIK 0001174610: 142 ETF(s)
+2026-02-17 21:26:07,451 - etf_pipeline.load_etfs - INFO - CIK 0001174610: Extracted 131 series from 24F-2NT (total: 131)
+2026-02-17 21:26:07,601 - etf_pipeline.load_etfs - INFO - CIK 0001174610: Extracted 1 series from 485BPOS (total: 132)
+2026-02-17 21:26:12,512 - etf_pipeline.load_etfs - INFO - CIK 0001174610: Extracted 131 series from N-CSR (total: 132)
+2026-02-17 21:26:12,721 - etf_pipeline.load_etfs - INFO - CIK 0001174610: Extracted 1 series from NPORT-P (total: 132)
+2026-02-17 21:26:12,721 - etf_pipeline.load_etfs - INFO - CIK 0001174610: issuer_name = PROSHARES TRUST
+2026-02-17 21:26:12,965 - etf_pipeline.load_etfs - INFO - CIK 0001174610: Inserted 0 ETFs, updated 142 ETFs
+2026-02-17 21:26:12,967 - etf_pipeline.load_etfs - INFO - Processing CIK 0001199046: 7 ETF(s)
+2026-02-17 21:26:15,749 - etf_pipeline.load_etfs - INFO - CIK 0001199046: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:26:16,220 - etf_pipeline.load_etfs - INFO - CIK 0001199046: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:26:16,746 - etf_pipeline.load_etfs - INFO - CIK 0001199046: Extracted 1 series from N-CSR (total: 3)
+2026-02-17 21:26:16,873 - etf_pipeline.load_etfs - INFO - CIK 0001199046: Extracted 1 series from NPORT-P (total: 4)
+2026-02-17 21:26:16,873 - etf_pipeline.load_etfs - INFO - CIK 0001199046: issuer_name = UNIFIED SERIES TRUST
+2026-02-17 21:26:17,273 - etf_pipeline.load_etfs - INFO - CIK 0001199046: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:26:17,295 - etf_pipeline.load_etfs - INFO - Processing CIK 0001209466: 73 ETF(s)
+2026-02-17 21:26:18,584 - etf_pipeline.load_etfs - INFO - CIK 0001209466: Extracted 73 series from 24F-2NT (total: 73)
+2026-02-17 21:26:18,585 - etf_pipeline.load_etfs - INFO - CIK 0001209466: All 73 needed series covered, stopping early
+2026-02-17 21:26:18,585 - etf_pipeline.load_etfs - INFO - CIK 0001209466: issuer_name = INVESCO EXCHANGE-TRADED FUND TRUST
+2026-02-17 21:26:19,331 - etf_pipeline.load_etfs - INFO - CIK 0001209466: Inserted 0 ETFs, updated 73 ETFs
+2026-02-17 21:26:19,331 - etf_pipeline.load_etfs - INFO - Processing CIK 0001314414: 2 ETF(s)
+2026-02-17 21:26:23,087 - etf_pipeline.load_etfs - INFO - CIK 0001314414: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:26:23,599 - etf_pipeline.load_etfs - INFO - CIK 0001314414: Extracted 1 series from 485BPOS (total: 5)
+2026-02-17 21:26:24,479 - etf_pipeline.load_etfs - INFO - CIK 0001314414: Extracted 4 series from N-CSR (total: 5)
+2026-02-17 21:26:24,896 - etf_pipeline.load_etfs - INFO - CIK 0001314414: Extracted 1 series from NPORT-P (total: 6)
+2026-02-17 21:26:24,896 - etf_pipeline.load_etfs - INFO - CIK 0001314414: issuer_name = Northern Lights Fund Trust
+2026-02-17 21:26:25,446 - etf_pipeline.load_etfs - INFO - CIK 0001314414: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:26:25,447 - etf_pipeline.load_etfs - INFO - Processing CIK 0001318342: 1 ETF(s)
+2026-02-17 21:26:30,646 - etf_pipeline.load_etfs - INFO - CIK 0001318342: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:26:30,921 - etf_pipeline.load_etfs - INFO - CIK 0001318342: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:26:31,216 - etf_pipeline.load_etfs - INFO - CIK 0001318342: Extracted 1 series from N-CSR (total: 3)
+2026-02-17 21:26:31,271 - etf_pipeline.load_etfs - INFO - CIK 0001318342: Extracted 1 series from NPORT-P (total: 3)
+2026-02-17 21:26:31,274 - etf_pipeline.load_etfs - INFO - CIK 0001318342: issuer_name = Investment Managers Series Trust
+2026-02-17 21:26:31,287 - etf_pipeline.load_etfs - INFO - CIK 0001318342: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:26:31,290 - etf_pipeline.load_etfs - INFO - Processing CIK 0001329377: 32 ETF(s)
+2026-02-17 21:26:31,757 - etf_pipeline.load_etfs - INFO - CIK 0001329377: Extracted 26 series from 24F-2NT (total: 26)
+2026-02-17 21:26:31,911 - etf_pipeline.load_etfs - INFO - CIK 0001329377: Extracted 1 series from 485BPOS (total: 27)
+2026-02-17 21:26:33,536 - etf_pipeline.load_etfs - INFO - CIK 0001329377: Extracted 26 series from N-CSR (total: 27)
+2026-02-17 21:26:33,638 - etf_pipeline.load_etfs - INFO - CIK 0001329377: Extracted 1 series from NPORT-P (total: 27)
+2026-02-17 21:26:33,638 - etf_pipeline.load_etfs - INFO - CIK 0001329377: issuer_name = FIRST TRUST EXCHANGE-TRADED FUND
+2026-02-17 21:26:33,744 - etf_pipeline.load_etfs - INFO - CIK 0001329377: Inserted 0 ETFs, updated 32 ETFs
+2026-02-17 21:26:33,746 - etf_pipeline.load_etfs - INFO - Processing CIK 0001345125: 1 ETF(s)
+2026-02-17 21:26:33,925 - etf_pipeline.load_etfs - INFO - CIK 0001345125: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:26:33,931 - etf_pipeline.load_etfs - INFO - CIK 0001345125: All 1 needed series covered, stopping early
+2026-02-17 21:26:33,932 - etf_pipeline.load_etfs - INFO - CIK 0001345125: issuer_name = CYBER HORNET TRUST
+2026-02-17 21:26:33,936 - etf_pipeline.load_etfs - INFO - CIK 0001345125: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:26:33,936 - etf_pipeline.load_etfs - INFO - Processing CIK 0001350487: 87 ETF(s)
+2026-02-17 21:26:34,643 - etf_pipeline.load_etfs - INFO - CIK 0001350487: Extracted 24 series from 24F-2NT (total: 24)
+2026-02-17 21:26:35,274 - etf_pipeline.load_etfs - INFO - CIK 0001350487: Extracted 24 series from 485BPOS (total: 24)
+2026-02-17 21:26:38,357 - etf_pipeline.load_etfs - INFO - CIK 0001350487: Extracted 24 series from N-CSR (total: 24)
+2026-02-17 21:26:39,095 - etf_pipeline.load_etfs - INFO - CIK 0001350487: Extracted 1 series from NPORT-P (total: 24)
+2026-02-17 21:26:39,095 - etf_pipeline.load_etfs - INFO - CIK 0001350487: issuer_name = WisdomTree Trust
+2026-02-17 21:26:39,738 - etf_pipeline.load_etfs - INFO - CIK 0001350487: Inserted 0 ETFs, updated 87 ETFs
+2026-02-17 21:26:39,738 - etf_pipeline.load_etfs - INFO - Processing CIK 0001359057: 7 ETF(s)
+2026-02-17 21:26:40,531 - etf_pipeline.load_etfs - INFO - CIK 0001359057: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:26:40,709 - etf_pipeline.load_etfs - INFO - CIK 0001359057: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:26:40,992 - etf_pipeline.load_etfs - INFO - CIK 0001359057: Extracted 1 series from N-CSR (total: 2)
+2026-02-17 21:26:41,091 - etf_pipeline.load_etfs - INFO - CIK 0001359057: Extracted 1 series from NPORT-P (total: 3)
+2026-02-17 21:26:41,092 - etf_pipeline.load_etfs - INFO - CIK 0001359057: issuer_name = Manager Directed Portfolios
+2026-02-17 21:26:41,130 - etf_pipeline.load_etfs - INFO - CIK 0001359057: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:26:41,130 - etf_pipeline.load_etfs - INFO - Processing CIK 0001364608: 22 ETF(s)
+2026-02-17 21:26:41,634 - etf_pipeline.load_etfs - INFO - CIK 0001364608: Extracted 21 series from 24F-2NT (total: 21)
+2026-02-17 21:26:43,244 - etf_pipeline.load_etfs - INFO - CIK 0001364608: Extracted 21 series from 485BPOS (total: 21)
+2026-02-17 21:26:44,452 - etf_pipeline.load_etfs - INFO - CIK 0001364608: Extracted 21 series from N-CSR (total: 21)
+2026-02-17 21:26:44,530 - etf_pipeline.load_etfs - INFO - CIK 0001364608: Extracted 1 series from NPORT-P (total: 21)
+2026-02-17 21:26:44,530 - etf_pipeline.load_etfs - INFO - CIK 0001364608: issuer_name = FIRST TRUST EXCHANGE-TRADED FUND II
+2026-02-17 21:26:44,790 - etf_pipeline.load_etfs - INFO - CIK 0001364608: Inserted 0 ETFs, updated 22 ETFs
+2026-02-17 21:26:44,790 - etf_pipeline.load_etfs - INFO - Processing CIK 0001378872: 76 ETF(s)
+2026-02-17 21:26:45,617 - etf_pipeline.load_etfs - INFO - CIK 0001378872: Extracted 24 series from 24F-2NT (total: 24)
+2026-02-17 21:26:48,951 - etf_pipeline.load_etfs - INFO - CIK 0001378872: Extracted 62 series from 485BPOS (total: 86)
+2026-02-17 21:26:48,951 - etf_pipeline.load_etfs - INFO - CIK 0001378872: All 76 needed series covered, stopping early
+2026-02-17 21:26:48,951 - etf_pipeline.load_etfs - INFO - CIK 0001378872: issuer_name = Invesco Exchange-Traded Fund Trust II
+2026-02-17 21:26:49,135 - etf_pipeline.load_etfs - INFO - CIK 0001378872: Inserted 0 ETFs, updated 76 ETFs
+2026-02-17 21:26:49,144 - etf_pipeline.load_etfs - INFO - Processing CIK 0001383496: 20 ETF(s)
+2026-02-17 21:26:49,543 - etf_pipeline.load_etfs - INFO - CIK 0001383496: Extracted 20 series from 24F-2NT (total: 20)
+2026-02-17 21:26:49,543 - etf_pipeline.load_etfs - INFO - CIK 0001383496: All 20 needed series covered, stopping early
+2026-02-17 21:26:49,543 - etf_pipeline.load_etfs - INFO - CIK 0001383496: issuer_name = FIRST TRUST EXCHANGE-TRADED ALPHADEX FUND
+2026-02-17 21:26:49,584 - etf_pipeline.load_etfs - INFO - CIK 0001383496: Inserted 0 ETFs, updated 20 ETFs
+2026-02-17 21:26:49,584 - etf_pipeline.load_etfs - INFO - Processing CIK 0001396092: 4 ETF(s)
+2026-02-17 21:26:50,236 - etf_pipeline.load_etfs - INFO - CIK 0001396092: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:26:50,599 - etf_pipeline.load_etfs - INFO - CIK 0001396092: Extracted 2 series from 485BPOS (total: 6)
+2026-02-17 21:26:51,516 - etf_pipeline.load_etfs - INFO - CIK 0001396092: Extracted 1 series from N-CSR (total: 7)
+2026-02-17 21:26:54,679 - etf_pipeline.load_etfs - INFO - CIK 0001396092: Extracted 1 series from NPORT-P (total: 8)
+2026-02-17 21:26:54,679 - etf_pipeline.load_etfs - INFO - CIK 0001396092: issuer_name = World Funds Trust
+2026-02-17 21:26:54,761 - etf_pipeline.load_etfs - INFO - CIK 0001396092: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:26:54,771 - etf_pipeline.load_etfs - INFO - Processing CIK 0001408970: 17 ETF(s)
+2026-02-17 21:26:55,145 - etf_pipeline.load_etfs - INFO - CIK 0001408970: Extracted 18 series from 24F-2NT (total: 18)
+2026-02-17 21:26:55,150 - etf_pipeline.load_etfs - INFO - CIK 0001408970: All 17 needed series covered, stopping early
+2026-02-17 21:26:55,150 - etf_pipeline.load_etfs - INFO - CIK 0001408970: issuer_name = AdvisorShares Trust
+2026-02-17 21:26:55,340 - etf_pipeline.load_etfs - INFO - CIK 0001408970: Inserted 0 ETFs, updated 17 ETFs
+2026-02-17 21:26:55,340 - etf_pipeline.load_etfs - INFO - Processing CIK 0001414040: 24 ETF(s)
+2026-02-17 21:26:55,683 - etf_pipeline.load_etfs - INFO - CIK 0001414040: Extracted 24 series from 24F-2NT (total: 24)
+2026-02-17 21:26:55,683 - etf_pipeline.load_etfs - INFO - CIK 0001414040: All 24 needed series covered, stopping early
+2026-02-17 21:26:55,683 - etf_pipeline.load_etfs - INFO - CIK 0001414040: issuer_name = ALPS ETF Trust
+2026-02-17 21:26:55,791 - etf_pipeline.load_etfs - INFO - CIK 0001414040: Inserted 0 ETFs, updated 24 ETFs
+2026-02-17 21:26:55,791 - etf_pipeline.load_etfs - INFO - Processing CIK 0001415726: 2 ETF(s)
+2026-02-17 21:26:56,640 - etf_pipeline.load_etfs - INFO - CIK 0001415726: Extracted 176 series from 24F-2NT (total: 176)
+2026-02-17 21:26:56,640 - etf_pipeline.load_etfs - INFO - CIK 0001415726: All 2 needed series covered, stopping early
+2026-02-17 21:26:56,641 - etf_pipeline.load_etfs - INFO - CIK 0001415726: issuer_name = Innovator ETFs Trust
+2026-02-17 21:26:56,651 - etf_pipeline.load_etfs - INFO - CIK 0001415726: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:26:56,651 - etf_pipeline.load_etfs - INFO - Processing CIK 0001415995: 14 ETF(s)
+2026-02-17 21:26:57,165 - etf_pipeline.load_etfs - INFO - CIK 0001415995: Extracted 14 series from 24F-2NT (total: 14)
+2026-02-17 21:26:57,165 - etf_pipeline.load_etfs - INFO - CIK 0001415995: All 14 needed series covered, stopping early
+2026-02-17 21:26:57,165 - etf_pipeline.load_etfs - INFO - CIK 0001415995: issuer_name = New York Life Investments ETF Trust
+2026-02-17 21:26:57,205 - etf_pipeline.load_etfs - INFO - CIK 0001415995: Inserted 0 ETFs, updated 14 ETFs
+2026-02-17 21:26:57,205 - etf_pipeline.load_etfs - INFO - Processing CIK 0001418144: 9 ETF(s)
+2026-02-17 21:26:57,539 - etf_pipeline.load_etfs - INFO - CIK 0001418144: Extracted 23 series from 24F-2NT (total: 23)
+2026-02-17 21:26:57,539 - etf_pipeline.load_etfs - INFO - CIK 0001418144: All 9 needed series covered, stopping early
+2026-02-17 21:26:57,539 - etf_pipeline.load_etfs - INFO - CIK 0001418144: issuer_name = INVESCO ACTIVELY MANAGED EXCHANGE-TRADED FUND TRUST
+2026-02-17 21:26:57,575 - etf_pipeline.load_etfs - INFO - CIK 0001418144: Inserted 0 ETFs, updated 9 ETFs
+2026-02-17 21:26:57,575 - etf_pipeline.load_etfs - INFO - Processing CIK 0001419139: 1 ETF(s)
+2026-02-17 21:26:57,751 - etf_pipeline.load_etfs - INFO - CIK 0001419139: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:26:57,751 - etf_pipeline.load_etfs - INFO - CIK 0001419139: All 1 needed series covered, stopping early
+2026-02-17 21:26:57,751 - etf_pipeline.load_etfs - INFO - CIK 0001419139: issuer_name = Invesco India Exchange-Traded Fund Trust
+2026-02-17 21:26:57,753 - etf_pipeline.load_etfs - INFO - CIK 0001419139: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:26:57,755 - etf_pipeline.load_etfs - INFO - Processing CIK 0001424212: 17 ETF(s)
+2026-02-17 21:26:58,066 - etf_pipeline.load_etfs - INFO - CIK 0001424212: Extracted 8 series from 24F-2NT (total: 8)
+2026-02-17 21:26:58,828 - etf_pipeline.load_etfs - INFO - CIK 0001424212: Extracted 9 series from 485BPOS (total: 17)
+2026-02-17 21:26:58,828 - etf_pipeline.load_etfs - INFO - CIK 0001424212: All 17 needed series covered, stopping early
+2026-02-17 21:26:58,828 - etf_pipeline.load_etfs - INFO - CIK 0001424212: issuer_name = FIRST TRUST EXCHANGE-TRADED FUND III
+2026-02-17 21:26:59,032 - etf_pipeline.load_etfs - INFO - CIK 0001424212: Inserted 0 ETFs, updated 17 ETFs
+2026-02-17 21:26:59,032 - etf_pipeline.load_etfs - INFO - Processing CIK 0001424958: 141 ETF(s)
+2026-02-17 21:26:59,699 - etf_pipeline.load_etfs - INFO - CIK 0001424958: Extracted 123 series from 24F-2NT (total: 123)
+2026-02-17 21:27:00,500 - etf_pipeline.load_etfs - INFO - CIK 0001424958: Extracted 44 series from 485BPOS (total: 167)
+2026-02-17 21:27:05,183 - etf_pipeline.load_etfs - INFO - CIK 0001424958: Extracted 118 series from N-CSR (total: 167)
+2026-02-17 21:27:05,326 - etf_pipeline.load_etfs - INFO - CIK 0001424958: Extracted 1 series from NPORT-P (total: 167)
+2026-02-17 21:27:05,326 - etf_pipeline.load_etfs - INFO - CIK 0001424958: issuer_name = Direxion Shares ETF Trust
+2026-02-17 21:27:05,952 - etf_pipeline.load_etfs - INFO - CIK 0001424958: Inserted 0 ETFs, updated 141 ETFs
+2026-02-17 21:27:05,955 - etf_pipeline.load_etfs - INFO - Processing CIK 0001426439: 10 ETF(s)
+2026-02-17 21:27:06,321 - etf_pipeline.load_etfs - INFO - CIK 0001426439: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:27:06,459 - etf_pipeline.load_etfs - INFO - CIK 0001426439: Extracted 1 series from 485BPOS (total: 10)
+2026-02-17 21:27:06,460 - etf_pipeline.load_etfs - INFO - CIK 0001426439: All 10 needed series covered, stopping early
+2026-02-17 21:27:06,460 - etf_pipeline.load_etfs - INFO - CIK 0001426439: issuer_name = New York Life Investments Active ETF Trust
+2026-02-17 21:27:06,509 - etf_pipeline.load_etfs - INFO - CIK 0001426439: Inserted 0 ETFs, updated 10 ETFs
+2026-02-17 21:27:06,509 - etf_pipeline.load_etfs - INFO - Processing CIK 0001432353: 118 ETF(s)
+2026-02-17 21:27:07,306 - etf_pipeline.load_etfs - INFO - CIK 0001432353: Extracted 52 series from 24F-2NT (total: 52)
+2026-02-17 21:27:07,406 - etf_pipeline.load_etfs - INFO - CIK 0001432353: Extracted 2 series from 485BPOS (total: 54)
+2026-02-17 21:27:07,515 - etf_pipeline.load_etfs - INFO - CIK 0001432353: Extracted 1 series from N-CSR (total: 55)
+2026-02-17 21:27:07,569 - etf_pipeline.load_etfs - INFO - CIK 0001432353: Extracted 1 series from NPORT-P (total: 56)
+2026-02-17 21:27:07,569 - etf_pipeline.load_etfs - INFO - CIK 0001432353: issuer_name = Global X Funds
+2026-02-17 21:27:07,952 - etf_pipeline.load_etfs - INFO - CIK 0001432353: Inserted 0 ETFs, updated 118 ETFs
+2026-02-17 21:27:07,952 - etf_pipeline.load_etfs - INFO - Processing CIK 0001437249: 2 ETF(s)
+2026-02-17 21:27:08,466 - etf_pipeline.load_etfs - INFO - CIK 0001437249: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:08,564 - etf_pipeline.load_etfs - INFO - CIK 0001437249: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:27:08,954 - etf_pipeline.load_etfs - INFO - CIK 0001437249: Extracted 8 series from N-CSR (total: 9)
+2026-02-17 21:27:09,025 - etf_pipeline.load_etfs - INFO - CIK 0001437249: Extracted 1 series from NPORT-P (total: 9)
+2026-02-17 21:27:09,025 - etf_pipeline.load_etfs - INFO - CIK 0001437249: issuer_name = VALUED ADVISERS TRUST
+2026-02-17 21:27:09,034 - etf_pipeline.load_etfs - INFO - CIK 0001437249: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:27:09,035 - etf_pipeline.load_etfs - INFO - Processing CIK 0001450011: 17 ETF(s)
+2026-02-17 21:27:09,472 - etf_pipeline.load_etfs - INFO - CIK 0001450011: Extracted 44 series from 24F-2NT (total: 44)
+2026-02-17 21:27:09,473 - etf_pipeline.load_etfs - INFO - CIK 0001450011: All 17 needed series covered, stopping early
+2026-02-17 21:27:09,473 - etf_pipeline.load_etfs - INFO - CIK 0001450011: issuer_name = PIMCO ETF Trust
+2026-02-17 21:27:09,498 - etf_pipeline.load_etfs - INFO - CIK 0001450011: Inserted 0 ETFs, updated 17 ETFs
+2026-02-17 21:27:09,499 - etf_pipeline.load_etfs - INFO - Processing CIK 0001450501: 3 ETF(s)
+2026-02-17 21:27:09,649 - etf_pipeline.load_etfs - INFO - CIK 0001450501: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:27:09,660 - etf_pipeline.load_etfs - INFO - CIK 0001450501: All 3 needed series covered, stopping early
+2026-02-17 21:27:09,660 - etf_pipeline.load_etfs - INFO - CIK 0001450501: issuer_name = Columbia ETF Trust II
+2026-02-17 21:27:09,664 - etf_pipeline.load_etfs - INFO - CIK 0001450501: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:27:09,665 - etf_pipeline.load_etfs - INFO - Processing CIK 0001452937: 33 ETF(s)
+2026-02-17 21:27:10,041 - etf_pipeline.load_etfs - INFO - CIK 0001452937: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:27:10,119 - etf_pipeline.load_etfs - INFO - CIK 0001452937: Extracted 1 series from 485BPOS (total: 5)
+2026-02-17 21:27:10,387 - etf_pipeline.load_etfs - INFO - CIK 0001452937: Extracted 5 series from N-CSR (total: 10)
+2026-02-17 21:27:10,422 - etf_pipeline.load_etfs - INFO - CIK 0001452937: Extracted 1 series from NPORT-P (total: 10)
+2026-02-17 21:27:10,422 - etf_pipeline.load_etfs - INFO - CIK 0001452937: issuer_name = EXCHANGE TRADED CONCEPTS TRUST
+2026-02-17 21:27:10,517 - etf_pipeline.load_etfs - INFO - CIK 0001452937: Inserted 0 ETFs, updated 33 ETFs
+2026-02-17 21:27:10,517 - etf_pipeline.load_etfs - INFO - Processing CIK 0001454889: 34 ETF(s)
+2026-02-17 21:27:10,877 - etf_pipeline.load_etfs - INFO - CIK 0001454889: Extracted 14 series from 24F-2NT (total: 14)
+2026-02-17 21:27:11,188 - etf_pipeline.load_etfs - INFO - CIK 0001454889: Extracted 14 series from 485BPOS (total: 14)
+2026-02-17 21:27:11,644 - etf_pipeline.load_etfs - INFO - CIK 0001454889: Extracted 14 series from N-CSR (total: 14)
+2026-02-17 21:27:11,883 - etf_pipeline.load_etfs - INFO - CIK 0001454889: Extracted 1 series from NPORT-P (total: 15)
+2026-02-17 21:27:11,884 - etf_pipeline.load_etfs - INFO - CIK 0001454889: issuer_name = SCHWAB STRATEGIC TRUST
+2026-02-17 21:27:11,954 - etf_pipeline.load_etfs - INFO - CIK 0001454889: Inserted 0 ETFs, updated 34 ETFs
+2026-02-17 21:27:11,954 - etf_pipeline.load_etfs - INFO - Processing CIK 0001464413: 4 ETF(s)
+2026-02-17 21:27:12,467 - etf_pipeline.load_etfs - INFO - CIK 0001464413: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:12,609 - etf_pipeline.load_etfs - INFO - CIK 0001464413: Extracted 1 series from 485BPOS (total: 1)
+2026-02-17 21:27:12,765 - etf_pipeline.load_etfs - INFO - CIK 0001464413: Extracted 1 series from N-CSR (total: 1)
+2026-02-17 21:27:12,810 - etf_pipeline.load_etfs - INFO - CIK 0001464413: Extracted 1 series from NPORT-P (total: 2)
+2026-02-17 21:27:12,810 - etf_pipeline.load_etfs - INFO - CIK 0001464413: issuer_name = Starboard Investment Trust
+2026-02-17 21:27:12,817 - etf_pipeline.load_etfs - INFO - CIK 0001464413: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:27:12,817 - etf_pipeline.load_etfs - INFO - Processing CIK 0001478482: 18 ETF(s)
+2026-02-17 21:27:13,690 - etf_pipeline.load_etfs - INFO - CIK 0001478482: Extracted 16 series from 485BPOS (total: 16)
+2026-02-17 21:27:14,233 - etf_pipeline.load_etfs - INFO - CIK 0001478482: Extracted 16 series from N-CSR (total: 16)
+2026-02-17 21:27:14,288 - etf_pipeline.load_etfs - INFO - CIK 0001478482: Extracted 1 series from NPORT-P (total: 16)
+2026-02-17 21:27:14,289 - etf_pipeline.load_etfs - INFO - CIK 0001478482: issuer_name = John Hancock Exchange-Traded Fund Trust
+2026-02-17 21:27:14,345 - etf_pipeline.load_etfs - INFO - CIK 0001478482: Inserted 0 ETFs, updated 18 ETFs
+2026-02-17 21:27:14,346 - etf_pipeline.load_etfs - INFO - Processing CIK 0001479026: 53 ETF(s)
+2026-02-17 21:27:14,726 - etf_pipeline.load_etfs - INFO - CIK 0001479026: Extracted 39 series from 24F-2NT (total: 39)
+2026-02-17 21:27:14,832 - etf_pipeline.load_etfs - INFO - CIK 0001479026: Extracted 1 series from 485BPOS (total: 40)
+2026-02-17 21:27:16,315 - etf_pipeline.load_etfs - INFO - CIK 0001479026: Extracted 39 series from N-CSR (total: 40)
+2026-02-17 21:27:16,523 - etf_pipeline.load_etfs - INFO - CIK 0001479026: Extracted 1 series from NPORT-P (total: 40)
+2026-02-17 21:27:16,524 - etf_pipeline.load_etfs - INFO - CIK 0001479026: issuer_name = Goldman Sachs ETF Trust
+2026-02-17 21:27:17,078 - etf_pipeline.load_etfs - INFO - CIK 0001479026: Inserted 0 ETFs, updated 53 ETFs
+2026-02-17 21:27:17,079 - etf_pipeline.load_etfs - INFO - Processing CIK 0001479360: 4 ETF(s)
+2026-02-17 21:27:17,472 - etf_pipeline.load_etfs - INFO - CIK 0001479360: Extracted 21 series from 24F-2NT (total: 21)
+2026-02-17 21:27:17,472 - etf_pipeline.load_etfs - INFO - CIK 0001479360: All 4 needed series covered, stopping early
+2026-02-17 21:27:17,473 - etf_pipeline.load_etfs - INFO - CIK 0001479360: issuer_name = PIMCO Equity Series
+2026-02-17 21:27:17,483 - etf_pipeline.load_etfs - INFO - CIK 0001479360: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:27:17,484 - etf_pipeline.load_etfs - INFO - Processing CIK 0001479599: 1 ETF(s)
+2026-02-17 21:27:17,648 - etf_pipeline.load_etfs - INFO - CIK 0001479599: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:17,648 - etf_pipeline.load_etfs - INFO - CIK 0001479599: All 1 needed series covered, stopping early
+2026-02-17 21:27:17,649 - etf_pipeline.load_etfs - INFO - CIK 0001479599: issuer_name = AGF Investments Trust
+2026-02-17 21:27:17,651 - etf_pipeline.load_etfs - INFO - CIK 0001479599: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:27:17,652 - etf_pipeline.load_etfs - INFO - Processing CIK 0001484018: 15 ETF(s)
+2026-02-17 21:27:17,806 - etf_pipeline.load_etfs - INFO - CIK 0001484018: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:27:17,875 - etf_pipeline.load_etfs - INFO - CIK 0001484018: Extracted 1 series from 485BPOS (total: 4)
+2026-02-17 21:27:17,975 - etf_pipeline.load_etfs - INFO - CIK 0001484018: Extracted 3 series from N-CSR (total: 4)
+2026-02-17 21:27:18,186 - etf_pipeline.load_etfs - INFO - CIK 0001484018: Extracted 1 series from NPORT-P (total: 4)
+2026-02-17 21:27:18,188 - etf_pipeline.load_etfs - INFO - CIK 0001484018: issuer_name = Spinnaker ETF Series
+2026-02-17 21:27:18,216 - etf_pipeline.load_etfs - INFO - CIK 0001484018: Inserted 0 ETFs, updated 15 ETFs
+2026-02-17 21:27:18,216 - etf_pipeline.load_etfs - INFO - Processing CIK 0001485894: 73 ETF(s)
+2026-02-17 21:27:18,836 - etf_pipeline.load_etfs - INFO - CIK 0001485894: Extracted 34 series from 24F-2NT (total: 34)
+2026-02-17 21:27:20,665 - etf_pipeline.load_etfs - INFO - CIK 0001485894: Extracted 1 series from 485BPOS (total: 35)
+2026-02-17 21:27:23,190 - etf_pipeline.load_etfs - INFO - CIK 0001485894: Extracted 31 series from N-CSR (total: 35)
+2026-02-17 21:27:23,411 - etf_pipeline.load_etfs - INFO - CIK 0001485894: Extracted 1 series from NPORT-P (total: 36)
+2026-02-17 21:27:23,411 - etf_pipeline.load_etfs - INFO - CIK 0001485894: issuer_name = J.P. Morgan Exchange-Traded Fund Trust
+2026-02-17 21:27:23,750 - etf_pipeline.load_etfs - INFO - CIK 0001485894: Inserted 0 ETFs, updated 73 ETFs
+2026-02-17 21:27:23,751 - etf_pipeline.load_etfs - INFO - Processing CIK 0001491978: 30 ETF(s)
+2026-02-17 21:27:24,192 - etf_pipeline.load_etfs - INFO - CIK 0001491978: Extracted 29 series from 24F-2NT (total: 29)
+2026-02-17 21:27:24,790 - etf_pipeline.load_etfs - INFO - CIK 0001491978: Extracted 28 series from 485BPOS (total: 29)
+2026-02-17 21:27:25,723 - etf_pipeline.load_etfs - INFO - CIK 0001491978: Extracted 27 series from N-CSR (total: 29)
+2026-02-17 21:27:25,776 - etf_pipeline.load_etfs - INFO - CIK 0001491978: Extracted 1 series from NPORT-P (total: 29)
+2026-02-17 21:27:25,780 - etf_pipeline.load_etfs - INFO - CIK 0001491978: issuer_name = FLEXSHARES TRUST
+2026-02-17 21:27:25,914 - etf_pipeline.load_etfs - INFO - CIK 0001491978: Inserted 0 ETFs, updated 30 ETFs
+2026-02-17 21:27:25,914 - etf_pipeline.load_etfs - INFO - Processing CIK 0001493580: 16 ETF(s)
+2026-02-17 21:27:26,174 - etf_pipeline.load_etfs - INFO - CIK 0001493580: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:27:26,780 - etf_pipeline.load_etfs - INFO - CIK 0001493580: Extracted 1 series from 485BPOS (total: 10)
+2026-02-17 21:27:28,057 - etf_pipeline.load_etfs - INFO - CIK 0001493580: Extracted 9 series from N-CSR (total: 10)
+2026-02-17 21:27:28,373 - etf_pipeline.load_etfs - INFO - CIK 0001493580: Extracted 1 series from NPORT-P (total: 10)
+2026-02-17 21:27:28,373 - etf_pipeline.load_etfs - INFO - CIK 0001493580: issuer_name = BNY Mellon ETF Trust
+2026-02-17 21:27:28,441 - etf_pipeline.load_etfs - INFO - CIK 0001493580: Inserted 0 ETFs, updated 16 ETFs
+2026-02-17 21:27:28,442 - etf_pipeline.load_etfs - INFO - Processing CIK 0001495922: 2 ETF(s)
+2026-02-17 21:27:28,617 - etf_pipeline.load_etfs - INFO - CIK 0001495922: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:27:28,617 - etf_pipeline.load_etfs - INFO - CIK 0001495922: All 2 needed series covered, stopping early
+2026-02-17 21:27:28,617 - etf_pipeline.load_etfs - INFO - CIK 0001495922: issuer_name = EntrepreneurShares Series Trust
+2026-02-17 21:27:28,623 - etf_pipeline.load_etfs - INFO - CIK 0001495922: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:27:28,623 - etf_pipeline.load_etfs - INFO - Processing CIK 0001496608: 20 ETF(s)
+2026-02-17 21:27:28,835 - etf_pipeline.load_etfs - INFO - CIK 0001496608: Extracted 15 series from 24F-2NT (total: 15)
+2026-02-17 21:27:29,000 - etf_pipeline.load_etfs - INFO - CIK 0001496608: Extracted 1 series from 485BPOS (total: 16)
+2026-02-17 21:27:30,271 - etf_pipeline.load_etfs - INFO - CIK 0001496608: Extracted 22 series from N-CSR (total: 22)
+2026-02-17 21:27:30,342 - etf_pipeline.load_etfs - INFO - CIK 0001496608: Extracted 1 series from NPORT-P (total: 22)
+2026-02-17 21:27:30,342 - etf_pipeline.load_etfs - INFO - CIK 0001496608: issuer_name = AB Active ETFs, Inc.
+2026-02-17 21:27:30,625 - etf_pipeline.load_etfs - INFO - CIK 0001496608: Inserted 0 ETFs, updated 20 ETFs
+2026-02-17 21:27:30,625 - etf_pipeline.load_etfs - INFO - Processing CIK 0001499655: 48 ETF(s)
+2026-02-17 21:27:30,822 - etf_pipeline.load_etfs - INFO - CIK 0001499655: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:27:31,156 - etf_pipeline.load_etfs - INFO - CIK 0001499655: Extracted 17 series from 485BPOS (total: 17)
+2026-02-17 21:27:31,343 - etf_pipeline.load_etfs - INFO - CIK 0001499655: Extracted 3 series from N-CSR (total: 17)
+2026-02-17 21:27:31,385 - etf_pipeline.load_etfs - INFO - CIK 0001499655: Extracted 1 series from NPORT-P (total: 17)
+2026-02-17 21:27:31,385 - etf_pipeline.load_etfs - INFO - CIK 0001499655: issuer_name = Precidian ETFs Trust
+2026-02-17 21:27:31,541 - etf_pipeline.load_etfs - INFO - CIK 0001499655: Inserted 0 ETFs, updated 48 ETFs
+2026-02-17 21:27:31,542 - etf_pipeline.load_etfs - INFO - Processing CIK 0001500604: 16 ETF(s)
+2026-02-17 21:27:31,724 - etf_pipeline.load_etfs - INFO - CIK 0001500604: Extracted 16 series from 24F-2NT (total: 16)
+2026-02-17 21:27:31,724 - etf_pipeline.load_etfs - INFO - CIK 0001500604: All 16 needed series covered, stopping early
+2026-02-17 21:27:31,724 - etf_pipeline.load_etfs - INFO - CIK 0001500604: issuer_name = Janus Detroit Street Trust
+2026-02-17 21:27:31,772 - etf_pipeline.load_etfs - INFO - CIK 0001500604: Inserted 0 ETFs, updated 16 ETFs
+2026-02-17 21:27:31,772 - etf_pipeline.load_etfs - INFO - Processing CIK 0001501825: 11 ETF(s)
+2026-02-17 21:27:31,962 - etf_pipeline.load_etfs - INFO - CIK 0001501825: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:27:32,064 - etf_pipeline.load_etfs - INFO - CIK 0001501825: Extracted 1 series from 485BPOS (total: 10)
+2026-02-17 21:27:32,393 - etf_pipeline.load_etfs - INFO - CIK 0001501825: Extracted 8 series from N-CSR (total: 10)
+2026-02-17 21:27:32,687 - etf_pipeline.load_etfs - INFO - CIK 0001501825: Extracted 1 series from NPORT-P (total: 10)
+2026-02-17 21:27:32,687 - etf_pipeline.load_etfs - INFO - CIK 0001501825: issuer_name = Hartford Funds Exchange-Traded Trust
+2026-02-17 21:27:32,732 - etf_pipeline.load_etfs - INFO - CIK 0001501825: Inserted 0 ETFs, updated 11 ETFs
+2026-02-17 21:27:32,733 - etf_pipeline.load_etfs - INFO - Processing CIK 0001503123: 44 ETF(s)
+2026-02-17 21:27:33,246 - etf_pipeline.load_etfs - INFO - CIK 0001503123: Extracted 23 series from 24F-2NT (total: 23)
+2026-02-17 21:27:33,384 - etf_pipeline.load_etfs - INFO - CIK 0001503123: Extracted 1 series from 485BPOS (total: 24)
+2026-02-17 21:27:34,415 - etf_pipeline.load_etfs - INFO - CIK 0001503123: Extracted 23 series from N-CSR (total: 24)
+2026-02-17 21:27:34,466 - etf_pipeline.load_etfs - INFO - CIK 0001503123: Extracted 1 series from NPORT-P (total: 25)
+2026-02-17 21:27:34,467 - etf_pipeline.load_etfs - INFO - CIK 0001503123: issuer_name = DBX ETF TRUST
+2026-02-17 21:27:34,599 - etf_pipeline.load_etfs - INFO - CIK 0001503123: Inserted 0 ETFs, updated 44 ETFs
+2026-02-17 21:27:34,603 - etf_pipeline.load_etfs - INFO - Processing CIK 0001506001: 15 ETF(s)
+2026-02-17 21:27:34,766 - etf_pipeline.load_etfs - INFO - CIK 0001506001: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:27:35,012 - etf_pipeline.load_etfs - INFO - CIK 0001506001: Extracted 10 series from 485BPOS (total: 15)
+2026-02-17 21:27:35,273 - etf_pipeline.load_etfs - INFO - CIK 0001506001: Extracted 5 series from N-CSR (total: 15)
+2026-02-17 21:27:35,395 - etf_pipeline.load_etfs - INFO - CIK 0001506001: Extracted 1 series from NPORT-P (total: 15)
+2026-02-17 21:27:35,396 - etf_pipeline.load_etfs - INFO - CIK 0001506001: issuer_name = Neuberger Berman ETF Trust
+2026-02-17 21:27:35,417 - etf_pipeline.load_etfs - INFO - CIK 0001506001: Inserted 0 ETFs, updated 15 ETFs
+2026-02-17 21:27:35,417 - etf_pipeline.load_etfs - INFO - Processing CIK 0001506213: 14 ETF(s)
+2026-02-17 21:27:35,588 - etf_pipeline.load_etfs - INFO - CIK 0001506213: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:27:35,747 - etf_pipeline.load_etfs - INFO - CIK 0001506213: Extracted 1 series from 485BPOS (total: 10)
+2026-02-17 21:27:36,080 - etf_pipeline.load_etfs - INFO - CIK 0001506213: Extracted 9 series from N-CSR (total: 10)
+2026-02-17 21:27:36,118 - etf_pipeline.load_etfs - INFO - CIK 0001506213: Extracted 1 series from NPORT-P (total: 10)
+2026-02-17 21:27:36,118 - etf_pipeline.load_etfs - INFO - CIK 0001506213: issuer_name = Strategy Shares
+2026-02-17 21:27:36,138 - etf_pipeline.load_etfs - INFO - CIK 0001506213: Inserted 0 ETFs, updated 14 ETFs
+2026-02-17 21:27:36,139 - etf_pipeline.load_etfs - INFO - Processing CIK 0001510337: 15 ETF(s)
+2026-02-17 21:27:36,640 - etf_pipeline.load_etfs - INFO - CIK 0001510337: Extracted 15 series from 24F-2NT (total: 15)
+2026-02-17 21:27:36,640 - etf_pipeline.load_etfs - INFO - CIK 0001510337: All 15 needed series covered, stopping early
+2026-02-17 21:27:36,640 - etf_pipeline.load_etfs - INFO - CIK 0001510337: issuer_name = FIRST TRUST EXCHANGE-TRADED ALPHADEX FUND II
+2026-02-17 21:27:36,690 - etf_pipeline.load_etfs - INFO - CIK 0001510337: Inserted 0 ETFs, updated 15 ETFs
+2026-02-17 21:27:36,690 - etf_pipeline.load_etfs - INFO - Processing CIK 0001511699: 9 ETF(s)
+2026-02-17 21:27:37,483 - etf_pipeline.load_etfs - INFO - CIK 0001511699: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:27:37,664 - etf_pipeline.load_etfs - INFO - CIK 0001511699: Extracted 5 series from 485BPOS (total: 7)
+2026-02-17 21:27:37,881 - etf_pipeline.load_etfs - INFO - CIK 0001511699: Extracted 2 series from N-CSR (total: 9)
+2026-02-17 21:27:37,924 - etf_pipeline.load_etfs - INFO - CIK 0001511699: Extracted 1 series from NPORT-P (total: 10)
+2026-02-17 21:27:37,924 - etf_pipeline.load_etfs - INFO - CIK 0001511699: issuer_name = Managed Portfolio Series
+2026-02-17 21:27:37,947 - etf_pipeline.load_etfs - INFO - CIK 0001511699: Inserted 0 ETFs, updated 9 ETFs
+2026-02-17 21:27:37,948 - etf_pipeline.load_etfs - INFO - Processing CIK 0001516212: 37 ETF(s)
+2026-02-17 21:27:38,290 - etf_pipeline.load_etfs - INFO - CIK 0001516212: Extracted 6 series from 24F-2NT (total: 6)
+2026-02-17 21:27:38,499 - etf_pipeline.load_etfs - INFO - CIK 0001516212: Extracted 14 series from 485BPOS (total: 20)
+2026-02-17 21:27:38,668 - etf_pipeline.load_etfs - INFO - CIK 0001516212: Extracted 6 series from N-CSR (total: 20)
+2026-02-17 21:27:38,784 - etf_pipeline.load_etfs - INFO - CIK 0001516212: Extracted 1 series from NPORT-P (total: 20)
+2026-02-17 21:27:38,784 - etf_pipeline.load_etfs - INFO - CIK 0001516212: issuer_name = SSGA Active Trust
+2026-02-17 21:27:38,845 - etf_pipeline.load_etfs - INFO - CIK 0001516212: Inserted 0 ETFs, updated 37 ETFs
+2026-02-17 21:27:38,845 - etf_pipeline.load_etfs - INFO - Processing CIK 0001517936: 26 ETF(s)
+2026-02-17 21:27:39,302 - etf_pipeline.load_etfs - INFO - CIK 0001517936: Extracted 23 series from 24F-2NT (total: 23)
+2026-02-17 21:27:39,524 - etf_pipeline.load_etfs - INFO - CIK 0001517936: Extracted 3 series from 485BPOS (total: 26)
+2026-02-17 21:27:39,524 - etf_pipeline.load_etfs - INFO - CIK 0001517936: All 26 needed series covered, stopping early
+2026-02-17 21:27:39,524 - etf_pipeline.load_etfs - INFO - CIK 0001517936: issuer_name = FIRST TRUST EXCHANGE-TRADED FUND IV
+2026-02-17 21:27:39,557 - etf_pipeline.load_etfs - INFO - CIK 0001517936: Inserted 0 ETFs, updated 26 ETFs
+2026-02-17 21:27:39,558 - etf_pipeline.load_etfs - INFO - Processing CIK 0001518042: 3 ETF(s)
+2026-02-17 21:27:40,208 - etf_pipeline.load_etfs - INFO - CIK 0001518042: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:27:40,306 - etf_pipeline.load_etfs - INFO - CIK 0001518042: Extracted 1 series from 485BPOS (total: 6)
+2026-02-17 21:27:40,519 - etf_pipeline.load_etfs - INFO - CIK 0001518042: Extracted 5 series from N-CSR (total: 6)
+2026-02-17 21:27:40,552 - etf_pipeline.load_etfs - INFO - CIK 0001518042: Extracted 1 series from NPORT-P (total: 7)
+2026-02-17 21:27:40,552 - etf_pipeline.load_etfs - INFO - CIK 0001518042: issuer_name = NORTHERN LIGHTS FUND TRUST II
+2026-02-17 21:27:40,559 - etf_pipeline.load_etfs - INFO - CIK 0001518042: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:27:40,560 - etf_pipeline.load_etfs - INFO - Processing CIK 0001524348: 1 ETF(s)
+2026-02-17 21:27:40,780 - etf_pipeline.load_etfs - INFO - CIK 0001524348: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:27:40,781 - etf_pipeline.load_etfs - INFO - CIK 0001524348: All 1 needed series covered, stopping early
+2026-02-17 21:27:40,782 - etf_pipeline.load_etfs - INFO - CIK 0001524348: issuer_name = SPEND LIFE WISELY FUNDS INVESTMENT TRUST
+2026-02-17 21:27:40,797 - etf_pipeline.load_etfs - INFO - CIK 0001524348: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:27:40,798 - etf_pipeline.load_etfs - INFO - Processing CIK 0001524513: 16 ETF(s)
+2026-02-17 21:27:41,275 - etf_pipeline.load_etfs - INFO - CIK 0001524513: Extracted 14 series from 24F-2NT (total: 14)
+2026-02-17 21:27:41,438 - etf_pipeline.load_etfs - INFO - CIK 0001524513: Extracted 2 series from 485BPOS (total: 16)
+2026-02-17 21:27:41,438 - etf_pipeline.load_etfs - INFO - CIK 0001524513: All 16 needed series covered, stopping early
+2026-02-17 21:27:41,444 - etf_pipeline.load_etfs - INFO - CIK 0001524513: issuer_name = iShares U.S. ETF Trust
+2026-02-17 21:27:41,480 - etf_pipeline.load_etfs - INFO - CIK 0001524513: Inserted 0 ETFs, updated 16 ETFs
+2026-02-17 21:27:41,480 - etf_pipeline.load_etfs - INFO - Processing CIK 0001526787: 1 ETF(s)
+2026-02-17 21:27:41,700 - etf_pipeline.load_etfs - INFO - CIK 0001526787: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:41,850 - etf_pipeline.load_etfs - INFO - CIK 0001526787: Extracted 1 series from 485BPOS (total: 1)
+2026-02-17 21:27:42,230 - etf_pipeline.load_etfs - INFO - CIK 0001526787: Extracted 1 series from N-CSR (total: 1)
+2026-02-17 21:27:42,297 - etf_pipeline.load_etfs - INFO - CIK 0001526787: Extracted 1 series from NPORT-P (total: 1)
+2026-02-17 21:27:42,298 - etf_pipeline.load_etfs - INFO - CIK 0001526787: issuer_name = Natixis ETF Trust
+2026-02-17 21:27:42,315 - etf_pipeline.load_etfs - INFO - CIK 0001526787: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:27:42,324 - etf_pipeline.load_etfs - INFO - Processing CIK 0001527428: 3 ETF(s)
+2026-02-17 21:27:42,671 - etf_pipeline.load_etfs - INFO - CIK 0001527428: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:27:42,883 - etf_pipeline.load_etfs - INFO - CIK 0001527428: Extracted 3 series from 485BPOS (total: 5)
+2026-02-17 21:27:43,262 - etf_pipeline.load_etfs - INFO - CIK 0001527428: Extracted 3 series from N-CSR (total: 5)
+2026-02-17 21:27:43,297 - etf_pipeline.load_etfs - INFO - CIK 0001527428: Extracted 1 series from NPORT-P (total: 5)
+2026-02-17 21:27:43,297 - etf_pipeline.load_etfs - INFO - CIK 0001527428: issuer_name = Arrow Investments Trust
+2026-02-17 21:27:43,312 - etf_pipeline.load_etfs - INFO - CIK 0001527428: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:27:43,312 - etf_pipeline.load_etfs - INFO - Processing CIK 0001529390: 19 ETF(s)
+2026-02-17 21:27:43,778 - etf_pipeline.load_etfs - INFO - CIK 0001529390: Extracted 16 series from 24F-2NT (total: 16)
+2026-02-17 21:27:43,888 - etf_pipeline.load_etfs - INFO - CIK 0001529390: Extracted 3 series from 485BPOS (total: 19)
+2026-02-17 21:27:43,888 - etf_pipeline.load_etfs - INFO - CIK 0001529390: All 19 needed series covered, stopping early
+2026-02-17 21:27:43,888 - etf_pipeline.load_etfs - INFO - CIK 0001529390: issuer_name = Cambria ETF Trust
+2026-02-17 21:27:43,906 - etf_pipeline.load_etfs - INFO - CIK 0001529390: Inserted 0 ETFs, updated 19 ETFs
+2026-02-17 21:27:43,906 - etf_pipeline.load_etfs - INFO - Processing CIK 0001532203: 1 ETF(s)
+2026-02-17 21:27:44,131 - etf_pipeline.load_etfs - INFO - CIK 0001532203: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:27:44,131 - etf_pipeline.load_etfs - INFO - CIK 0001532203: All 1 needed series covered, stopping early
+2026-02-17 21:27:44,131 - etf_pipeline.load_etfs - INFO - CIK 0001532203: issuer_name = Vanguard Charlotte Funds
+2026-02-17 21:27:44,141 - etf_pipeline.load_etfs - INFO - CIK 0001532203: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:27:44,141 - etf_pipeline.load_etfs - INFO - Processing CIK 0001532206: 1 ETF(s)
+2026-02-17 21:27:44,337 - etf_pipeline.load_etfs - INFO - CIK 0001532206: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:44,338 - etf_pipeline.load_etfs - INFO - CIK 0001532206: All 1 needed series covered, stopping early
+2026-02-17 21:27:44,339 - etf_pipeline.load_etfs - INFO - CIK 0001532206: issuer_name = Arrow ETF Trust
+2026-02-17 21:27:44,351 - etf_pipeline.load_etfs - INFO - CIK 0001532206: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:27:44,351 - etf_pipeline.load_etfs - INFO - Processing CIK 0001537140: 7 ETF(s)
+2026-02-17 21:27:45,033 - etf_pipeline.load_etfs - INFO - CIK 0001537140: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:45,153 - etf_pipeline.load_etfs - INFO - CIK 0001537140: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:27:45,262 - etf_pipeline.load_etfs - INFO - CIK 0001537140: Extracted 1 series from N-CSR (total: 3)
+2026-02-17 21:27:45,352 - etf_pipeline.load_etfs - INFO - CIK 0001537140: Extracted 1 series from NPORT-P (total: 3)
+2026-02-17 21:27:45,352 - etf_pipeline.load_etfs - INFO - CIK 0001537140: issuer_name = NORTHERN LIGHTS FUND TRUST III
+2026-02-17 21:27:45,378 - etf_pipeline.load_etfs - INFO - CIK 0001537140: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:27:45,378 - etf_pipeline.load_etfs - INFO - Processing CIK 0001540305: 71 ETF(s)
+2026-02-17 21:27:46,045 - etf_pipeline.load_etfs - INFO - CIK 0001540305: Extracted 11 series from 24F-2NT (total: 11)
+2026-02-17 21:27:46,140 - etf_pipeline.load_etfs - INFO - CIK 0001540305: Extracted 2 series from 485BPOS (total: 13)
+2026-02-17 21:27:46,383 - etf_pipeline.load_etfs - INFO - CIK 0001540305: Extracted 9 series from N-CSR (total: 13)
+2026-02-17 21:27:46,456 - etf_pipeline.load_etfs - INFO - CIK 0001540305: Extracted 1 series from NPORT-P (total: 14)
+2026-02-17 21:27:46,456 - etf_pipeline.load_etfs - INFO - CIK 0001540305: issuer_name = ETF Series Solutions
+2026-02-17 21:27:46,518 - etf_pipeline.load_etfs - INFO - CIK 0001540305: Inserted 0 ETFs, updated 71 ETFs
+2026-02-17 21:27:46,518 - etf_pipeline.load_etfs - INFO - Processing CIK 0001545440: 5 ETF(s)
+2026-02-17 21:27:46,948 - etf_pipeline.load_etfs - INFO - CIK 0001545440: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:27:47,075 - etf_pipeline.load_etfs - INFO - CIK 0001545440: Extracted 3 series from 485BPOS (total: 6)
+2026-02-17 21:27:47,609 - etf_pipeline.load_etfs - INFO - CIK 0001545440: Extracted 5 series from N-CSR (total: 8)
+2026-02-17 21:27:47,656 - etf_pipeline.load_etfs - INFO - CIK 0001545440: Extracted 1 series from NPORT-P (total: 8)
+2026-02-17 21:27:47,656 - etf_pipeline.load_etfs - INFO - CIK 0001545440: issuer_name = Ultimus Managers Trust
+2026-02-17 21:27:47,665 - etf_pipeline.load_etfs - INFO - CIK 0001545440: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:27:47,666 - etf_pipeline.load_etfs - INFO - Processing CIK 0001547576: 39 ETF(s)
+2026-02-17 21:27:48,093 - etf_pipeline.load_etfs - INFO - CIK 0001547576: Extracted 35 series from 24F-2NT (total: 35)
+2026-02-17 21:27:48,255 - etf_pipeline.load_etfs - INFO - CIK 0001547576: Extracted 1 series from 485BPOS (total: 36)
+2026-02-17 21:27:48,435 - etf_pipeline.load_etfs - INFO - CIK 0001547576: Extracted 2 series from N-CSR (total: 36)
+2026-02-17 21:27:48,525 - etf_pipeline.load_etfs - INFO - CIK 0001547576: Extracted 1 series from NPORT-P (total: 36)
+2026-02-17 21:27:48,525 - etf_pipeline.load_etfs - INFO - CIK 0001547576: issuer_name = Krane Shares Trust
+2026-02-17 21:27:48,998 - etf_pipeline.load_etfs - INFO - CIK 0001547576: Inserted 0 ETFs, updated 39 ETFs
+2026-02-17 21:27:49,000 - etf_pipeline.load_etfs - INFO - Processing CIK 0001547580: 35 ETF(s)
+2026-02-17 21:27:49,415 - etf_pipeline.load_etfs - INFO - CIK 0001547580: Extracted 34 series from 24F-2NT (total: 34)
+2026-02-17 21:27:50,133 - etf_pipeline.load_etfs - INFO - CIK 0001547580: Extracted 28 series from 485BPOS (total: 35)
+2026-02-17 21:27:51,153 - etf_pipeline.load_etfs - INFO - CIK 0001547580: Extracted 27 series from N-CSR (total: 35)
+2026-02-17 21:27:51,344 - etf_pipeline.load_etfs - INFO - CIK 0001547580: Extracted 1 series from NPORT-P (total: 35)
+2026-02-17 21:27:51,344 - etf_pipeline.load_etfs - INFO - CIK 0001547580: issuer_name = Victory Portfolios II
+2026-02-17 21:27:51,378 - etf_pipeline.load_etfs - INFO - CIK 0001547580: Inserted 0 ETFs, updated 35 ETFs
+2026-02-17 21:27:51,379 - etf_pipeline.load_etfs - INFO - Processing CIK 0001547950: 15 ETF(s)
+2026-02-17 21:27:51,746 - etf_pipeline.load_etfs - INFO - CIK 0001547950: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:51,947 - etf_pipeline.load_etfs - INFO - CIK 0001547950: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:27:52,064 - etf_pipeline.load_etfs - INFO - CIK 0001547950: Extracted 1 series from N-CSR (total: 2)
+2026-02-17 21:27:52,105 - etf_pipeline.load_etfs - INFO - CIK 0001547950: Extracted 1 series from NPORT-P (total: 2)
+2026-02-17 21:27:52,105 - etf_pipeline.load_etfs - INFO - CIK 0001547950: issuer_name = Exchange Listed Funds Trust
+2026-02-17 21:27:52,127 - etf_pipeline.load_etfs - INFO - CIK 0001547950: Inserted 0 ETFs, updated 15 ETFs
+2026-02-17 21:27:52,128 - etf_pipeline.load_etfs - INFO - Processing CIK 0001549548: 1 ETF(s)
+2026-02-17 21:27:52,472 - etf_pipeline.load_etfs - INFO - CIK 0001549548: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:52,472 - etf_pipeline.load_etfs - INFO - CIK 0001549548: All 1 needed series covered, stopping early
+2026-02-17 21:27:52,472 - etf_pipeline.load_etfs - INFO - CIK 0001549548: issuer_name = FIRST TRUST EXCHANGE-TRADED FUND V
+2026-02-17 21:27:52,491 - etf_pipeline.load_etfs - INFO - CIK 0001549548: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:27:52,492 - etf_pipeline.load_etfs - INFO - Processing CIK 0001551895: 1 ETF(s)
+2026-02-17 21:27:52,925 - etf_pipeline.load_etfs - INFO - CIK 0001551895: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:52,926 - etf_pipeline.load_etfs - INFO - CIK 0001551895: All 1 needed series covered, stopping early
+2026-02-17 21:27:52,926 - etf_pipeline.load_etfs - INFO - CIK 0001551895: issuer_name = Franklin ETF Trust
+2026-02-17 21:27:52,939 - etf_pipeline.load_etfs - INFO - CIK 0001551895: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:27:52,940 - etf_pipeline.load_etfs - INFO - Processing CIK 0001551950: 19 ETF(s)
+2026-02-17 21:27:53,192 - etf_pipeline.load_etfs - INFO - CIK 0001551950: Extracted 8 series from 24F-2NT (total: 8)
+2026-02-17 21:27:53,569 - etf_pipeline.load_etfs - INFO - CIK 0001551950: Extracted 3 series from 485BPOS (total: 11)
+2026-02-17 21:27:54,439 - etf_pipeline.load_etfs - INFO - CIK 0001551950: Extracted 8 series from N-CSR (total: 11)
+2026-02-17 21:27:54,486 - etf_pipeline.load_etfs - INFO - CIK 0001551950: Extracted 1 series from NPORT-P (total: 11)
+2026-02-17 21:27:54,486 - etf_pipeline.load_etfs - INFO - CIK 0001551950: issuer_name = Columbia ETF Trust I
+2026-02-17 21:27:54,514 - etf_pipeline.load_etfs - INFO - CIK 0001551950: Inserted 0 ETFs, updated 19 ETFs
+2026-02-17 21:27:54,514 - etf_pipeline.load_etfs - INFO - Processing CIK 0001552740: 37 ETF(s)
+2026-02-17 21:27:55,080 - etf_pipeline.load_etfs - INFO - CIK 0001552740: Extracted 17 series from 24F-2NT (total: 17)
+2026-02-17 21:27:55,187 - etf_pipeline.load_etfs - INFO - CIK 0001552740: Extracted 1 series from 485BPOS (total: 18)
+2026-02-17 21:27:55,625 - etf_pipeline.load_etfs - INFO - CIK 0001552740: Extracted 17 series from N-CSR (total: 18)
+2026-02-17 21:27:55,664 - etf_pipeline.load_etfs - INFO - CIK 0001552740: Extracted 1 series from NPORT-P (total: 18)
+2026-02-17 21:27:55,664 - etf_pipeline.load_etfs - INFO - CIK 0001552740: issuer_name = FIRST TRUST EXCHANGE-TRADED FUND VI
+2026-02-17 21:27:55,700 - etf_pipeline.load_etfs - INFO - CIK 0001552740: Inserted 0 ETFs, updated 37 ETFs
+2026-02-17 21:27:55,700 - etf_pipeline.load_etfs - INFO - Processing CIK 0001552947: 2 ETF(s)
+2026-02-17 21:27:56,081 - etf_pipeline.load_etfs - INFO - CIK 0001552947: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:27:56,310 - etf_pipeline.load_etfs - INFO - CIK 0001552947: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:27:56,504 - etf_pipeline.load_etfs - INFO - CIK 0001552947: Extracted 4 series from N-CSR (total: 6)
+2026-02-17 21:27:56,613 - etf_pipeline.load_etfs - INFO - CIK 0001552947: Extracted 1 series from NPORT-P (total: 7)
+2026-02-17 21:27:56,613 - etf_pipeline.load_etfs - INFO - CIK 0001552947: issuer_name = Two Roads Shared Trust
+2026-02-17 21:27:56,630 - etf_pipeline.load_etfs - INFO - CIK 0001552947: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:27:56,632 - etf_pipeline.load_etfs - INFO - Processing CIK 0001559109: 10 ETF(s)
+2026-02-17 21:27:56,965 - etf_pipeline.load_etfs - INFO - CIK 0001559109: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:27:57,105 - etf_pipeline.load_etfs - INFO - CIK 0001559109: Extracted 1 series from 485BPOS (total: 10)
+2026-02-17 21:27:57,105 - etf_pipeline.load_etfs - INFO - CIK 0001559109: All 10 needed series covered, stopping early
+2026-02-17 21:27:57,106 - etf_pipeline.load_etfs - INFO - CIK 0001559109: issuer_name = ETFis Series Trust I
+2026-02-17 21:27:57,118 - etf_pipeline.load_etfs - INFO - CIK 0001559109: Inserted 0 ETFs, updated 10 ETFs
+2026-02-17 21:27:57,118 - etf_pipeline.load_etfs - INFO - Processing CIK 0001561785: 3 ETF(s)
+2026-02-17 21:27:57,279 - etf_pipeline.load_etfs - INFO - CIK 0001561785: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:27:57,459 - etf_pipeline.load_etfs - INFO - CIK 0001561785: Extracted 1 series from 485BPOS (total: 3)
+2026-02-17 21:27:57,460 - etf_pipeline.load_etfs - INFO - CIK 0001561785: All 3 needed series covered, stopping early
+2026-02-17 21:27:57,460 - etf_pipeline.load_etfs - INFO - CIK 0001561785: issuer_name = FIRST TRUST EXCHANGE-TRADED FUND VII
+2026-02-17 21:27:57,475 - etf_pipeline.load_etfs - INFO - CIK 0001561785: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:27:57,476 - etf_pipeline.load_etfs - INFO - Processing CIK 0001562565: 12 ETF(s)
+2026-02-17 21:27:57,791 - etf_pipeline.load_etfs - INFO - CIK 0001562565: Extracted 10 series from 24F-2NT (total: 10)
+2026-02-17 21:27:57,909 - etf_pipeline.load_etfs - INFO - CIK 0001562565: Extracted 1 series from 485BPOS (total: 11)
+2026-02-17 21:27:58,394 - etf_pipeline.load_etfs - INFO - CIK 0001562565: Extracted 10 series from N-CSR (total: 11)
+2026-02-17 21:27:58,559 - etf_pipeline.load_etfs - INFO - CIK 0001562565: Extracted 1 series from NPORT-P (total: 11)
+2026-02-17 21:27:58,559 - etf_pipeline.load_etfs - INFO - CIK 0001562565: issuer_name = Fidelity Merrimack Street Trust
+2026-02-17 21:27:58,607 - etf_pipeline.load_etfs - INFO - CIK 0001562565: Inserted 0 ETFs, updated 12 ETFs
+2026-02-17 21:27:58,607 - etf_pipeline.load_etfs - INFO - Processing CIK 0001572661: 11 ETF(s)
+2026-02-17 21:27:59,076 - etf_pipeline.load_etfs - INFO - CIK 0001572661: Extracted 12 series from 24F-2NT (total: 12)
+2026-02-17 21:27:59,285 - etf_pipeline.load_etfs - INFO - CIK 0001572661: Extracted 12 series from 485BPOS (total: 12)
+2026-02-17 21:27:59,600 - etf_pipeline.load_etfs - INFO - CIK 0001572661: Extracted 12 series from N-CSR (total: 12)
+2026-02-17 21:27:59,692 - etf_pipeline.load_etfs - INFO - CIK 0001572661: Extracted 1 series from NPORT-P (total: 12)
+2026-02-17 21:27:59,692 - etf_pipeline.load_etfs - INFO - CIK 0001572661: issuer_name = Principal Exchange-Traded Funds
+2026-02-17 21:27:59,704 - etf_pipeline.load_etfs - INFO - CIK 0001572661: Inserted 0 ETFs, updated 11 ETFs
+2026-02-17 21:27:59,704 - etf_pipeline.load_etfs - INFO - Processing CIK 0001579881: 9 ETF(s)
+2026-02-17 21:27:59,941 - etf_pipeline.load_etfs - INFO - CIK 0001579881: Extracted 44 series from 24F-2NT (total: 44)
+2026-02-17 21:27:59,941 - etf_pipeline.load_etfs - INFO - CIK 0001579881: All 9 needed series covered, stopping early
+2026-02-17 21:27:59,942 - etf_pipeline.load_etfs - INFO - CIK 0001579881: issuer_name = Calamos ETF Trust
+2026-02-17 21:27:59,984 - etf_pipeline.load_etfs - INFO - CIK 0001579881: Inserted 0 ETFs, updated 9 ETFs
+2026-02-17 21:27:59,984 - etf_pipeline.load_etfs - INFO - Processing CIK 0001579982: 12 ETF(s)
+2026-02-17 21:28:00,188 - etf_pipeline.load_etfs - INFO - CIK 0001579982: Extracted 23 series from 24F-2NT (total: 23)
+2026-02-17 21:28:00,189 - etf_pipeline.load_etfs - INFO - CIK 0001579982: All 12 needed series covered, stopping early
+2026-02-17 21:28:00,189 - etf_pipeline.load_etfs - INFO - CIK 0001579982: issuer_name = ARK ETF Trust
+2026-02-17 21:28:00,229 - etf_pipeline.load_etfs - INFO - CIK 0001579982: Inserted 0 ETFs, updated 12 ETFs
+2026-02-17 21:28:00,229 - etf_pipeline.load_etfs - INFO - Processing CIK 0001587551: 4 ETF(s)
+2026-02-17 21:28:00,590 - etf_pipeline.load_etfs - INFO - CIK 0001587551: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:00,877 - etf_pipeline.load_etfs - INFO - CIK 0001587551: Extracted 7 series from 485BPOS (total: 9)
+2026-02-17 21:28:00,958 - etf_pipeline.load_etfs - INFO - CIK 0001587551: Extracted 1 series from N-CSR (total: 10)
+2026-02-17 21:28:01,006 - etf_pipeline.load_etfs - INFO - CIK 0001587551: Extracted 1 series from NPORT-P (total: 11)
+2026-02-17 21:28:01,006 - etf_pipeline.load_etfs - INFO - CIK 0001587551: issuer_name = Capitol Series Trust
+2026-02-17 21:28:01,017 - etf_pipeline.load_etfs - INFO - CIK 0001587551: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:28:01,017 - etf_pipeline.load_etfs - INFO - Processing CIK 0001587982: 81 ETF(s)
+2026-02-17 21:28:01,588 - etf_pipeline.load_etfs - INFO - CIK 0001587982: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:01,760 - etf_pipeline.load_etfs - INFO - CIK 0001587982: Extracted 1 series from 485BPOS (total: 3)
+2026-02-17 21:28:01,862 - etf_pipeline.load_etfs - INFO - CIK 0001587982: Extracted 2 series from N-CSR (total: 5)
+2026-02-17 21:28:01,904 - etf_pipeline.load_etfs - INFO - CIK 0001587982: Extracted 1 series from NPORT-P (total: 5)
+2026-02-17 21:28:01,904 - etf_pipeline.load_etfs - INFO - CIK 0001587982: issuer_name = Investment Managers Series Trust II
+2026-02-17 21:28:02,044 - etf_pipeline.load_etfs - INFO - CIK 0001587982: Inserted 0 ETFs, updated 81 ETFs
+2026-02-17 21:28:02,044 - etf_pipeline.load_etfs - INFO - Processing CIK 0001590402: 5 ETF(s)
+2026-02-17 21:28:02,372 - etf_pipeline.load_etfs - INFO - CIK 0001590402: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:02,527 - etf_pipeline.load_etfs - INFO - CIK 0001590402: Extracted 2 series from 485BPOS (total: 5)
+2026-02-17 21:28:02,527 - etf_pipeline.load_etfs - INFO - CIK 0001590402: All 5 needed series covered, stopping early
+2026-02-17 21:28:02,527 - etf_pipeline.load_etfs - INFO - CIK 0001590402: issuer_name = Cohen & Steers ETF Trust
+2026-02-17 21:28:02,534 - etf_pipeline.load_etfs - INFO - CIK 0001590402: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:28:02,535 - etf_pipeline.load_etfs - INFO - Processing CIK 0001591939: 18 ETF(s)
+2026-02-17 21:28:02,741 - etf_pipeline.load_etfs - INFO - CIK 0001591939: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:28:02,858 - etf_pipeline.load_etfs - INFO - CIK 0001591939: Extracted 8 series from 485BPOS (total: 8)
+2026-02-17 21:28:02,997 - etf_pipeline.load_etfs - INFO - CIK 0001591939: Extracted 4 series from N-CSR (total: 8)
+2026-02-17 21:28:03,046 - etf_pipeline.load_etfs - INFO - CIK 0001591939: Extracted 1 series from NPORT-P (total: 8)
+2026-02-17 21:28:03,046 - etf_pipeline.load_etfs - INFO - CIK 0001591939: issuer_name = Absolute Shares Trust
+2026-02-17 21:28:03,074 - etf_pipeline.load_etfs - INFO - CIK 0001591939: Inserted 0 ETFs, updated 18 ETFs
+2026-02-17 21:28:03,074 - etf_pipeline.load_etfs - INFO - Processing CIK 0001592900: 128 ETF(s)
+2026-02-17 21:28:03,568 - etf_pipeline.load_etfs - INFO - CIK 0001592900: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:03,669 - etf_pipeline.load_etfs - INFO - CIK 0001592900: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:28:03,860 - etf_pipeline.load_etfs - INFO - CIK 0001592900: Extracted 1 series from N-CSR (total: 3)
+2026-02-17 21:28:03,931 - etf_pipeline.load_etfs - INFO - CIK 0001592900: Extracted 1 series from NPORT-P (total: 4)
+2026-02-17 21:28:03,932 - etf_pipeline.load_etfs - INFO - CIK 0001592900: issuer_name = EA Series Trust
+2026-02-17 21:28:04,249 - etf_pipeline.load_etfs - INFO - CIK 0001592900: Inserted 0 ETFs, updated 128 ETFs
+2026-02-17 21:28:04,250 - etf_pipeline.load_etfs - INFO - Processing CIK 0001593547: 13 ETF(s)
+2026-02-17 21:28:04,933 - etf_pipeline.load_etfs - INFO - CIK 0001593547: Extracted 13 series from 24F-2NT (total: 13)
+2026-02-17 21:28:05,286 - etf_pipeline.load_etfs - INFO - CIK 0001593547: Extracted 16 series from 485BPOS (total: 29)
+2026-02-17 21:28:05,393 - etf_pipeline.load_etfs - INFO - CIK 0001593547: Extracted 1 series from N-CSR (total: 29)
+2026-02-17 21:28:05,525 - etf_pipeline.load_etfs - INFO - CIK 0001593547: Extracted 1 series from NPORT-P (total: 29)
+2026-02-17 21:28:05,526 - etf_pipeline.load_etfs - INFO - CIK 0001593547: issuer_name = Advisors' Inner Circle Fund III
+2026-02-17 21:28:05,600 - etf_pipeline.load_etfs - INFO - CIK 0001593547: Inserted 0 ETFs, updated 13 ETFs
+2026-02-17 21:28:05,625 - etf_pipeline.load_etfs - INFO - Processing CIK 0001595386: 1 ETF(s)
+2026-02-17 21:28:05,804 - etf_pipeline.load_etfs - INFO - CIK 0001595386: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:05,804 - etf_pipeline.load_etfs - INFO - CIK 0001595386: All 1 needed series covered, stopping early
+2026-02-17 21:28:05,804 - etf_pipeline.load_etfs - INFO - CIK 0001595386: issuer_name = Invesco Actively Managed Exchange-Traded Commodity Fund Trust
+2026-02-17 21:28:05,811 - etf_pipeline.load_etfs - INFO - CIK 0001595386: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:05,811 - etf_pipeline.load_etfs - INFO - Processing CIK 0001597389: 7 ETF(s)
+2026-02-17 21:28:05,991 - etf_pipeline.load_etfs - INFO - CIK 0001597389: Extracted 8 series from 24F-2NT (total: 8)
+2026-02-17 21:28:05,991 - etf_pipeline.load_etfs - INFO - CIK 0001597389: All 7 needed series covered, stopping early
+2026-02-17 21:28:05,991 - etf_pipeline.load_etfs - INFO - CIK 0001597389: issuer_name = USCF ETF Trust
+2026-02-17 21:28:06,006 - etf_pipeline.load_etfs - INFO - CIK 0001597389: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:28:06,006 - etf_pipeline.load_etfs - INFO - Processing CIK 0001597934: 3 ETF(s)
+2026-02-17 21:28:06,281 - etf_pipeline.load_etfs - INFO - CIK 0001597934: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:06,281 - etf_pipeline.load_etfs - INFO - CIK 0001597934: All 3 needed series covered, stopping early
+2026-02-17 21:28:06,282 - etf_pipeline.load_etfs - INFO - CIK 0001597934: issuer_name = abrdn ETFs
+2026-02-17 21:28:06,289 - etf_pipeline.load_etfs - INFO - CIK 0001597934: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:28:06,289 - etf_pipeline.load_etfs - INFO - Processing CIK 0001602508: 5 ETF(s)
+2026-02-17 21:28:06,507 - etf_pipeline.load_etfs - INFO - CIK 0001602508: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:28:06,508 - etf_pipeline.load_etfs - INFO - CIK 0001602508: All 5 needed series covered, stopping early
+2026-02-17 21:28:06,509 - etf_pipeline.load_etfs - INFO - CIK 0001602508: issuer_name = FundX Investment Trust
+2026-02-17 21:28:06,540 - etf_pipeline.load_etfs - INFO - CIK 0001602508: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:28:06,541 - etf_pipeline.load_etfs - INFO - Processing CIK 0001604813: 6 ETF(s)
+2026-02-17 21:28:06,747 - etf_pipeline.load_etfs - INFO - CIK 0001604813: Extracted 6 series from 24F-2NT (total: 6)
+2026-02-17 21:28:06,748 - etf_pipeline.load_etfs - INFO - CIK 0001604813: All 6 needed series covered, stopping early
+2026-02-17 21:28:06,750 - etf_pipeline.load_etfs - INFO - CIK 0001604813: issuer_name = Abacus FCF ETF Trust
+2026-02-17 21:28:06,808 - etf_pipeline.load_etfs - INFO - CIK 0001604813: Inserted 0 ETFs, updated 6 ETFs
+2026-02-17 21:28:06,809 - etf_pipeline.load_etfs - INFO - Processing CIK 0001605803: 10 ETF(s)
+2026-02-17 21:28:07,020 - etf_pipeline.load_etfs - INFO - CIK 0001605803: Extracted 10 series from 24F-2NT (total: 10)
+2026-02-17 21:28:07,021 - etf_pipeline.load_etfs - INFO - CIK 0001605803: All 10 needed series covered, stopping early
+2026-02-17 21:28:07,021 - etf_pipeline.load_etfs - INFO - CIK 0001605803: issuer_name = Lattice Strategies Trust
+2026-02-17 21:28:07,074 - etf_pipeline.load_etfs - INFO - CIK 0001605803: Inserted 0 ETFs, updated 10 ETFs
+2026-02-17 21:28:07,077 - etf_pipeline.load_etfs - INFO - Processing CIK 0001611331: 8 ETF(s)
+2026-02-17 21:28:07,284 - etf_pipeline.load_etfs - INFO - CIK 0001611331: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:07,460 - etf_pipeline.load_etfs - INFO - CIK 0001611331: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:28:07,835 - etf_pipeline.load_etfs - INFO - CIK 0001611331: Extracted 2 series from N-CSR (total: 2)
+2026-02-17 21:28:07,925 - etf_pipeline.load_etfs - INFO - CIK 0001611331: Extracted 1 series from NPORT-P (total: 3)
+2026-02-17 21:28:07,925 - etf_pipeline.load_etfs - INFO - CIK 0001611331: issuer_name = ALLSPRING EXCHANGE-TRADED FUNDS TRUST
+2026-02-17 21:28:07,936 - etf_pipeline.load_etfs - INFO - CIK 0001611331: Inserted 0 ETFs, updated 8 ETFs
+2026-02-17 21:28:07,936 - etf_pipeline.load_etfs - INFO - Processing CIK 0001612930: 5 ETF(s)
+2026-02-17 21:28:08,198 - etf_pipeline.load_etfs - INFO - CIK 0001612930: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:28:08,290 - etf_pipeline.load_etfs - INFO - CIK 0001612930: Extracted 1 series from 485BPOS (total: 8)
+2026-02-17 21:28:08,290 - etf_pipeline.load_etfs - INFO - CIK 0001612930: All 5 needed series covered, stopping early
+2026-02-17 21:28:08,290 - etf_pipeline.load_etfs - INFO - CIK 0001612930: issuer_name = Angel Oak Funds Trust
+2026-02-17 21:28:08,295 - etf_pipeline.load_etfs - INFO - CIK 0001612930: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:28:08,295 - etf_pipeline.load_etfs - INFO - Processing CIK 0001616668: 64 ETF(s)
+2026-02-17 21:28:08,614 - etf_pipeline.load_etfs - INFO - CIK 0001616668: Extracted 26 series from 24F-2NT (total: 26)
+2026-02-17 21:28:08,690 - etf_pipeline.load_etfs - INFO - CIK 0001616668: Extracted 2 series from 485BPOS (total: 28)
+2026-02-17 21:28:09,150 - etf_pipeline.load_etfs - INFO - CIK 0001616668: Extracted 26 series from N-CSR (total: 28)
+2026-02-17 21:28:09,200 - etf_pipeline.load_etfs - INFO - CIK 0001616668: Extracted 1 series from NPORT-P (total: 29)
+2026-02-17 21:28:09,201 - etf_pipeline.load_etfs - INFO - CIK 0001616668: issuer_name = Pacer Funds Trust
+2026-02-17 21:28:09,259 - etf_pipeline.load_etfs - INFO - CIK 0001616668: Inserted 0 ETFs, updated 64 ETFs
+2026-02-17 21:28:09,260 - etf_pipeline.load_etfs - INFO - Processing CIK 0001618627: 10 ETF(s)
+2026-02-17 21:28:09,429 - etf_pipeline.load_etfs - INFO - CIK 0001618627: Extracted 12 series from 24F-2NT (total: 12)
+2026-02-17 21:28:09,528 - etf_pipeline.load_etfs - INFO - CIK 0001618627: Extracted 1 series from 485BPOS (total: 13)
+2026-02-17 21:28:10,015 - etf_pipeline.load_etfs - INFO - CIK 0001618627: Extracted 10 series from N-CSR (total: 13)
+2026-02-17 21:28:10,057 - etf_pipeline.load_etfs - INFO - CIK 0001618627: Extracted 1 series from NPORT-P (total: 14)
+2026-02-17 21:28:10,063 - etf_pipeline.load_etfs - INFO - CIK 0001618627: issuer_name = RBB Fund Trust
+2026-02-17 21:28:10,158 - etf_pipeline.load_etfs - INFO - CIK 0001618627: Inserted 0 ETFs, updated 10 ETFs
+2026-02-17 21:28:10,159 - etf_pipeline.load_etfs - INFO - Processing CIK 0001633061: 14 ETF(s)
+2026-02-17 21:28:10,603 - etf_pipeline.load_etfs - INFO - CIK 0001633061: Extracted 51 series from 24F-2NT (total: 51)
+2026-02-17 21:28:10,604 - etf_pipeline.load_etfs - INFO - CIK 0001633061: All 14 needed series covered, stopping early
+2026-02-17 21:28:10,604 - etf_pipeline.load_etfs - INFO - CIK 0001633061: issuer_name = Amplify ETF Trust
+2026-02-17 21:28:10,678 - etf_pipeline.load_etfs - INFO - CIK 0001633061: Inserted 0 ETFs, updated 14 ETFs
+2026-02-17 21:28:10,679 - etf_pipeline.load_etfs - INFO - Processing CIK 0001635073: 25 ETF(s)
+2026-02-17 21:28:11,126 - etf_pipeline.load_etfs - INFO - CIK 0001635073: Extracted 12 series from 24F-2NT (total: 12)
+2026-02-17 21:28:11,437 - etf_pipeline.load_etfs - INFO - CIK 0001635073: Extracted 9 series from 485BPOS (total: 21)
+2026-02-17 21:28:11,684 - etf_pipeline.load_etfs - INFO - CIK 0001635073: Extracted 12 series from N-CSR (total: 21)
+2026-02-17 21:28:11,820 - etf_pipeline.load_etfs - INFO - CIK 0001635073: Extracted 1 series from NPORT-P (total: 21)
+2026-02-17 21:28:11,820 - etf_pipeline.load_etfs - INFO - CIK 0001635073: issuer_name = Nushares ETF Trust
+2026-02-17 21:28:11,909 - etf_pipeline.load_etfs - INFO - CIK 0001635073: Inserted 0 ETFs, updated 25 ETFs
+2026-02-17 21:28:11,909 - etf_pipeline.load_etfs - INFO - Processing CIK 0001644419: 37 ETF(s)
+2026-02-17 21:28:12,384 - etf_pipeline.load_etfs - INFO - CIK 0001644419: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:12,548 - etf_pipeline.load_etfs - INFO - CIK 0001644419: Extracted 2 series from 485BPOS (total: 3)
+2026-02-17 21:28:12,889 - etf_pipeline.load_etfs - INFO - CIK 0001644419: Extracted 9 series from N-CSR (total: 12)
+2026-02-17 21:28:12,952 - etf_pipeline.load_etfs - INFO - CIK 0001644419: Extracted 1 series from NPORT-P (total: 13)
+2026-02-17 21:28:12,952 - etf_pipeline.load_etfs - INFO - CIK 0001644419: issuer_name = Northern Lights Fund Trust IV
+2026-02-17 21:28:13,081 - etf_pipeline.load_etfs - INFO - CIK 0001644419: Inserted 0 ETFs, updated 37 ETFs
+2026-02-17 21:28:13,082 - etf_pipeline.load_etfs - INFO - Processing CIK 0001645194: 7 ETF(s)
+2026-02-17 21:28:13,514 - etf_pipeline.load_etfs - INFO - CIK 0001645194: Extracted 8 series from 24F-2NT (total: 8)
+2026-02-17 21:28:13,514 - etf_pipeline.load_etfs - INFO - CIK 0001645194: All 7 needed series covered, stopping early
+2026-02-17 21:28:13,514 - etf_pipeline.load_etfs - INFO - CIK 0001645194: issuer_name = Legg Mason ETF Investment Trust
+2026-02-17 21:28:13,524 - etf_pipeline.load_etfs - INFO - CIK 0001645194: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:28:13,524 - etf_pipeline.load_etfs - INFO - Processing CIK 0001648403: 8 ETF(s)
+2026-02-17 21:28:13,696 - etf_pipeline.load_etfs - INFO - CIK 0001648403: Extracted 10 series from 24F-2NT (total: 10)
+2026-02-17 21:28:13,696 - etf_pipeline.load_etfs - INFO - CIK 0001648403: All 8 needed series covered, stopping early
+2026-02-17 21:28:13,696 - etf_pipeline.load_etfs - INFO - CIK 0001648403: issuer_name = Virtus ETF Trust II
+2026-02-17 21:28:13,728 - etf_pipeline.load_etfs - INFO - CIK 0001648403: Inserted 0 ETFs, updated 8 ETFs
+2026-02-17 21:28:13,728 - etf_pipeline.load_etfs - INFO - Processing CIK 0001650149: 11 ETF(s)
+2026-02-17 21:28:14,240 - etf_pipeline.load_etfs - INFO - CIK 0001650149: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:14,402 - etf_pipeline.load_etfs - INFO - CIK 0001650149: Extracted 1 series from 485BPOS (total: 4)
+2026-02-17 21:28:14,577 - etf_pipeline.load_etfs - INFO - CIK 0001650149: Extracted 3 series from N-CSR (total: 4)
+2026-02-17 21:28:14,692 - etf_pipeline.load_etfs - INFO - CIK 0001650149: Extracted 1 series from NPORT-P (total: 4)
+2026-02-17 21:28:14,694 - etf_pipeline.load_etfs - INFO - CIK 0001650149: issuer_name = Series Portfolios Trust
+2026-02-17 21:28:14,728 - etf_pipeline.load_etfs - INFO - CIK 0001650149: Inserted 0 ETFs, updated 11 ETFs
+2026-02-17 21:28:14,728 - etf_pipeline.load_etfs - INFO - Processing CIK 0001655589: 49 ETF(s)
+2026-02-17 21:28:15,239 - etf_pipeline.load_etfs - INFO - CIK 0001655589: Extracted 51 series from 24F-2NT (total: 51)
+2026-02-17 21:28:15,365 - etf_pipeline.load_etfs - INFO - CIK 0001655589: Extracted 1 series from 485BPOS (total: 52)
+2026-02-17 21:28:15,570 - etf_pipeline.load_etfs - INFO - CIK 0001655589: Extracted 4 series from N-CSR (total: 52)
+2026-02-17 21:28:15,619 - etf_pipeline.load_etfs - INFO - CIK 0001655589: Extracted 1 series from NPORT-P (total: 52)
+2026-02-17 21:28:15,620 - etf_pipeline.load_etfs - INFO - CIK 0001655589: issuer_name = Franklin Templeton ETF Trust
+2026-02-17 21:28:15,671 - etf_pipeline.load_etfs - INFO - CIK 0001655589: Inserted 0 ETFs, updated 49 ETFs
+2026-02-17 21:28:15,672 - etf_pipeline.load_etfs - INFO - Processing CIK 0001657201: 22 ETF(s)
+2026-02-17 21:28:16,152 - etf_pipeline.load_etfs - INFO - CIK 0001657201: Extracted 39 series from 24F-2NT (total: 39)
+2026-02-17 21:28:16,153 - etf_pipeline.load_etfs - INFO - CIK 0001657201: All 22 needed series covered, stopping early
+2026-02-17 21:28:16,161 - etf_pipeline.load_etfs - INFO - CIK 0001657201: issuer_name = Invesco Exchange-Traded Self-Indexed Fund Trust
+2026-02-17 21:28:16,276 - etf_pipeline.load_etfs - INFO - CIK 0001657201: Inserted 0 ETFs, updated 22 ETFs
+2026-02-17 21:28:16,276 - etf_pipeline.load_etfs - INFO - Processing CIK 0001660765: 1 ETF(s)
+2026-02-17 21:28:16,495 - etf_pipeline.load_etfs - INFO - CIK 0001660765: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:16,495 - etf_pipeline.load_etfs - INFO - CIK 0001660765: All 1 needed series covered, stopping early
+2026-02-17 21:28:16,495 - etf_pipeline.load_etfs - INFO - CIK 0001660765: issuer_name = Clayton Street Trust
+2026-02-17 21:28:16,534 - etf_pipeline.load_etfs - INFO - CIK 0001660765: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:16,538 - etf_pipeline.load_etfs - INFO - Processing CIK 0001667919: 136 ETF(s)
+2026-02-17 21:28:17,440 - etf_pipeline.load_etfs - INFO - CIK 0001667919: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:17,585 - etf_pipeline.load_etfs - INFO - CIK 0001667919: Extracted 1 series from 485BPOS (total: 4)
+2026-02-17 21:28:17,754 - etf_pipeline.load_etfs - INFO - CIK 0001667919: Extracted 3 series from N-CSR (total: 4)
+2026-02-17 21:28:17,830 - etf_pipeline.load_etfs - INFO - CIK 0001667919: Extracted 1 series from NPORT-P (total: 4)
+2026-02-17 21:28:17,830 - etf_pipeline.load_etfs - INFO - CIK 0001667919: issuer_name = FIRST TRUST EXCHANGE-TRADED FUND VIII
+2026-02-17 21:28:18,000 - etf_pipeline.load_etfs - INFO - CIK 0001667919: Inserted 0 ETFs, updated 136 ETFs
+2026-02-17 21:28:18,000 - etf_pipeline.load_etfs - INFO - Processing CIK 0001670310: 4 ETF(s)
+2026-02-17 21:28:18,180 - etf_pipeline.load_etfs - INFO - CIK 0001670310: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:28:18,180 - etf_pipeline.load_etfs - INFO - CIK 0001670310: All 4 needed series covered, stopping early
+2026-02-17 21:28:18,181 - etf_pipeline.load_etfs - INFO - CIK 0001670310: issuer_name = Davis Fundamental ETF Trust
+2026-02-17 21:28:18,199 - etf_pipeline.load_etfs - INFO - CIK 0001670310: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:28:18,200 - etf_pipeline.load_etfs - INFO - Processing CIK 0001676326: 18 ETF(s)
+2026-02-17 21:28:18,375 - etf_pipeline.load_etfs - INFO - CIK 0001676326: Extracted 18 series from 24F-2NT (total: 18)
+2026-02-17 21:28:18,751 - etf_pipeline.load_etfs - INFO - CIK 0001676326: Extracted 19 series from 485BPOS (total: 20)
+2026-02-17 21:28:18,751 - etf_pipeline.load_etfs - INFO - CIK 0001676326: All 18 needed series covered, stopping early
+2026-02-17 21:28:18,751 - etf_pipeline.load_etfs - INFO - CIK 0001676326: issuer_name = Morgan Stanley ETF Trust
+2026-02-17 21:28:18,781 - etf_pipeline.load_etfs - INFO - CIK 0001676326: Inserted 0 ETFs, updated 18 ETFs
+2026-02-17 21:28:18,782 - etf_pipeline.load_etfs - INFO - Processing CIK 0001683471: 70 ETF(s)
+2026-02-17 21:28:19,122 - etf_pipeline.load_etfs - INFO - CIK 0001683471: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:28:19,282 - etf_pipeline.load_etfs - INFO - CIK 0001683471: Extracted 1 series from 485BPOS (total: 8)
+2026-02-17 21:28:19,415 - etf_pipeline.load_etfs - INFO - CIK 0001683471: Extracted 1 series from N-CSR (total: 9)
+2026-02-17 21:28:19,451 - etf_pipeline.load_etfs - INFO - CIK 0001683471: Extracted 1 series from NPORT-P (total: 10)
+2026-02-17 21:28:19,451 - etf_pipeline.load_etfs - INFO - CIK 0001683471: issuer_name = Listed Funds Trust
+2026-02-17 21:28:19,543 - etf_pipeline.load_etfs - INFO - CIK 0001683471: Inserted 0 ETFs, updated 70 ETFs
+2026-02-17 21:28:19,544 - etf_pipeline.load_etfs - INFO - Processing CIK 0001689873: 127 ETF(s)
+2026-02-17 21:28:19,971 - etf_pipeline.load_etfs - INFO - CIK 0001689873: Extracted 39 series from 24F-2NT (total: 39)
+2026-02-17 21:28:20,312 - etf_pipeline.load_etfs - INFO - CIK 0001689873: Extracted 31 series from 485BPOS (total: 70)
+2026-02-17 21:28:27,000 - etf_pipeline.load_etfs - INFO - CIK 0001689873: Extracted 39 series from N-CSR (total: 70)
+2026-02-17 21:28:27,086 - etf_pipeline.load_etfs - INFO - CIK 0001689873: Extracted 1 series from NPORT-P (total: 71)
+2026-02-17 21:28:27,087 - etf_pipeline.load_etfs - INFO - CIK 0001689873: issuer_name = GraniteShares ETF Trust
+2026-02-17 21:28:27,614 - etf_pipeline.load_etfs - INFO - CIK 0001689873: Inserted 0 ETFs, updated 127 ETFs
+2026-02-17 21:28:27,615 - etf_pipeline.load_etfs - INFO - Processing CIK 0001710607: 51 ETF(s)
+2026-02-17 21:28:28,037 - etf_pipeline.load_etfs - INFO - CIK 0001710607: Extracted 62 series from 24F-2NT (total: 62)
+2026-02-17 21:28:28,037 - etf_pipeline.load_etfs - INFO - CIK 0001710607: All 51 needed series covered, stopping early
+2026-02-17 21:28:28,037 - etf_pipeline.load_etfs - INFO - CIK 0001710607: issuer_name = AMERICAN CENTURY ETF TRUST
+2026-02-17 21:28:28,122 - etf_pipeline.load_etfs - INFO - CIK 0001710607: Inserted 0 ETFs, updated 51 ETFs
+2026-02-17 21:28:28,122 - etf_pipeline.load_etfs - INFO - Processing CIK 0001719812: 13 ETF(s)
+2026-02-17 21:28:28,456 - etf_pipeline.load_etfs - INFO - CIK 0001719812: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:28,788 - etf_pipeline.load_etfs - INFO - CIK 0001719812: Extracted 11 series from 485BPOS (total: 11)
+2026-02-17 21:28:29,416 - etf_pipeline.load_etfs - INFO - CIK 0001719812: Extracted 11 series from N-CSR (total: 12)
+2026-02-17 21:28:29,491 - etf_pipeline.load_etfs - INFO - CIK 0001719812: Extracted 1 series from NPORT-P (total: 12)
+2026-02-17 21:28:29,491 - etf_pipeline.load_etfs - INFO - CIK 0001719812: issuer_name = Collaborative Investment Series Trust
+2026-02-17 21:28:29,527 - etf_pipeline.load_etfs - INFO - CIK 0001719812: Inserted 0 ETFs, updated 13 ETFs
+2026-02-17 21:28:29,527 - etf_pipeline.load_etfs - INFO - Processing CIK 0001722388: 72 ETF(s)
+2026-02-17 21:28:29,946 - etf_pipeline.load_etfs - INFO - CIK 0001722388: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:30,221 - etf_pipeline.load_etfs - INFO - CIK 0001722388: Extracted 8 series from 485BPOS (total: 9)
+2026-02-17 21:28:30,741 - etf_pipeline.load_etfs - INFO - CIK 0001722388: Extracted 2 series from N-CSR (total: 11)
+2026-02-17 21:28:30,769 - etf_pipeline.load_etfs - INFO - CIK 0001722388: Extracted 1 series from NPORT-P (total: 12)
+2026-02-17 21:28:30,769 - etf_pipeline.load_etfs - INFO - CIK 0001722388: issuer_name = Tidal Trust III
+2026-02-17 21:28:30,981 - etf_pipeline.load_etfs - INFO - CIK 0001722388: Inserted 0 ETFs, updated 72 ETFs
+2026-02-17 21:28:30,982 - etf_pipeline.load_etfs - INFO - Processing CIK 0001727074: 19 ETF(s)
+2026-02-17 21:28:31,328 - etf_pipeline.load_etfs - INFO - CIK 0001727074: Extracted 19 series from 24F-2NT (total: 19)
+2026-02-17 21:28:31,329 - etf_pipeline.load_etfs - INFO - CIK 0001727074: All 19 needed series covered, stopping early
+2026-02-17 21:28:31,329 - etf_pipeline.load_etfs - INFO - CIK 0001727074: issuer_name = PGIM ETF TRUST
+2026-02-17 21:28:31,374 - etf_pipeline.load_etfs - INFO - CIK 0001727074: Inserted 0 ETFs, updated 19 ETFs
+2026-02-17 21:28:31,375 - etf_pipeline.load_etfs - INFO - Processing CIK 0001727398: 2 ETF(s)
+2026-02-17 21:28:31,790 - etf_pipeline.load_etfs - INFO - CIK 0001727398: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:32,121 - etf_pipeline.load_etfs - INFO - CIK 0001727398: Extracted 1 series from 485BPOS (total: 1)
+2026-02-17 21:28:32,462 - etf_pipeline.load_etfs - INFO - CIK 0001727398: Extracted 1 series from N-CSR (total: 1)
+2026-02-17 21:28:32,675 - etf_pipeline.load_etfs - INFO - CIK 0001727398: Extracted 1 series from NPORT-P (total: 1)
+2026-02-17 21:28:32,675 - etf_pipeline.load_etfs - INFO - CIK 0001727398: issuer_name = Procure ETF Trust II
+2026-02-17 21:28:32,686 - etf_pipeline.load_etfs - INFO - CIK 0001727398: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:28:32,687 - etf_pipeline.load_etfs - INFO - Processing CIK 0001728683: 3 ETF(s)
+2026-02-17 21:28:32,961 - etf_pipeline.load_etfs - INFO - CIK 0001728683: Extracted 10 series from 24F-2NT (total: 10)
+2026-02-17 21:28:33,255 - etf_pipeline.load_etfs - INFO - CIK 0001728683: Extracted 2 series from 485BPOS (total: 12)
+2026-02-17 21:28:33,545 - etf_pipeline.load_etfs - INFO - CIK 0001728683: Extracted 10 series from N-CSR (total: 12)
+2026-02-17 21:28:33,604 - etf_pipeline.load_etfs - INFO - CIK 0001728683: Extracted 1 series from NPORT-P (total: 13)
+2026-02-17 21:28:33,604 - etf_pipeline.load_etfs - INFO - CIK 0001728683: issuer_name = SPROTT FUNDS TRUST
+2026-02-17 21:28:33,611 - etf_pipeline.load_etfs - INFO - CIK 0001728683: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:28:33,612 - etf_pipeline.load_etfs - INFO - Processing CIK 0001728860: 3 ETF(s)
+2026-02-17 21:28:33,785 - etf_pipeline.load_etfs - INFO - CIK 0001728860: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:33,918 - etf_pipeline.load_etfs - INFO - CIK 0001728860: Extracted 2 series from 485BPOS (total: 2)
+2026-02-17 21:28:34,765 - etf_pipeline.load_etfs - INFO - CIK 0001728860: Extracted 2 series from N-CSR (total: 2)
+2026-02-17 21:28:34,830 - etf_pipeline.load_etfs - INFO - CIK 0001728860: Extracted 1 series from NPORT-P (total: 2)
+2026-02-17 21:28:34,831 - etf_pipeline.load_etfs - INFO - CIK 0001728860: issuer_name = Natixis ETF Trust II
+2026-02-17 21:28:34,845 - etf_pipeline.load_etfs - INFO - CIK 0001728860: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:28:34,845 - etf_pipeline.load_etfs - INFO - Processing CIK 0001736078: 1 ETF(s)
+2026-02-17 21:28:34,993 - etf_pipeline.load_etfs - INFO - CIK 0001736078: Extracted 8 series from 24F-2NT (total: 8)
+2026-02-17 21:28:35,281 - etf_pipeline.load_etfs - INFO - CIK 0001736078: Extracted 8 series from 485BPOS (total: 8)
+2026-02-17 21:28:35,552 - etf_pipeline.load_etfs - INFO - CIK 0001736078: Extracted 8 series from N-CSR (total: 8)
+2026-02-17 21:28:35,632 - etf_pipeline.load_etfs - INFO - CIK 0001736078: Extracted 1 series from NPORT-P (total: 8)
+2026-02-17 21:28:35,632 - etf_pipeline.load_etfs - INFO - CIK 0001736078: issuer_name = Symmetry Panoramic Trust
+2026-02-17 21:28:35,635 - etf_pipeline.load_etfs - INFO - CIK 0001736078: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:35,635 - etf_pipeline.load_etfs - INFO - Processing CIK 0001742912: 54 ETF(s)
+2026-02-17 21:28:35,991 - etf_pipeline.load_etfs - INFO - CIK 0001742912: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:36,139 - etf_pipeline.load_etfs - INFO - CIK 0001742912: Extracted 2 series from 485BPOS (total: 4)
+2026-02-17 21:28:36,461 - etf_pipeline.load_etfs - INFO - CIK 0001742912: Extracted 3 series from N-CSR (total: 7)
+2026-02-17 21:28:36,508 - etf_pipeline.load_etfs - INFO - CIK 0001742912: Extracted 1 series from NPORT-P (total: 8)
+2026-02-17 21:28:36,508 - etf_pipeline.load_etfs - INFO - CIK 0001742912: issuer_name = Tidal Trust I
+2026-02-17 21:28:36,556 - etf_pipeline.load_etfs - INFO - CIK 0001742912: Inserted 0 ETFs, updated 54 ETFs
+2026-02-17 21:28:36,556 - etf_pipeline.load_etfs - INFO - Processing CIK 0001748425: 5 ETF(s)
+2026-02-17 21:28:36,739 - etf_pipeline.load_etfs - INFO - CIK 0001748425: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:28:36,740 - etf_pipeline.load_etfs - INFO - CIK 0001748425: All 5 needed series covered, stopping early
+2026-02-17 21:28:36,741 - etf_pipeline.load_etfs - INFO - CIK 0001748425: issuer_name = Gabelli ETFs Trust
+2026-02-17 21:28:36,766 - etf_pipeline.load_etfs - INFO - CIK 0001748425: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:28:36,766 - etf_pipeline.load_etfs - INFO - Processing CIK 0001750821: 1 ETF(s)
+2026-02-17 21:28:36,972 - etf_pipeline.load_etfs - INFO - CIK 0001750821: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:37,145 - etf_pipeline.load_etfs - INFO - CIK 0001750821: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:28:37,367 - etf_pipeline.load_etfs - INFO - CIK 0001750821: Extracted 1 series from N-CSR (total: 2)
+2026-02-17 21:28:37,401 - etf_pipeline.load_etfs - INFO - CIK 0001750821: Extracted 1 series from NPORT-P (total: 3)
+2026-02-17 21:28:37,401 - etf_pipeline.load_etfs - INFO - CIK 0001750821: issuer_name = Exchange Place Advisors Trust
+2026-02-17 21:28:37,430 - etf_pipeline.load_etfs - INFO - CIK 0001750821: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:37,430 - etf_pipeline.load_etfs - INFO - Processing CIK 0001760588: 3 ETF(s)
+2026-02-17 21:28:37,635 - etf_pipeline.load_etfs - INFO - CIK 0001760588: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:28:37,804 - etf_pipeline.load_etfs - INFO - CIK 0001760588: Extracted 1 series from 485BPOS (total: 6)
+2026-02-17 21:28:37,981 - etf_pipeline.load_etfs - INFO - CIK 0001760588: Extracted 3 series from N-CSR (total: 6)
+2026-02-17 21:28:38,111 - etf_pipeline.load_etfs - INFO - CIK 0001760588: Extracted 1 series from NPORT-P (total: 6)
+2026-02-17 21:28:38,111 - etf_pipeline.load_etfs - INFO - CIK 0001760588: issuer_name = Zacks Trust
+2026-02-17 21:28:38,114 - etf_pipeline.load_etfs - INFO - CIK 0001760588: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:28:38,115 - etf_pipeline.load_etfs - INFO - Processing CIK 0001761055: 1 ETF(s)
+2026-02-17 21:28:38,396 - etf_pipeline.load_etfs - INFO - CIK 0001761055: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:28:38,573 - etf_pipeline.load_etfs - INFO - CIK 0001761055: Extracted 1 series from 485BPOS (total: 5)
+2026-02-17 21:28:38,672 - etf_pipeline.load_etfs - INFO - CIK 0001761055: Extracted 2 series from N-CSR (total: 5)
+2026-02-17 21:28:38,722 - etf_pipeline.load_etfs - INFO - CIK 0001761055: Extracted 1 series from NPORT-P (total: 6)
+2026-02-17 21:28:38,722 - etf_pipeline.load_etfs - INFO - CIK 0001761055: issuer_name = BlackRock ETF Trust
+2026-02-17 21:28:38,723 - etf_pipeline.load_etfs - INFO - CIK 0001761055: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:38,723 - etf_pipeline.load_etfs - INFO - Processing CIK 0001771146: 123 ETF(s)
+2026-02-17 21:28:39,084 - etf_pipeline.load_etfs - INFO - CIK 0001771146: Extracted 6 series from 24F-2NT (total: 6)
+2026-02-17 21:28:39,381 - etf_pipeline.load_etfs - INFO - CIK 0001771146: Extracted 2 series from 485BPOS (total: 8)
+2026-02-17 21:28:39,522 - etf_pipeline.load_etfs - INFO - CIK 0001771146: Extracted 1 series from N-CSR (total: 9)
+2026-02-17 21:28:39,560 - etf_pipeline.load_etfs - INFO - CIK 0001771146: Extracted 1 series from NPORT-P (total: 10)
+2026-02-17 21:28:39,560 - etf_pipeline.load_etfs - INFO - CIK 0001771146: issuer_name = ETF Opportunities Trust
+2026-02-17 21:28:39,691 - etf_pipeline.load_etfs - INFO - CIK 0001771146: Inserted 0 ETFs, updated 123 ETFs
+2026-02-17 21:28:39,691 - etf_pipeline.load_etfs - INFO - Processing CIK 0001779306: 2 ETF(s)
+2026-02-17 21:28:39,869 - etf_pipeline.load_etfs - INFO - CIK 0001779306: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:39,869 - etf_pipeline.load_etfs - INFO - CIK 0001779306: All 2 needed series covered, stopping early
+2026-02-17 21:28:39,869 - etf_pipeline.load_etfs - INFO - CIK 0001779306: issuer_name = ALTSHARES TRUST
+2026-02-17 21:28:39,880 - etf_pipeline.load_etfs - INFO - CIK 0001779306: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:28:39,880 - etf_pipeline.load_etfs - INFO - Processing CIK 0001782952: 1 ETF(s)
+2026-02-17 21:28:40,092 - etf_pipeline.load_etfs - INFO - CIK 0001782952: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:28:40,257 - etf_pipeline.load_etfs - INFO - CIK 0001782952: Extracted 1 series from 485BPOS (total: 8)
+2026-02-17 21:28:40,493 - etf_pipeline.load_etfs - INFO - CIK 0001782952: Extracted 7 series from N-CSR (total: 8)
+2026-02-17 21:28:40,542 - etf_pipeline.load_etfs - INFO - CIK 0001782952: Extracted 1 series from NPORT-P (total: 8)
+2026-02-17 21:28:40,543 - etf_pipeline.load_etfs - INFO - CIK 0001782952: issuer_name = Kurv ETF Trust
+2026-02-17 21:28:40,550 - etf_pipeline.load_etfs - INFO - CIK 0001782952: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:40,551 - etf_pipeline.load_etfs - INFO - Processing CIK 0001792795: 1 ETF(s)
+2026-02-17 21:28:40,864 - etf_pipeline.load_etfs - INFO - CIK 0001792795: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:40,867 - etf_pipeline.load_etfs - INFO - CIK 0001792795: All 1 needed series covered, stopping early
+2026-02-17 21:28:40,874 - etf_pipeline.load_etfs - INFO - CIK 0001792795: issuer_name = Legg Mason ETF Investment Trust II
+2026-02-17 21:28:40,878 - etf_pipeline.load_etfs - INFO - CIK 0001792795: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:40,894 - etf_pipeline.load_etfs - INFO - Processing CIK 0001795351: 32 ETF(s)
+2026-02-17 21:28:41,080 - etf_pipeline.load_etfs - INFO - CIK 0001795351: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:28:41,304 - etf_pipeline.load_etfs - INFO - CIK 0001795351: Extracted 3 series from 485BPOS (total: 5)
+2026-02-17 21:28:41,454 - etf_pipeline.load_etfs - INFO - CIK 0001795351: Extracted 1 series from N-CSR (total: 5)
+2026-02-17 21:28:41,513 - etf_pipeline.load_etfs - INFO - CIK 0001795351: Extracted 1 series from NPORT-P (total: 6)
+2026-02-17 21:28:41,513 - etf_pipeline.load_etfs - INFO - CIK 0001795351: issuer_name = T. Rowe Price Exchange-Traded Funds, Inc.
+2026-02-17 21:28:41,780 - etf_pipeline.load_etfs - INFO - CIK 0001795351: Inserted 0 ETFs, updated 32 ETFs
+2026-02-17 21:28:41,780 - etf_pipeline.load_etfs - INFO - Processing CIK 0001796383: 3 ETF(s)
+2026-02-17 21:28:41,929 - etf_pipeline.load_etfs - INFO - CIK 0001796383: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:41,930 - etf_pipeline.load_etfs - INFO - CIK 0001796383: All 3 needed series covered, stopping early
+2026-02-17 21:28:41,930 - etf_pipeline.load_etfs - INFO - CIK 0001796383: issuer_name = Siren ETF Trust
+2026-02-17 21:28:41,956 - etf_pipeline.load_etfs - INFO - CIK 0001796383: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:28:41,957 - etf_pipeline.load_etfs - INFO - Processing CIK 0001797318: 54 ETF(s)
+2026-02-17 21:28:42,180 - etf_pipeline.load_etfs - INFO - CIK 0001797318: Extracted 62 series from 24F-2NT (total: 62)
+2026-02-17 21:28:42,180 - etf_pipeline.load_etfs - INFO - CIK 0001797318: All 54 needed series covered, stopping early
+2026-02-17 21:28:42,180 - etf_pipeline.load_etfs - INFO - CIK 0001797318: issuer_name = AIM ETF Products Trust
+2026-02-17 21:28:42,283 - etf_pipeline.load_etfs - INFO - CIK 0001797318: Inserted 0 ETFs, updated 54 ETFs
+2026-02-17 21:28:42,283 - etf_pipeline.load_etfs - INFO - Processing CIK 0001807486: 5 ETF(s)
+2026-02-17 21:28:42,452 - etf_pipeline.load_etfs - INFO - CIK 0001807486: Extracted 6 series from 24F-2NT (total: 6)
+2026-02-17 21:28:42,452 - etf_pipeline.load_etfs - INFO - CIK 0001807486: All 5 needed series covered, stopping early
+2026-02-17 21:28:42,453 - etf_pipeline.load_etfs - INFO - CIK 0001807486: issuer_name = Alger ETF Trust
+2026-02-17 21:28:42,476 - etf_pipeline.load_etfs - INFO - CIK 0001807486: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:28:42,477 - etf_pipeline.load_etfs - INFO - Processing CIK 0001810747: 29 ETF(s)
+2026-02-17 21:28:43,045 - etf_pipeline.load_etfs - INFO - CIK 0001810747: Extracted 40 series from 24F-2NT (total: 40)
+2026-02-17 21:28:43,155 - etf_pipeline.load_etfs - INFO - CIK 0001810747: Extracted 1 series from 485BPOS (total: 41)
+2026-02-17 21:28:43,738 - etf_pipeline.load_etfs - INFO - CIK 0001810747: Extracted 34 series from N-CSR (total: 41)
+2026-02-17 21:28:44,499 - etf_pipeline.load_etfs - INFO - CIK 0001810747: Extracted 1 series from NPORT-P (total: 41)
+2026-02-17 21:28:44,499 - etf_pipeline.load_etfs - INFO - CIK 0001810747: issuer_name = Simplify Exchange Traded Funds
+2026-02-17 21:28:44,545 - etf_pipeline.load_etfs - INFO - CIK 0001810747: Inserted 0 ETFs, updated 29 ETFs
+2026-02-17 21:28:44,550 - etf_pipeline.load_etfs - INFO - Processing CIK 0001816125: 41 ETF(s)
+2026-02-17 21:28:44,775 - etf_pipeline.load_etfs - INFO - CIK 0001816125: Extracted 41 series from 24F-2NT (total: 41)
+2026-02-17 21:28:44,775 - etf_pipeline.load_etfs - INFO - CIK 0001816125: All 41 needed series covered, stopping early
+2026-02-17 21:28:44,775 - etf_pipeline.load_etfs - INFO - CIK 0001816125: issuer_name = Dimensional ETF Trust
+2026-02-17 21:28:44,863 - etf_pipeline.load_etfs - INFO - CIK 0001816125: Inserted 0 ETFs, updated 41 ETFs
+2026-02-17 21:28:44,864 - etf_pipeline.load_etfs - INFO - Processing CIK 0001831313: 5 ETF(s)
+2026-02-17 21:28:45,058 - etf_pipeline.load_etfs - INFO - CIK 0001831313: Extracted 12 series from 24F-2NT (total: 12)
+2026-02-17 21:28:45,061 - etf_pipeline.load_etfs - INFO - CIK 0001831313: All 5 needed series covered, stopping early
+2026-02-17 21:28:45,062 - etf_pipeline.load_etfs - INFO - CIK 0001831313: issuer_name = TCW ETF Trust
+2026-02-17 21:28:45,193 - etf_pipeline.load_etfs - INFO - CIK 0001831313: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:28:45,194 - etf_pipeline.load_etfs - INFO - Processing CIK 0001848758: 6 ETF(s)
+2026-02-17 21:28:45,395 - etf_pipeline.load_etfs - INFO - CIK 0001848758: Extracted 11 series from 24F-2NT (total: 11)
+2026-02-17 21:28:45,603 - etf_pipeline.load_etfs - INFO - CIK 0001848758: Extracted 1 series from 485BPOS (total: 12)
+2026-02-17 21:28:45,778 - etf_pipeline.load_etfs - INFO - CIK 0001848758: Extracted 3 series from N-CSR (total: 15)
+2026-02-17 21:28:45,830 - etf_pipeline.load_etfs - INFO - CIK 0001848758: Extracted 1 series from NPORT-P (total: 15)
+2026-02-17 21:28:45,830 - etf_pipeline.load_etfs - INFO - CIK 0001848758: issuer_name = NEOS ETF Trust
+2026-02-17 21:28:45,839 - etf_pipeline.load_etfs - INFO - CIK 0001848758: Inserted 0 ETFs, updated 6 ETFs
+2026-02-17 21:28:45,839 - etf_pipeline.load_etfs - INFO - Processing CIK 0001849998: 9 ETF(s)
+2026-02-17 21:28:46,047 - etf_pipeline.load_etfs - INFO - CIK 0001849998: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:46,315 - etf_pipeline.load_etfs - INFO - CIK 0001849998: Extracted 2 series from 485BPOS (total: 2)
+2026-02-17 21:28:46,400 - etf_pipeline.load_etfs - INFO - CIK 0001849998: Extracted 2 series from N-CSR (total: 2)
+2026-02-17 21:28:46,451 - etf_pipeline.load_etfs - INFO - CIK 0001849998: Extracted 1 series from NPORT-P (total: 3)
+2026-02-17 21:28:46,451 - etf_pipeline.load_etfs - INFO - CIK 0001849998: issuer_name = Federated Hermes ETF Trust
+2026-02-17 21:28:46,462 - etf_pipeline.load_etfs - INFO - CIK 0001849998: Inserted 0 ETFs, updated 9 ETFs
+2026-02-17 21:28:46,464 - etf_pipeline.load_etfs - INFO - Processing CIK 0001860434: 33 ETF(s)
+2026-02-17 21:28:46,651 - etf_pipeline.load_etfs - INFO - CIK 0001860434: Extracted 31 series from 24F-2NT (total: 31)
+2026-02-17 21:28:46,786 - etf_pipeline.load_etfs - INFO - CIK 0001860434: Extracted 1 series from 485BPOS (total: 32)
+2026-02-17 21:28:47,405 - etf_pipeline.load_etfs - INFO - CIK 0001860434: Extracted 28 series from N-CSR (total: 32)
+2026-02-17 21:28:47,456 - etf_pipeline.load_etfs - INFO - CIK 0001860434: Extracted 1 series from NPORT-P (total: 32)
+2026-02-17 21:28:47,456 - etf_pipeline.load_etfs - INFO - CIK 0001860434: issuer_name = Harbor ETF Trust
+2026-02-17 21:28:47,489 - etf_pipeline.load_etfs - INFO - CIK 0001860434: Inserted 0 ETFs, updated 33 ETFs
+2026-02-17 21:28:47,490 - etf_pipeline.load_etfs - INFO - Processing CIK 0001869991: 1 ETF(s)
+2026-02-17 21:28:47,657 - etf_pipeline.load_etfs - INFO - CIK 0001869991: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:47,658 - etf_pipeline.load_etfs - INFO - CIK 0001869991: All 1 needed series covered, stopping early
+2026-02-17 21:28:47,658 - etf_pipeline.load_etfs - INFO - CIK 0001869991: issuer_name = Capital Group Growth ETF
+2026-02-17 21:28:47,664 - etf_pipeline.load_etfs - INFO - CIK 0001869991: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:47,665 - etf_pipeline.load_etfs - INFO - Processing CIK 0001870102: 1 ETF(s)
+2026-02-17 21:28:47,818 - etf_pipeline.load_etfs - INFO - CIK 0001870102: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:47,818 - etf_pipeline.load_etfs - INFO - CIK 0001870102: All 1 needed series covered, stopping early
+2026-02-17 21:28:47,819 - etf_pipeline.load_etfs - INFO - CIK 0001870102: issuer_name = Capital Group Core Equity ETF
+2026-02-17 21:28:47,822 - etf_pipeline.load_etfs - INFO - CIK 0001870102: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:47,823 - etf_pipeline.load_etfs - INFO - Processing CIK 0001870116: 1 ETF(s)
+2026-02-17 21:28:48,089 - etf_pipeline.load_etfs - INFO - CIK 0001870116: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:48,089 - etf_pipeline.load_etfs - INFO - CIK 0001870116: All 1 needed series covered, stopping early
+2026-02-17 21:28:48,090 - etf_pipeline.load_etfs - INFO - CIK 0001870116: issuer_name = Capital Group Global Growth Equity ETF
+2026-02-17 21:28:48,097 - etf_pipeline.load_etfs - INFO - CIK 0001870116: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:48,097 - etf_pipeline.load_etfs - INFO - Processing CIK 0001870117: 10 ETF(s)
+2026-02-17 21:28:48,269 - etf_pipeline.load_etfs - INFO - CIK 0001870117: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:28:48,594 - etf_pipeline.load_etfs - INFO - CIK 0001870117: Extracted 1 series from 485BPOS (total: 10)
+2026-02-17 21:28:48,594 - etf_pipeline.load_etfs - INFO - CIK 0001870117: All 10 needed series covered, stopping early
+2026-02-17 21:28:48,595 - etf_pipeline.load_etfs - INFO - CIK 0001870117: issuer_name = Capital Group Fixed Income ETF Trust
+2026-02-17 21:28:48,615 - etf_pipeline.load_etfs - INFO - CIK 0001870117: Inserted 0 ETFs, updated 10 ETFs
+2026-02-17 21:28:48,615 - etf_pipeline.load_etfs - INFO - Processing CIK 0001870128: 1 ETF(s)
+2026-02-17 21:28:48,780 - etf_pipeline.load_etfs - INFO - CIK 0001870128: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:48,780 - etf_pipeline.load_etfs - INFO - CIK 0001870128: All 1 needed series covered, stopping early
+2026-02-17 21:28:48,780 - etf_pipeline.load_etfs - INFO - CIK 0001870128: issuer_name = Capital Group Dividend Value ETF
+2026-02-17 21:28:48,794 - etf_pipeline.load_etfs - INFO - CIK 0001870128: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:48,796 - etf_pipeline.load_etfs - INFO - Processing CIK 0001870130: 1 ETF(s)
+2026-02-17 21:28:48,986 - etf_pipeline.load_etfs - INFO - CIK 0001870130: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:48,986 - etf_pipeline.load_etfs - INFO - CIK 0001870130: All 1 needed series covered, stopping early
+2026-02-17 21:28:48,986 - etf_pipeline.load_etfs - INFO - CIK 0001870130: issuer_name = Capital Group International Focus Equity ETF
+2026-02-17 21:28:48,992 - etf_pipeline.load_etfs - INFO - CIK 0001870130: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:48,992 - etf_pipeline.load_etfs - INFO - Processing CIK 0001873280: 7 ETF(s)
+2026-02-17 21:28:49,291 - etf_pipeline.load_etfs - INFO - CIK 0001873280: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:49,391 - etf_pipeline.load_etfs - INFO - CIK 0001873280: Extracted 1 series from 485BPOS (total: 3)
+2026-02-17 21:28:49,524 - etf_pipeline.load_etfs - INFO - CIK 0001873280: Extracted 2 series from N-CSR (total: 3)
+2026-02-17 21:28:49,580 - etf_pipeline.load_etfs - INFO - CIK 0001873280: Extracted 1 series from NPORT-P (total: 3)
+2026-02-17 21:28:49,580 - etf_pipeline.load_etfs - INFO - CIK 0001873280: issuer_name = Strategic Trust
+2026-02-17 21:28:49,592 - etf_pipeline.load_etfs - INFO - CIK 0001873280: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:28:49,593 - etf_pipeline.load_etfs - INFO - Processing CIK 0001875710: 1 ETF(s)
+2026-02-17 21:28:49,883 - etf_pipeline.load_etfs - INFO - CIK 0001875710: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:49,884 - etf_pipeline.load_etfs - INFO - CIK 0001875710: All 1 needed series covered, stopping early
+2026-02-17 21:28:49,884 - etf_pipeline.load_etfs - INFO - CIK 0001875710: issuer_name = Build Funds Trust
+2026-02-17 21:28:49,895 - etf_pipeline.load_etfs - INFO - CIK 0001875710: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:49,896 - etf_pipeline.load_etfs - INFO - Processing CIK 0001877493: 4 ETF(s)
+2026-02-17 21:28:50,064 - etf_pipeline.load_etfs - INFO - CIK 0001877493: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:50,237 - etf_pipeline.load_etfs - INFO - CIK 0001877493: Extracted 2 series from 485BPOS (total: 3)
+2026-02-17 21:28:50,353 - etf_pipeline.load_etfs - INFO - CIK 0001877493: Extracted 3 series from N-CSR (total: 3)
+2026-02-17 21:28:50,389 - etf_pipeline.load_etfs - INFO - CIK 0001877493: Extracted 1 series from NPORT-P (total: 3)
+2026-02-17 21:28:50,389 - etf_pipeline.load_etfs - INFO - CIK 0001877493: issuer_name = Valkyrie ETF Trust II
+2026-02-17 21:28:50,399 - etf_pipeline.load_etfs - INFO - CIK 0001877493: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:28:50,399 - etf_pipeline.load_etfs - INFO - Processing CIK 0001879238: 20 ETF(s)
+2026-02-17 21:28:50,665 - etf_pipeline.load_etfs - INFO - CIK 0001879238: Extracted 24 series from 24F-2NT (total: 24)
+2026-02-17 21:28:50,665 - etf_pipeline.load_etfs - INFO - CIK 0001879238: All 20 needed series covered, stopping early
+2026-02-17 21:28:50,666 - etf_pipeline.load_etfs - INFO - CIK 0001879238: issuer_name = BondBloxx ETF Trust
+2026-02-17 21:28:50,737 - etf_pipeline.load_etfs - INFO - CIK 0001879238: Inserted 0 ETFs, updated 20 ETFs
+2026-02-17 21:28:50,738 - etf_pipeline.load_etfs - INFO - Processing CIK 0001882879: 2 ETF(s)
+2026-02-17 21:28:50,916 - etf_pipeline.load_etfs - INFO - CIK 0001882879: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:50,916 - etf_pipeline.load_etfs - INFO - CIK 0001882879: All 2 needed series covered, stopping early
+2026-02-17 21:28:50,916 - etf_pipeline.load_etfs - INFO - CIK 0001882879: issuer_name = Goldman Sachs ETF Trust II
+2026-02-17 21:28:50,944 - etf_pipeline.load_etfs - INFO - CIK 0001882879: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:28:50,945 - etf_pipeline.load_etfs - INFO - Processing CIK 0001884021: 3 ETF(s)
+2026-02-17 21:28:51,142 - etf_pipeline.load_etfs - INFO - CIK 0001884021: Extracted 20 series from 24F-2NT (total: 20)
+2026-02-17 21:28:51,143 - etf_pipeline.load_etfs - INFO - CIK 0001884021: All 3 needed series covered, stopping early
+2026-02-17 21:28:51,144 - etf_pipeline.load_etfs - INFO - CIK 0001884021: issuer_name = Volatility Shares Trust
+2026-02-17 21:28:51,166 - etf_pipeline.load_etfs - INFO - CIK 0001884021: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:28:51,167 - etf_pipeline.load_etfs - INFO - Processing CIK 0001886172: 8 ETF(s)
+2026-02-17 21:28:51,367 - etf_pipeline.load_etfs - INFO - CIK 0001886172: Extracted 8 series from 24F-2NT (total: 8)
+2026-02-17 21:28:51,368 - etf_pipeline.load_etfs - INFO - CIK 0001886172: All 8 needed series covered, stopping early
+2026-02-17 21:28:51,368 - etf_pipeline.load_etfs - INFO - CIK 0001886172: issuer_name = DoubleLine ETF Trust
+2026-02-17 21:28:51,417 - etf_pipeline.load_etfs - INFO - CIK 0001886172: Inserted 0 ETFs, updated 8 ETFs
+2026-02-17 21:28:51,419 - etf_pipeline.load_etfs - INFO - Processing CIK 0001888997: 8 ETF(s)
+2026-02-17 21:28:51,626 - etf_pipeline.load_etfs - INFO - CIK 0001888997: Extracted 8 series from 24F-2NT (total: 8)
+2026-02-17 21:28:51,626 - etf_pipeline.load_etfs - INFO - CIK 0001888997: All 8 needed series covered, stopping early
+2026-02-17 21:28:51,627 - etf_pipeline.load_etfs - INFO - CIK 0001888997: issuer_name = SEI Exchange Traded Funds
+2026-02-17 21:28:51,653 - etf_pipeline.load_etfs - INFO - CIK 0001888997: Inserted 0 ETFs, updated 8 ETFs
+2026-02-17 21:28:51,654 - etf_pipeline.load_etfs - INFO - Processing CIK 0001896670: 5 ETF(s)
+2026-02-17 21:28:51,808 - etf_pipeline.load_etfs - INFO - CIK 0001896670: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:52,052 - etf_pipeline.load_etfs - INFO - CIK 0001896670: Extracted 5 series from 485BPOS (total: 5)
+2026-02-17 21:28:52,052 - etf_pipeline.load_etfs - INFO - CIK 0001896670: All 5 needed series covered, stopping early
+2026-02-17 21:28:52,053 - etf_pipeline.load_etfs - INFO - CIK 0001896670: issuer_name = Thrivent ETF Trust
+2026-02-17 21:28:52,061 - etf_pipeline.load_etfs - INFO - CIK 0001896670: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:28:52,061 - etf_pipeline.load_etfs - INFO - Processing CIK 0001898391: 4 ETF(s)
+2026-02-17 21:28:52,295 - etf_pipeline.load_etfs - INFO - CIK 0001898391: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:52,390 - etf_pipeline.load_etfs - INFO - CIK 0001898391: Extracted 2 series from 485BPOS (total: 2)
+2026-02-17 21:28:52,610 - etf_pipeline.load_etfs - INFO - CIK 0001898391: Extracted 2 series from N-CSR (total: 2)
+2026-02-17 21:28:52,663 - etf_pipeline.load_etfs - INFO - CIK 0001898391: Extracted 1 series from NPORT-P (total: 3)
+2026-02-17 21:28:52,664 - etf_pipeline.load_etfs - INFO - CIK 0001898391: issuer_name = Fidelity Greenwood Street Trust
+2026-02-17 21:28:52,669 - etf_pipeline.load_etfs - INFO - CIK 0001898391: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:28:52,669 - etf_pipeline.load_etfs - INFO - Processing CIK 0001919700: 9 ETF(s)
+2026-02-17 21:28:52,851 - etf_pipeline.load_etfs - INFO - CIK 0001919700: Extracted 7 series from 24F-2NT (total: 7)
+2026-02-17 21:28:53,071 - etf_pipeline.load_etfs - INFO - CIK 0001919700: Extracted 10 series from 485BPOS (total: 10)
+2026-02-17 21:28:53,071 - etf_pipeline.load_etfs - INFO - CIK 0001919700: All 9 needed series covered, stopping early
+2026-02-17 21:28:53,071 - etf_pipeline.load_etfs - INFO - CIK 0001919700: issuer_name = Touchstone ETF Trust
+2026-02-17 21:28:53,096 - etf_pipeline.load_etfs - INFO - CIK 0001919700: Inserted 0 ETFs, updated 9 ETFs
+2026-02-17 21:28:53,096 - etf_pipeline.load_etfs - INFO - Processing CIK 0001924447: 2 ETF(s)
+2026-02-17 21:28:53,255 - etf_pipeline.load_etfs - INFO - CIK 0001924447: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:28:53,255 - etf_pipeline.load_etfs - INFO - CIK 0001924447: All 2 needed series covered, stopping early
+2026-02-17 21:28:53,255 - etf_pipeline.load_etfs - INFO - CIK 0001924447: issuer_name = THOR Financial Technologies Trust
+2026-02-17 21:28:53,266 - etf_pipeline.load_etfs - INFO - CIK 0001924447: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:28:53,266 - etf_pipeline.load_etfs - INFO - Processing CIK 0001924868: 178 ETF(s)
+2026-02-17 21:28:53,581 - etf_pipeline.load_etfs - INFO - CIK 0001924868: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:28:53,771 - etf_pipeline.load_etfs - INFO - CIK 0001924868: Extracted 1 series from 485BPOS (total: 4)
+2026-02-17 21:28:53,890 - etf_pipeline.load_etfs - INFO - CIK 0001924868: Extracted 1 series from N-CSR (total: 5)
+2026-02-17 21:28:53,945 - etf_pipeline.load_etfs - INFO - CIK 0001924868: Extracted 1 series from NPORT-P (total: 6)
+2026-02-17 21:28:53,946 - etf_pipeline.load_etfs - INFO - CIK 0001924868: issuer_name = Tidal Trust II
+2026-02-17 21:28:54,078 - etf_pipeline.load_etfs - INFO - CIK 0001924868: Inserted 0 ETFs, updated 178 ETFs
+2026-02-17 21:28:54,078 - etf_pipeline.load_etfs - INFO - Processing CIK 0001928561: 3 ETF(s)
+2026-02-17 21:28:54,367 - etf_pipeline.load_etfs - INFO - CIK 0001928561: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:28:54,367 - etf_pipeline.load_etfs - INFO - CIK 0001928561: All 3 needed series covered, stopping early
+2026-02-17 21:28:54,367 - etf_pipeline.load_etfs - INFO - CIK 0001928561: issuer_name = Bitwise Funds Trust
+2026-02-17 21:28:54,377 - etf_pipeline.load_etfs - INFO - CIK 0001928561: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:28:54,377 - etf_pipeline.load_etfs - INFO - Processing CIK 0001936157: 11 ETF(s)
+2026-02-17 21:28:54,550 - etf_pipeline.load_etfs - INFO - CIK 0001936157: Extracted 9 series from 24F-2NT (total: 9)
+2026-02-17 21:28:54,640 - etf_pipeline.load_etfs - INFO - CIK 0001936157: Extracted 1 series from 485BPOS (total: 10)
+2026-02-17 21:28:55,001 - etf_pipeline.load_etfs - INFO - CIK 0001936157: Extracted 9 series from N-CSR (total: 10)
+2026-02-17 21:28:55,063 - etf_pipeline.load_etfs - INFO - CIK 0001936157: Extracted 1 series from NPORT-P (total: 10)
+2026-02-17 21:28:55,064 - etf_pipeline.load_etfs - INFO - CIK 0001936157: issuer_name = Elevation Series Trust
+2026-02-17 21:28:55,102 - etf_pipeline.load_etfs - INFO - CIK 0001936157: Inserted 0 ETFs, updated 11 ETFs
+2026-02-17 21:28:55,102 - etf_pipeline.load_etfs - INFO - Processing CIK 0001944285: 4 ETF(s)
+2026-02-17 21:28:55,266 - etf_pipeline.load_etfs - INFO - CIK 0001944285: Extracted 8 series from 24F-2NT (total: 8)
+2026-02-17 21:28:55,418 - etf_pipeline.load_etfs - INFO - CIK 0001944285: Extracted 5 series from 485BPOS (total: 13)
+2026-02-17 21:28:55,558 - etf_pipeline.load_etfs - INFO - CIK 0001944285: Extracted 7 series from N-CSR (total: 13)
+2026-02-17 21:28:55,609 - etf_pipeline.load_etfs - INFO - CIK 0001944285: Extracted 1 series from NPORT-P (total: 14)
+2026-02-17 21:28:55,609 - etf_pipeline.load_etfs - INFO - CIK 0001944285: issuer_name = Tema ETF Trust
+2026-02-17 21:28:55,623 - etf_pipeline.load_etfs - INFO - CIK 0001944285: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:28:55,623 - etf_pipeline.load_etfs - INFO - Processing CIK 0001969445: 1 ETF(s)
+2026-02-17 21:28:55,788 - etf_pipeline.load_etfs - INFO - CIK 0001969445: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:55,788 - etf_pipeline.load_etfs - INFO - CIK 0001969445: All 1 needed series covered, stopping early
+2026-02-17 21:28:55,788 - etf_pipeline.load_etfs - INFO - CIK 0001969445: issuer_name = Capital Group International Equity ETF
+2026-02-17 21:28:55,796 - etf_pipeline.load_etfs - INFO - CIK 0001969445: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:55,799 - etf_pipeline.load_etfs - INFO - Processing CIK 0001969489: 1 ETF(s)
+2026-02-17 21:28:56,111 - etf_pipeline.load_etfs - INFO - CIK 0001969489: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:56,111 - etf_pipeline.load_etfs - INFO - CIK 0001969489: All 1 needed series covered, stopping early
+2026-02-17 21:28:56,111 - etf_pipeline.load_etfs - INFO - CIK 0001969489: issuer_name = Capital Group Dividend Growers ETF
+2026-02-17 21:28:56,120 - etf_pipeline.load_etfs - INFO - CIK 0001969489: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:56,120 - etf_pipeline.load_etfs - INFO - Processing CIK 0001969674: 6 ETF(s)
+2026-02-17 21:28:56,301 - etf_pipeline.load_etfs - INFO - CIK 0001969674: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:56,499 - etf_pipeline.load_etfs - INFO - CIK 0001969674: Extracted 1 series from 485BPOS (total: 2)
+2026-02-17 21:28:56,759 - etf_pipeline.load_etfs - INFO - CIK 0001969674: Extracted 3 series from N-CSR (total: 5)
+2026-02-17 21:28:56,847 - etf_pipeline.load_etfs - INFO - CIK 0001969674: Extracted 1 series from NPORT-P (total: 5)
+2026-02-17 21:28:56,847 - etf_pipeline.load_etfs - INFO - CIK 0001969674: issuer_name = 2023 ETF Series Trust
+2026-02-17 21:28:56,908 - etf_pipeline.load_etfs - INFO - CIK 0001969674: Inserted 0 ETFs, updated 6 ETFs
+2026-02-17 21:28:56,911 - etf_pipeline.load_etfs - INFO - Processing CIK 0001969995: 8 ETF(s)
+2026-02-17 21:28:57,167 - etf_pipeline.load_etfs - INFO - CIK 0001969995: Extracted 6 series from 24F-2NT (total: 6)
+2026-02-17 21:28:57,299 - etf_pipeline.load_etfs - INFO - CIK 0001969995: Extracted 1 series from 485BPOS (total: 7)
+2026-02-17 21:28:57,544 - etf_pipeline.load_etfs - INFO - CIK 0001969995: Extracted 6 series from N-CSR (total: 7)
+2026-02-17 21:28:57,590 - etf_pipeline.load_etfs - INFO - CIK 0001969995: Extracted 1 series from NPORT-P (total: 7)
+2026-02-17 21:28:57,590 - etf_pipeline.load_etfs - INFO - CIK 0001969995: issuer_name = Nomura ETF Trust
+2026-02-17 21:28:57,602 - etf_pipeline.load_etfs - INFO - CIK 0001969995: Inserted 0 ETFs, updated 8 ETFs
+2026-02-17 21:28:57,603 - etf_pipeline.load_etfs - INFO - Processing CIK 0001970533: 1 ETF(s)
+2026-02-17 21:28:57,752 - etf_pipeline.load_etfs - INFO - CIK 0001970533: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:57,753 - etf_pipeline.load_etfs - INFO - CIK 0001970533: All 1 needed series covered, stopping early
+2026-02-17 21:28:57,753 - etf_pipeline.load_etfs - INFO - CIK 0001970533: issuer_name = Capital Group Core Balanced ETF
+2026-02-17 21:28:57,762 - etf_pipeline.load_etfs - INFO - CIK 0001970533: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:57,763 - etf_pipeline.load_etfs - INFO - Processing CIK 0001970751: 10 ETF(s)
+2026-02-17 21:28:58,039 - etf_pipeline.load_etfs - INFO - CIK 0001970751: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:28:58,133 - etf_pipeline.load_etfs - INFO - CIK 0001970751: Extracted 4 series from 485BPOS (total: 5)
+2026-02-17 21:28:58,214 - etf_pipeline.load_etfs - INFO - CIK 0001970751: Extracted 1 series from N-CSR (total: 5)
+2026-02-17 21:28:58,282 - etf_pipeline.load_etfs - INFO - CIK 0001970751: Extracted 1 series from NPORT-P (total: 5)
+2026-02-17 21:28:58,282 - etf_pipeline.load_etfs - INFO - CIK 0001970751: issuer_name = Advisor Managed Portfolios
+2026-02-17 21:28:58,317 - etf_pipeline.load_etfs - INFO - CIK 0001970751: Inserted 0 ETFs, updated 10 ETFs
+2026-02-17 21:28:58,318 - etf_pipeline.load_etfs - INFO - Processing CIK 0001972459: 1 ETF(s)
+2026-02-17 21:28:58,636 - etf_pipeline.load_etfs - INFO - CIK 0001972459: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:28:58,636 - etf_pipeline.load_etfs - INFO - CIK 0001972459: All 1 needed series covered, stopping early
+2026-02-17 21:28:58,636 - etf_pipeline.load_etfs - INFO - CIK 0001972459: issuer_name = Texas Capital Funds Trust
+2026-02-17 21:28:58,644 - etf_pipeline.load_etfs - INFO - CIK 0001972459: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:28:58,645 - etf_pipeline.load_etfs - INFO - Processing CIK 0001976322: 23 ETF(s)
+2026-02-17 21:28:58,882 - etf_pipeline.load_etfs - INFO - CIK 0001976322: Extracted 36 series from 24F-2NT (total: 36)
+2026-02-17 21:28:58,988 - etf_pipeline.load_etfs - INFO - CIK 0001976322: Extracted 1 series from 485BPOS (total: 37)
+2026-02-17 21:28:59,301 - etf_pipeline.load_etfs - INFO - CIK 0001976322: Extracted 36 series from N-CSR (total: 37)
+2026-02-17 21:28:59,377 - etf_pipeline.load_etfs - INFO - CIK 0001976322: Extracted 1 series from NPORT-P (total: 37)
+2026-02-17 21:28:59,377 - etf_pipeline.load_etfs - INFO - CIK 0001976322: issuer_name = Themes ETF Trust
+2026-02-17 21:28:59,450 - etf_pipeline.load_etfs - INFO - CIK 0001976322: Inserted 0 ETFs, updated 23 ETFs
+2026-02-17 21:28:59,452 - etf_pipeline.load_etfs - INFO - Processing CIK 0001976517: 15 ETF(s)
+2026-02-17 21:28:59,593 - etf_pipeline.load_etfs - INFO - CIK 0001976517: Extracted 11 series from 24F-2NT (total: 11)
+2026-02-17 21:28:59,772 - etf_pipeline.load_etfs - INFO - CIK 0001976517: Extracted 2 series from 485BPOS (total: 13)
+2026-02-17 21:28:59,995 - etf_pipeline.load_etfs - INFO - CIK 0001976517: Extracted 9 series from N-CSR (total: 13)
+2026-02-17 21:29:00,045 - etf_pipeline.load_etfs - INFO - CIK 0001976517: Extracted 1 series from NPORT-P (total: 14)
+2026-02-17 21:29:00,045 - etf_pipeline.load_etfs - INFO - CIK 0001976517: issuer_name = Roundhill ETF Trust
+2026-02-17 21:29:00,141 - etf_pipeline.load_etfs - INFO - CIK 0001976517: Inserted 0 ETFs, updated 15 ETFs
+2026-02-17 21:29:00,149 - etf_pipeline.load_etfs - INFO - Processing CIK 0001976672: 7 ETF(s)
+2026-02-17 21:29:00,444 - etf_pipeline.load_etfs - INFO - CIK 0001976672: Extracted 1 series from 485BPOS (total: 1)
+2026-02-17 21:29:00,484 - etf_pipeline.load_etfs - INFO - CIK 0001976672: Extracted 1 series from NPORT-P (total: 2)
+2026-02-17 21:29:00,484 - etf_pipeline.load_etfs - INFO - CIK 0001976672: issuer_name = Grayscale Funds Trust
+2026-02-17 21:29:00,495 - etf_pipeline.load_etfs - INFO - CIK 0001976672: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:29:00,495 - etf_pipeline.load_etfs - INFO - Processing CIK 0001976877: 5 ETF(s)
+2026-02-17 21:29:00,711 - etf_pipeline.load_etfs - INFO - CIK 0001976877: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:29:00,907 - etf_pipeline.load_etfs - INFO - CIK 0001976877: Extracted 5 series from 485BPOS (total: 5)
+2026-02-17 21:29:00,907 - etf_pipeline.load_etfs - INFO - CIK 0001976877: All 5 needed series covered, stopping early
+2026-02-17 21:29:00,907 - etf_pipeline.load_etfs - INFO - CIK 0001976877: issuer_name = Madison ETFs Trust
+2026-02-17 21:29:00,913 - etf_pipeline.load_etfs - INFO - CIK 0001976877: Inserted 0 ETFs, updated 5 ETFs
+2026-02-17 21:29:00,913 - etf_pipeline.load_etfs - INFO - Processing CIK 0001981627: 10 ETF(s)
+2026-02-17 21:29:01,091 - etf_pipeline.load_etfs - INFO - CIK 0001981627: Extracted 6 series from 24F-2NT (total: 6)
+2026-02-17 21:29:01,268 - etf_pipeline.load_etfs - INFO - CIK 0001981627: Extracted 10 series from 485BPOS (total: 10)
+2026-02-17 21:29:01,269 - etf_pipeline.load_etfs - INFO - CIK 0001981627: All 10 needed series covered, stopping early
+2026-02-17 21:29:01,269 - etf_pipeline.load_etfs - INFO - CIK 0001981627: issuer_name = GMO ETF Trust
+2026-02-17 21:29:01,279 - etf_pipeline.load_etfs - INFO - CIK 0001981627: Inserted 0 ETFs, updated 10 ETFs
+2026-02-17 21:29:01,279 - etf_pipeline.load_etfs - INFO - Processing CIK 0001989916: 2 ETF(s)
+2026-02-17 21:29:01,477 - etf_pipeline.load_etfs - INFO - CIK 0001989916: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:29:01,478 - etf_pipeline.load_etfs - INFO - CIK 0001989916: All 2 needed series covered, stopping early
+2026-02-17 21:29:01,478 - etf_pipeline.load_etfs - INFO - CIK 0001989916: issuer_name = SP Funds Trust
+2026-02-17 21:29:01,486 - etf_pipeline.load_etfs - INFO - CIK 0001989916: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:29:01,487 - etf_pipeline.load_etfs - INFO - Processing CIK 0001992104: 43 ETF(s)
+2026-02-17 21:29:01,733 - etf_pipeline.load_etfs - INFO - CIK 0001992104: Extracted 43 series from 24F-2NT (total: 43)
+2026-02-17 21:29:01,748 - etf_pipeline.load_etfs - INFO - CIK 0001992104: All 43 needed series covered, stopping early
+2026-02-17 21:29:01,748 - etf_pipeline.load_etfs - INFO - CIK 0001992104: issuer_name = PGIM Rock ETF Trust
+2026-02-17 21:29:01,879 - etf_pipeline.load_etfs - INFO - CIK 0001992104: Inserted 0 ETFs, updated 43 ETFs
+2026-02-17 21:29:01,890 - etf_pipeline.load_etfs - INFO - Processing CIK 0002008359: 1 ETF(s)
+2026-02-17 21:29:02,056 - etf_pipeline.load_etfs - INFO - CIK 0002008359: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:29:02,057 - etf_pipeline.load_etfs - INFO - CIK 0002008359: All 1 needed series covered, stopping early
+2026-02-17 21:29:02,057 - etf_pipeline.load_etfs - INFO - CIK 0002008359: issuer_name = Capital Group Conservative Equity ETF
+2026-02-17 21:29:02,059 - etf_pipeline.load_etfs - INFO - CIK 0002008359: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:29:02,060 - etf_pipeline.load_etfs - INFO - Processing CIK 0002008374: 1 ETF(s)
+2026-02-17 21:29:02,397 - etf_pipeline.load_etfs - INFO - CIK 0002008374: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:29:02,397 - etf_pipeline.load_etfs - INFO - CIK 0002008374: All 1 needed series covered, stopping early
+2026-02-17 21:29:02,399 - etf_pipeline.load_etfs - INFO - CIK 0002008374: issuer_name = Capital Group Global Equity ETF
+2026-02-17 21:29:02,414 - etf_pipeline.load_etfs - INFO - CIK 0002008374: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:29:02,416 - etf_pipeline.load_etfs - INFO - Processing CIK 0002008516: 1 ETF(s)
+2026-02-17 21:29:02,638 - etf_pipeline.load_etfs - INFO - CIK 0002008516: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:29:02,643 - etf_pipeline.load_etfs - INFO - CIK 0002008516: All 1 needed series covered, stopping early
+2026-02-17 21:29:02,645 - etf_pipeline.load_etfs - INFO - CIK 0002008516: issuer_name = Capital Group International Core Equity ETF
+2026-02-17 21:29:02,681 - etf_pipeline.load_etfs - INFO - CIK 0002008516: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:29:02,703 - etf_pipeline.load_etfs - INFO - Processing CIK 0002008517: 1 ETF(s)
+2026-02-17 21:29:02,924 - etf_pipeline.load_etfs - INFO - CIK 0002008517: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:29:02,924 - etf_pipeline.load_etfs - INFO - CIK 0002008517: All 1 needed series covered, stopping early
+2026-02-17 21:29:02,925 - etf_pipeline.load_etfs - INFO - CIK 0002008517: issuer_name = Capital Group New Geography Equity ETF
+2026-02-17 21:29:02,937 - etf_pipeline.load_etfs - INFO - CIK 0002008517: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:29:02,938 - etf_pipeline.load_etfs - INFO - Processing CIK 0002018846: 9 ETF(s)
+2026-02-17 21:29:03,114 - etf_pipeline.load_etfs - INFO - CIK 0002018846: Extracted 5 series from 24F-2NT (total: 5)
+2026-02-17 21:29:03,267 - etf_pipeline.load_etfs - INFO - CIK 0002018846: Extracted 1 series from 485BPOS (total: 6)
+2026-02-17 21:29:03,401 - etf_pipeline.load_etfs - INFO - CIK 0002018846: Extracted 5 series from N-CSR (total: 6)
+2026-02-17 21:29:03,446 - etf_pipeline.load_etfs - INFO - CIK 0002018846: Extracted 1 series from NPORT-P (total: 6)
+2026-02-17 21:29:03,446 - etf_pipeline.load_etfs - INFO - CIK 0002018846: issuer_name = MFS Active Exchange Traded Funds Trust
+2026-02-17 21:29:03,460 - etf_pipeline.load_etfs - INFO - CIK 0002018846: Inserted 0 ETFs, updated 9 ETFs
+2026-02-17 21:29:03,460 - etf_pipeline.load_etfs - INFO - Processing CIK 0002025968: 3 ETF(s)
+2026-02-17 21:29:03,623 - etf_pipeline.load_etfs - INFO - CIK 0002025968: Extracted 2 series from 24F-2NT (total: 2)
+2026-02-17 21:29:03,942 - etf_pipeline.load_etfs - INFO - CIK 0002025968: Extracted 5 series from 485BPOS (total: 7)
+2026-02-17 21:29:04,071 - etf_pipeline.load_etfs - INFO - CIK 0002025968: Extracted 2 series from N-CSR (total: 7)
+2026-02-17 21:29:04,118 - etf_pipeline.load_etfs - INFO - CIK 0002025968: Extracted 1 series from NPORT-P (total: 7)
+2026-02-17 21:29:04,118 - etf_pipeline.load_etfs - INFO - CIK 0002025968: issuer_name = BNY Mellon ETF Trust II
+2026-02-17 21:29:04,131 - etf_pipeline.load_etfs - INFO - CIK 0002025968: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:29:04,132 - etf_pipeline.load_etfs - INFO - Processing CIK 0002034928: 3 ETF(s)
+2026-02-17 21:29:04,299 - etf_pipeline.load_etfs - INFO - CIK 0002034928: Extracted 3 series from 24F-2NT (total: 3)
+2026-02-17 21:29:04,300 - etf_pipeline.load_etfs - INFO - CIK 0002034928: All 3 needed series covered, stopping early
+2026-02-17 21:29:04,300 - etf_pipeline.load_etfs - INFO - CIK 0002034928: issuer_name = Capital Group Equity ETF Trust I
+2026-02-17 21:29:04,305 - etf_pipeline.load_etfs - INFO - CIK 0002034928: Inserted 0 ETFs, updated 3 ETFs
+2026-02-17 21:29:04,305 - etf_pipeline.load_etfs - INFO - Processing CIK 0002035827: 4 ETF(s)
+2026-02-17 21:29:04,467 - etf_pipeline.load_etfs - INFO - CIK 0002035827: Extracted 1 series from 24F-2NT (total: 1)
+2026-02-17 21:29:04,562 - etf_pipeline.load_etfs - INFO - CIK 0002035827: Extracted 1 series from 485BPOS (total: 1)
+2026-02-17 21:29:04,778 - etf_pipeline.load_etfs - INFO - CIK 0002035827: Extracted 1 series from N-CSR (total: 1)
+2026-02-17 21:29:04,842 - etf_pipeline.load_etfs - INFO - CIK 0002035827: Extracted 1 series from NPORT-P (total: 1)
+2026-02-17 21:29:04,843 - etf_pipeline.load_etfs - INFO - CIK 0002035827: issuer_name = Harris Oakmark ETF Trust
+2026-02-17 21:29:04,854 - etf_pipeline.load_etfs - INFO - CIK 0002035827: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:29:04,854 - etf_pipeline.load_etfs - INFO - Processing CIK 0002038383: 4 ETF(s)
+2026-02-17 21:29:05,193 - etf_pipeline.load_etfs - INFO - CIK 0002038383: Extracted 4 series from 24F-2NT (total: 4)
+2026-02-17 21:29:05,193 - etf_pipeline.load_etfs - INFO - CIK 0002038383: All 4 needed series covered, stopping early
+2026-02-17 21:29:05,194 - etf_pipeline.load_etfs - INFO - CIK 0002038383: issuer_name = Thornburg ETF Trust
+2026-02-17 21:29:05,219 - etf_pipeline.load_etfs - INFO - CIK 0002038383: Inserted 0 ETFs, updated 4 ETFs
+2026-02-17 21:29:05,222 - etf_pipeline.load_etfs - INFO - Processing CIK 0002042513: 6 ETF(s)
+2026-02-17 21:29:05,577 - etf_pipeline.load_etfs - INFO - CIK 0002042513: Extracted 5 series from 485BPOS (total: 5)
+2026-02-17 21:29:05,790 - etf_pipeline.load_etfs - INFO - CIK 0002042513: Extracted 5 series from N-CSR (total: 5)
+2026-02-17 21:29:05,850 - etf_pipeline.load_etfs - INFO - CIK 0002042513: Extracted 1 series from NPORT-P (total: 5)
+2026-02-17 21:29:05,850 - etf_pipeline.load_etfs - INFO - CIK 0002042513: issuer_name = Russell Investments Exchange Traded Funds
+2026-02-17 21:29:05,859 - etf_pipeline.load_etfs - INFO - CIK 0002042513: Inserted 0 ETFs, updated 6 ETFs
+2026-02-17 21:29:05,859 - etf_pipeline.load_etfs - INFO - Processing CIK 0002043954: 1 ETF(s)
+2026-02-17 21:29:06,138 - etf_pipeline.load_etfs - INFO - CIK 0002043954: Extracted 1 series from 485BPOS (total: 1)
+2026-02-17 21:29:06,193 - etf_pipeline.load_etfs - INFO - CIK 0002043954: Extracted 1 series from NPORT-P (total: 2)
+2026-02-17 21:29:06,194 - etf_pipeline.load_etfs - INFO - CIK 0002043954: issuer_name = REX ETF Trust
+2026-02-17 21:29:06,203 - etf_pipeline.load_etfs - INFO - CIK 0002043954: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:29:06,204 - etf_pipeline.load_etfs - INFO - Processing CIK 0002051630: 7 ETF(s)
+2026-02-17 21:29:06,532 - etf_pipeline.load_etfs - INFO - CIK 0002051630: Extracted 1 series from 485BPOS (total: 1)
+2026-02-17 21:29:06,581 - etf_pipeline.load_etfs - INFO - CIK 0002051630: Extracted 1 series from NPORT-P (total: 2)
+2026-02-17 21:29:06,581 - etf_pipeline.load_etfs - INFO - CIK 0002051630: issuer_name = Lazard Active ETF Trust
+2026-02-17 21:29:06,598 - etf_pipeline.load_etfs - INFO - CIK 0002051630: Inserted 0 ETFs, updated 7 ETFs
+2026-02-17 21:29:06,599 - etf_pipeline.load_etfs - INFO - Processing CIK 0002055464: 1 ETF(s)
+2026-02-17 21:29:06,832 - etf_pipeline.load_etfs - INFO - CIK 0002055464: Extracted 1 series from 485BPOS (total: 1)
+2026-02-17 21:29:06,869 - etf_pipeline.load_etfs - INFO - CIK 0002055464: Extracted 1 series from NPORT-P (total: 2)
+2026-02-17 21:29:06,869 - etf_pipeline.load_etfs - INFO - CIK 0002055464: issuer_name = Wedbush Series Trust
+2026-02-17 21:29:06,874 - etf_pipeline.load_etfs - INFO - CIK 0002055464: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:29:06,874 - etf_pipeline.load_etfs - INFO - Processing CIK 0002071107: 1 ETF(s)
+2026-02-17 21:29:07,123 - etf_pipeline.load_etfs - INFO - CIK 0002071107: Extracted 1 series from NPORT-P (total: 1)
+2026-02-17 21:29:07,123 - etf_pipeline.load_etfs - INFO - CIK 0002071107: issuer_name = Thrive Series Trust
+2026-02-17 21:29:07,130 - etf_pipeline.load_etfs - INFO - CIK 0002071107: Inserted 0 ETFs, updated 1 ETFs
+2026-02-17 21:29:07,131 - etf_pipeline.load_etfs - INFO - Processing CIK 0002081199: 2 ETF(s)
+2026-02-17 21:29:07,356 - etf_pipeline.load_etfs - INFO - CIK 0002081199: issuer_name = Baron ETF Trust
+2026-02-17 21:29:07,374 - etf_pipeline.load_etfs - INFO - CIK 0002081199: Inserted 0 ETFs, updated 2 ETFs
+2026-02-17 21:29:07,375 - etf_pipeline.load_etfs - INFO - Processing CIK 0002083193: 2 ETF(s)
+2026-02-17 21:29:07,561 - etf_pipeline.load_etfs - INFO - CIK 0002083193: issuer_name = First Eagle ETF Trust
+2026-02-17 21:29:07,584 - etf_pipeline.load_etfs - INFO - CIK 0002083193: Inserted 0 ETFs, updated 2 ETFs
+
+Summary: 233 CIKs succeeded, 0 CIKs failed
+2026-02-17 21:29:07,585 - etf_pipeline.load_etfs - INFO - Summary: 233 CIKs succeeded, 0 CIKs failed
+--- Step 3: Per-CIK processing with freshness detection ---
+Found 233 CIKs to check
+
+Checking CIK 0000036405...
+  No new filings for CIK 0000036405, skipping (5.5s)
+
+Checking CIK 0000052848...
+  No new filings for CIK 0000052848, skipping (2.7s)
+
+Checking CIK 0000105544...
+  No new filings for CIK 0000105544, skipping (2.6s)
+
+Checking CIK 0000105563...
+  No new filings for CIK 0000105563, skipping (5.8s)
+
+Checking CIK 0000106444...
+  No new filings for CIK 0000106444, skipping (6.3s)
+
+Checking CIK 0000205323...
+  No new filings for CIK 0000205323, skipping (8.3s)
+
+Checking CIK 0000225997...
+2026-02-17 21:30:33,122 - etf_pipeline.parsers.finhigh - INFO - CIK 0000225997: Found 17 Financial Highlights tables in filing 0
+2026-02-17 21:30:35,532 - etf_pipeline.parsers.finhigh - INFO - CIK 0000225997: Matched table to VTEB (fund='Tax-Exempt Bond Index Fund', class='ETF Shares', class_id=C000153132)
+2026-02-17 21:30:35,654 - etf_pipeline.parsers.finhigh - INFO - CIK 0000225997: Processed VTEB FY 2025-10-31, math_validated=True
+2026-02-17 21:31:03,037 - etf_pipeline.parsers.finhigh - INFO - CIK 0000225997: Found 14 Financial Highlights tables in filing 1
+2026-02-17 21:31:08,544 - etf_pipeline.parsers.finhigh - INFO - CIK 0000225997: Matched table to VTEB (fund='Tax-Exempt Bond Index Fund', class='ETF Shares', class_id=C000153132)
+2026-02-17 21:31:08,558 - etf_pipeline.parsers.finhigh - INFO - CIK 0000225997: Processed VTEB FY 2024-10-31, math_validated=True
+  Process crashed for CIK 0000225997 (exit code: -9, 178.2s)
+
+Checking CIK 0000357204...
+  No new filings for CIK 0000357204, skipping (12.0s)
+
+Checking CIK 0000734383...
+  No new filings for CIK 0000734383, skipping (4.0s)
+
+Checking CIK 0000736054...
+  No new filings for CIK 0000736054, skipping (4.6s)
+
+Checking CIK 0000768847...
+  No new filings for CIK 0000768847, skipping (4.1s)
+
+Checking CIK 0000783401...
+  No new filings for CIK 0000783401, skipping (4.4s)
+
+Checking CIK 0000788599...
+  No new filings for CIK 0000788599, skipping (3.5s)
+
+Checking CIK 0000794105...
+2026-02-17 21:33:40,940 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Found 25 Financial Highlights tables in filing 0
+2026-02-17 21:33:42,367 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BSV (fund='Short-Term Bond Index Fund', class='ETF Shares', class_id=C000046843)
+2026-02-17 21:33:42,530 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BSV FY 2024-12-31, math_validated=True
+2026-02-17 21:33:42,530 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BIV (fund='Intermediate-Term Bond Index Fund', class='ETF Shares', class_id=C000046841)
+2026-02-17 21:33:42,559 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BIV FY 2024-12-31, math_validated=True
+2026-02-17 21:33:42,560 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BLV (fund='Long-Term Bond Index Fund', class='ETF Shares', class_id=C000046842)
+2026-02-17 21:33:42,581 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BLV FY 2024-12-31, math_validated=True
+2026-02-17 21:33:42,581 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BND (fund='Total Bond Market Index Fund', class='ETF Shares', class_id=C000046844)
+2026-02-17 21:33:42,604 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BND FY 2024-12-31, math_validated=True
+2026-02-17 21:33:44,947 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Found 1 Financial Highlights tables in filing 1
+2026-02-17 21:34:40,695 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Found 26 Financial Highlights tables in filing 2
+2026-02-17 21:34:41,540 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BSV (fund='Short-Term Bond Index Fund', class='ETF Shares', class_id=C000046843)
+2026-02-17 21:34:41,558 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BSV FY 2023-12-31, math_validated=True
+2026-02-17 21:34:41,559 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BIV (fund='Intermediate-Term Bond Index Fund', class='ETF Shares', class_id=C000046841)
+2026-02-17 21:34:41,573 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BIV FY 2023-12-31, math_validated=True
+2026-02-17 21:34:41,573 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BLV (fund='Long-Term Bond Index Fund', class='ETF Shares', class_id=C000046842)
+2026-02-17 21:34:41,587 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BLV FY 2023-12-31, math_validated=True
+2026-02-17 21:34:41,588 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BND (fund='Total Bond Market Index Fund', class='ETF Shares', class_id=C000046844)
+2026-02-17 21:34:41,605 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BND FY 2023-12-31, math_validated=True
+2026-02-17 21:35:12,308 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Found 26 Financial Highlights tables in filing 3
+2026-02-17 21:35:15,177 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BSV (fund='Short-Term Bond Index Fund', class='ETF Shares', class_id=C000046843)
+2026-02-17 21:35:15,193 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BSV FY 2022-12-31, math_validated=True
+2026-02-17 21:35:15,193 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BIV (fund='Intermediate-Term Bond Index Fund', class='ETF Shares', class_id=C000046841)
+2026-02-17 21:35:15,204 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BIV FY 2022-12-31, math_validated=True
+2026-02-17 21:35:15,204 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BLV (fund='Long-Term Bond Index Fund', class='ETF Shares', class_id=C000046842)
+2026-02-17 21:35:15,215 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BLV FY 2022-12-31, math_validated=True
+2026-02-17 21:35:15,215 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BND (fund='Total Bond Market Index Fund', class='ETF Shares', class_id=C000046844)
+2026-02-17 21:35:15,226 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BND FY 2022-12-31, math_validated=True
+2026-02-17 21:35:55,638 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Found 12 Financial Highlights tables in filing 4
+2026-02-17 21:35:58,148 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BND (fund='Total Bond Market Index Fund', class='ETF Shares', class_id=C000046844)
+2026-02-17 21:35:58,161 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BND FY 2021-12-31, math_validated=True
+2026-02-17 21:36:42,018 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Found 20 Financial Highlights tables in filing 5
+2026-02-17 21:36:46,019 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BSV (fund='Short-Term Bond Index Fund', class='ETF Shares', class_id=C000046843)
+2026-02-17 21:36:46,038 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BSV FY 2020-12-31, math_validated=True
+2026-02-17 21:36:46,038 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BIV (fund='Intermediate-Term Bond Index Fund', class='ETF Shares', class_id=C000046841)
+2026-02-17 21:36:46,054 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BIV FY 2020-12-31, math_validated=True
+2026-02-17 21:36:46,054 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Matched table to BLV (fund='Long-Term Bond Index Fund', class='ETF Shares', class_id=C000046842)
+2026-02-17 21:36:46,066 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Processed BLV FY 2020-12-31, math_validated=True
+2026-02-17 21:37:26,390 - etf_pipeline.parsers.finhigh - INFO - CIK 0000794105: Found 3 Financial Highlights tables in filing 6
+  Process crashed for CIK 0000794105 (exit code: -9, 363.5s)
+
+Checking CIK 0000799127...
+  No new filings for CIK 0000799127, skipping (7.8s)
+
+Checking CIK 0000811030...
+  No new filings for CIK 0000811030, skipping (3.5s)
+
+Checking CIK 0000831114...
+  No new filings for CIK 0000831114, skipping (2.8s)
+
+Checking CIK 0000836906...
+  No new filings for CIK 0000836906, skipping (2.2s)
+
+Checking CIK 0000857489...
+  No new filings for CIK 0000857489, skipping (2.4s)
+
+Checking CIK 0000862084...
+  No new filings for CIK 0000862084, skipping (2.5s)
+
+Checking CIK 0000866256...
+2026-02-17 21:39:40,205 - edgar.xbrl.standardization.reverse_index - INFO - ReverseIndex initialized: 2067 mappings, 215 ambiguous, 410 deprecated, 278 excluded
+2026-02-17 21:39:40,265 - etf_pipeline.parsers.ncsr - INFO - CIK 0000866256: Processed 2 ETF(s), skipped 2
+2026-02-17 21:39:40,266 - etf_pipeline.parsers.ncsr - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 21:39:40,767 - etf_pipeline.parsers.ncsr - INFO - Cache cleared: 2983 files deleted, 947.46 MB freed
+2026-02-17 21:39:44,325 - etf_pipeline.parsers.finhigh - INFO - CIK 0000866256: Found 0 Financial Highlights tables in filing 0
+2026-02-17 21:39:48,492 - etf_pipeline.parsers.finhigh - INFO - CIK 0000866256: Found 0 Financial Highlights tables in filing 1
+2026-02-17 21:39:49,223 - etf_pipeline.parsers.finhigh - INFO - CIK 0000866256: Processed 0 ETF(s), skipped 0
+2026-02-17 21:39:49,224 - etf_pipeline.parsers.finhigh - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 21:39:49,229 - etf_pipeline.parsers.finhigh - INFO - Cache cleared: 21 files deleted, 7.95 MB freed
+  Completed processing for CIK 0000866256 in 15.5s
+
+Checking CIK 0000875186...
+  No new filings for CIK 0000875186, skipping (2.6s)
+
+Checking CIK 0000878719...
+  No new filings for CIK 0000878719, skipping (3.0s)
+
+Checking CIK 0000879947...
+  No new filings for CIK 0000879947, skipping (2.6s)
+
+Checking CIK 0000890540...
+  No new filings for CIK 0000890540, skipping (3.0s)
+
+Checking CIK 0000891190...
+  No new filings for CIK 0000891190, skipping (2.5s)
+
+Checking CIK 0000891944...
+  No new filings for CIK 0000891944, skipping (2.9s)
+
+Checking CIK 0000897111...
+  No new filings for CIK 0000897111, skipping (2.7s)
+
+Checking CIK 0000915802...
+  No new filings for CIK 0000915802, skipping (2.6s)
+
+Checking CIK 0000916490...
+  No new filings for CIK 0000916490, skipping (2.6s)
+
+Checking CIK 0000919160...
+  No new filings for CIK 0000919160, skipping (2.4s)
+
+Checking CIK 0000923184...
+  No new filings for CIK 0000923184, skipping (2.6s)
+
+Checking CIK 0000923202...
+  No new filings for CIK 0000923202, skipping (2.5s)
+
+Checking CIK 0000924727...
+  No new filings for CIK 0000924727, skipping (2.2s)
+
+Checking CIK 0000930667...
+  No new filings for CIK 0000930667, skipping (3.1s)
+
+Checking CIK 0000945908...
+  No new filings for CIK 0000945908, skipping (3.0s)
+
+Checking CIK 0001004655...
+  No new filings for CIK 0001004655, skipping (3.5s)
+
+Checking CIK 0001020425...
+  No new filings for CIK 0001020425, skipping (2.9s)
+
+Checking CIK 0001021882...
+  No new filings for CIK 0001021882, skipping (2.5s)
+
+Checking CIK 0001026634...
+  No new filings for CIK 0001026634, skipping (2.6s)
+
+Checking CIK 0001027596...
+  No new filings for CIK 0001027596, skipping (3.5s)
+
+Checking CIK 0001064641...
+  No new filings for CIK 0001064641, skipping (2.2s)
+
+Checking CIK 0001064642...
+  No new filings for CIK 0001064642, skipping (2.9s)
+
+Checking CIK 0001090372...
+  No new filings for CIK 0001090372, skipping (2.4s)
+
+Checking CIK 0001096012...
+  No new filings for CIK 0001096012, skipping (2.2s)
+
+Checking CIK 0001100663...
+2026-02-17 21:40:59,297 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+2026-02-17 21:41:17,710 - etf_pipeline.parsers.prospectus - WARNING - CIK 0001100663: Filing 1 has no effective_date, using filing date
+  Process crashed for CIK 0001100663 (exit code: -9, 307.5s)
+
+Checking CIK 0001137360...
+  No new filings for CIK 0001137360, skipping (19.4s)
+
+Checking CIK 0001141819...
+  No new filings for CIK 0001141819, skipping (7.1s)
+
+Checking CIK 0001145022...
+  No new filings for CIK 0001145022, skipping (4.0s)
+
+Checking CIK 0001168164...
+  No new filings for CIK 0001168164, skipping (4.2s)
+
+Checking CIK 0001174610...
+2026-02-17 21:46:42,410 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+  Process timed out for CIK 0001174610 (600.1s)
+
+Checking CIK 0001199046...
+  No new filings for CIK 0001199046, skipping (7.1s)
+
+Checking CIK 0001209466...
+  No new filings for CIK 0001209466, skipping (4.4s)
+
+Checking CIK 0001314414...
+  No new filings for CIK 0001314414, skipping (4.9s)
+
+Checking CIK 0001318342...
+  No new filings for CIK 0001318342, skipping (3.6s)
+
+Checking CIK 0001329377...
+  No new filings for CIK 0001329377, skipping (3.5s)
+
+Checking CIK 0001345125...
+  No new filings for CIK 0001345125, skipping (3.2s)
+
+Checking CIK 0001350487...
+  No new filings for CIK 0001350487, skipping (6.3s)
+
+Checking CIK 0001359057...
+  No new filings for CIK 0001359057, skipping (4.9s)
+
+Checking CIK 0001364608...
+  No new filings for CIK 0001364608, skipping (2.9s)
+
+Checking CIK 0001378872...
+  No new filings for CIK 0001378872, skipping (4.3s)
+
+Checking CIK 0001383496...
+  No new filings for CIK 0001383496, skipping (3.7s)
+
+Checking CIK 0001396092...
+  No new filings for CIK 0001396092, skipping (2.7s)
+
+Checking CIK 0001408970...
+  No new filings for CIK 0001408970, skipping (3.6s)
+
+Checking CIK 0001414040...
+  No new filings for CIK 0001414040, skipping (4.1s)
+
+Checking CIK 0001415726...
+2026-02-17 21:57:39,431 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+2026-02-17 21:58:24,326 - etf_pipeline.parsers.prospectus - INFO - CIK 0001415726: Successfully processed 485BPOS filing
+2026-02-17 21:58:24,327 - etf_pipeline.parsers.prospectus - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 21:58:24,428 - etf_pipeline.parsers.prospectus - INFO - Cache cleared: 775 files deleted, 125.41 MB freed
+  Completed processing for CIK 0001415726 in 48.9s
+
+Checking CIK 0001415995...
+  No new filings for CIK 0001415995, skipping (2.9s)
+
+Checking CIK 0001418144...
+2026-02-17 21:58:30,531 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+2026-02-17 21:59:01,970 - etf_pipeline.parsers.prospectus - INFO - CIK 0001418144: Successfully processed 485BPOS filing
+2026-02-17 21:59:01,970 - etf_pipeline.parsers.prospectus - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 21:59:01,978 - etf_pipeline.parsers.prospectus - INFO - Cache cleared: 85 files deleted, 12.52 MB freed
+  Completed processing for CIK 0001418144 in 34.5s
+
+Checking CIK 0001419139...
+  No new filings for CIK 0001419139, skipping (2.4s)
+
+Checking CIK 0001424212...
+  No new filings for CIK 0001424212, skipping (2.7s)
+
+Checking CIK 0001424958...
+2026-02-17 21:59:10,486 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+  Process timed out for CIK 0001424958 (600.4s)
+
+Checking CIK 0001426439...
+  No new filings for CIK 0001426439, skipping (8.6s)
+
+Checking CIK 0001432353...
+  No new filings for CIK 0001432353, skipping (3.3s)
+
+Checking CIK 0001437249...
+  No new filings for CIK 0001437249, skipping (2.7s)
+
+Checking CIK 0001450011...
+  No new filings for CIK 0001450011, skipping (2.6s)
+
+Checking CIK 0001450501...
+  No new filings for CIK 0001450501, skipping (2.5s)
+
+Checking CIK 0001452937...
+  No new filings for CIK 0001452937, skipping (2.5s)
+
+Checking CIK 0001454889...
+  No new filings for CIK 0001454889, skipping (3.8s)
+
+Checking CIK 0001464413...
+  No new filings for CIK 0001464413, skipping (4.0s)
+
+Checking CIK 0001478482...
+  No new filings for CIK 0001478482, skipping (2.3s)
+
+Checking CIK 0001479026...
+  No new filings for CIK 0001479026, skipping (2.5s)
+
+Checking CIK 0001479360...
+  No new filings for CIK 0001479360, skipping (2.4s)
+
+Checking CIK 0001479599...
+  No new filings for CIK 0001479599, skipping (2.3s)
+
+Checking CIK 0001484018...
+  No new filings for CIK 0001484018, skipping (2.4s)
+
+Checking CIK 0001485894...
+  No new filings for CIK 0001485894, skipping (2.9s)
+
+Checking CIK 0001491978...
+  No new filings for CIK 0001491978, skipping (2.4s)
+
+Checking CIK 0001493580...
+  No new filings for CIK 0001493580, skipping (2.3s)
+
+Checking CIK 0001495922...
+  No new filings for CIK 0001495922, skipping (2.2s)
+
+Checking CIK 0001496608...
+  No new filings for CIK 0001496608, skipping (2.5s)
+
+Checking CIK 0001499655...
+  No new filings for CIK 0001499655, skipping (2.8s)
+
+Checking CIK 0001500604...
+2026-02-17 22:10:07,353 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+2026-02-17 22:10:22,809 - etf_pipeline.parsers.prospectus - INFO - CIK 0001500604: Successfully processed 485BPOS filing
+2026-02-17 22:10:22,810 - etf_pipeline.parsers.prospectus - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 22:10:22,829 - etf_pipeline.parsers.prospectus - INFO - Cache cleared: 163 files deleted, 10.28 MB freed
+  Completed processing for CIK 0001500604 in 18.0s
+
+Checking CIK 0001501825...
+  No new filings for CIK 0001501825, skipping (2.4s)
+
+Checking CIK 0001503123...
+  No new filings for CIK 0001503123, skipping (2.9s)
+
+Checking CIK 0001506001...
+  No new filings for CIK 0001506001, skipping (2.6s)
+
+Checking CIK 0001506213...
+  No new filings for CIK 0001506213, skipping (2.3s)
+
+Checking CIK 0001510337...
+  No new filings for CIK 0001510337, skipping (2.8s)
+
+Checking CIK 0001511699...
+  No new filings for CIK 0001511699, skipping (3.0s)
+
+Checking CIK 0001516212...
+  No new filings for CIK 0001516212, skipping (2.5s)
+
+Checking CIK 0001517936...
+  No new filings for CIK 0001517936, skipping (2.8s)
+
+Checking CIK 0001518042...
+  No new filings for CIK 0001518042, skipping (3.1s)
+
+Checking CIK 0001524348...
+  No new filings for CIK 0001524348, skipping (2.7s)
+
+Checking CIK 0001524513...
+  No new filings for CIK 0001524513, skipping (3.4s)
+
+Checking CIK 0001526787...
+  No new filings for CIK 0001526787, skipping (2.7s)
+
+Checking CIK 0001527428...
+  No new filings for CIK 0001527428, skipping (2.6s)
+
+Checking CIK 0001529390...
+  No new filings for CIK 0001529390, skipping (2.5s)
+
+Checking CIK 0001532203...
+  No new filings for CIK 0001532203, skipping (2.5s)
+
+Checking CIK 0001532206...
+  No new filings for CIK 0001532206, skipping (2.5s)
+
+Checking CIK 0001537140...
+  No new filings for CIK 0001537140, skipping (3.3s)
+
+Checking CIK 0001540305...
+  No new filings for CIK 0001540305, skipping (3.5s)
+
+Checking CIK 0001545440...
+  No new filings for CIK 0001545440, skipping (3.0s)
+
+Checking CIK 0001547576...
+  No new filings for CIK 0001547576, skipping (3.4s)
+
+Checking CIK 0001547580...
+  No new filings for CIK 0001547580, skipping (3.9s)
+
+Checking CIK 0001547950...
+2026-02-17 22:11:26,447 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+2026-02-17 22:11:39,418 - etf_pipeline.parsers.prospectus - INFO - CIK 0001547950: Successfully processed 485BPOS filing
+2026-02-17 22:11:39,419 - etf_pipeline.parsers.prospectus - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 22:11:39,433 - etf_pipeline.parsers.prospectus - INFO - Cache cleared: 94 files deleted, 8.98 MB freed
+  Completed processing for CIK 0001547950 in 16.3s
+
+Checking CIK 0001549548...
+  No new filings for CIK 0001549548, skipping (2.5s)
+
+Checking CIK 0001551895...
+  No new filings for CIK 0001551895, skipping (2.4s)
+
+Checking CIK 0001551950...
+  No new filings for CIK 0001551950, skipping (2.6s)
+
+Checking CIK 0001552740...
+  No new filings for CIK 0001552740, skipping (2.7s)
+
+Checking CIK 0001552947...
+  No new filings for CIK 0001552947, skipping (2.8s)
+
+Checking CIK 0001559109...
+  No new filings for CIK 0001559109, skipping (2.4s)
+
+Checking CIK 0001561785...
+  No new filings for CIK 0001561785, skipping (2.1s)
+
+Checking CIK 0001562565...
+  No new filings for CIK 0001562565, skipping (2.3s)
+
+Checking CIK 0001572661...
+  No new filings for CIK 0001572661, skipping (2.6s)
+
+Checking CIK 0001579881...
+  No new filings for CIK 0001579881, skipping (2.1s)
+
+Checking CIK 0001579982...
+  No new filings for CIK 0001579982, skipping (2.3s)
+
+Checking CIK 0001587551...
+  No new filings for CIK 0001587551, skipping (2.7s)
+
+Checking CIK 0001587982...
+  No new filings for CIK 0001587982, skipping (2.4s)
+
+Checking CIK 0001590402...
+  No new filings for CIK 0001590402, skipping (2.1s)
+
+Checking CIK 0001591939...
+  No new filings for CIK 0001591939, skipping (2.3s)
+
+Checking CIK 0001592900...
+  No new filings for CIK 0001592900, skipping (2.6s)
+
+Checking CIK 0001593547...
+  No new filings for CIK 0001593547, skipping (2.8s)
+
+Checking CIK 0001595386...
+  No new filings for CIK 0001595386, skipping (2.3s)
+
+Checking CIK 0001597389...
+  No new filings for CIK 0001597389, skipping (2.0s)
+
+Checking CIK 0001597934...
+  No new filings for CIK 0001597934, skipping (2.3s)
+
+Checking CIK 0001602508...
+  No new filings for CIK 0001602508, skipping (2.3s)
+
+Checking CIK 0001604813...
+  No new filings for CIK 0001604813, skipping (2.3s)
+
+Checking CIK 0001605803...
+  No new filings for CIK 0001605803, skipping (2.2s)
+
+Checking CIK 0001611331...
+  No new filings for CIK 0001611331, skipping (2.5s)
+
+Checking CIK 0001612930...
+  No new filings for CIK 0001612930, skipping (2.2s)
+
+Checking CIK 0001616668...
+  No new filings for CIK 0001616668, skipping (2.3s)
+
+Checking CIK 0001618627...
+  No new filings for CIK 0001618627, skipping (2.3s)
+
+Checking CIK 0001633061...
+  No new filings for CIK 0001633061, skipping (2.2s)
+
+Checking CIK 0001635073...
+  No new filings for CIK 0001635073, skipping (2.5s)
+
+Checking CIK 0001644419...
+  No new filings for CIK 0001644419, skipping (3.0s)
+
+Checking CIK 0001645194...
+  No new filings for CIK 0001645194, skipping (2.3s)
+
+Checking CIK 0001648403...
+  No new filings for CIK 0001648403, skipping (2.4s)
+
+Checking CIK 0001650149...
+  No new filings for CIK 0001650149, skipping (2.6s)
+
+Checking CIK 0001655589...
+  No new filings for CIK 0001655589, skipping (2.5s)
+
+Checking CIK 0001657201...
+  No new filings for CIK 0001657201, skipping (2.8s)
+
+Checking CIK 0001660765...
+  No new filings for CIK 0001660765, skipping (2.3s)
+
+Checking CIK 0001667919...
+2026-02-17 22:13:09,428 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+2026-02-17 22:15:58,690 - etf_pipeline.parsers.prospectus - INFO - CIK 0001667919: Successfully processed 485BPOS filing
+2026-02-17 22:15:58,693 - etf_pipeline.parsers.prospectus - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 22:15:58,748 - etf_pipeline.parsers.prospectus - INFO - Cache cleared: 436 files deleted, 167.37 MB freed
+2026-02-17 22:16:01,018 - etf_pipeline.parsers.finhigh - INFO - CIK 0001667919: Found 0 Financial Highlights tables in filing 0
+2026-02-17 22:16:23,443 - etf_pipeline.parsers.finhigh - INFO - CIK 0001667919: Found 73 Financial Highlights tables in filing 1
+2026-02-17 22:16:27,086 - etf_pipeline.parsers.finhigh - INFO - CIK 0001667919: Processed 0 ETF(s), skipped 0
+2026-02-17 22:16:27,088 - etf_pipeline.parsers.finhigh - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 22:16:27,096 - etf_pipeline.parsers.finhigh - INFO - Cache cleared: 30 files deleted, 22.77 MB freed
+2026-02-17 22:16:28,301 - etf_pipeline.parsers.flows - INFO - CIK 0001667919: Inserted flow data for fiscal year 2025-11-30, filing_date 2026-02-10
+2026-02-17 22:16:28,328 - etf_pipeline.parsers.flows - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 22:16:28,332 - etf_pipeline.parsers.flows - INFO - Cache cleared: 15 files deleted, 0.10 MB freed
+  Completed processing for CIK 0001667919 in 205.9s
+
+Checking CIK 0001670310...
+  No new filings for CIK 0001670310, skipping (3.7s)
+
+Checking CIK 0001676326...
+  No new filings for CIK 0001676326, skipping (2.3s)
+
+Checking CIK 0001683471...
+  No new filings for CIK 0001683471, skipping (2.1s)
+
+Checking CIK 0001689873...
+  No new filings for CIK 0001689873, skipping (2.5s)
+
+Checking CIK 0001710607...
+  No new filings for CIK 0001710607, skipping (2.5s)
+
+Checking CIK 0001719812...
+  No new filings for CIK 0001719812, skipping (2.3s)
+
+Checking CIK 0001722388...
+  No new filings for CIK 0001722388, skipping (2.0s)
+
+Checking CIK 0001727074...
+  No new filings for CIK 0001727074, skipping (2.2s)
+
+Checking CIK 0001727398...
+  No new filings for CIK 0001727398, skipping (2.3s)
+
+Checking CIK 0001728683...
+  No new filings for CIK 0001728683, skipping (2.1s)
+
+Checking CIK 0001728860...
+  No new filings for CIK 0001728860, skipping (2.1s)
+
+Checking CIK 0001736078...
+  No new filings for CIK 0001736078, skipping (2.1s)
+
+Checking CIK 0001742912...
+  No new filings for CIK 0001742912, skipping (2.5s)
+
+Checking CIK 0001748425...
+  No new filings for CIK 0001748425, skipping (2.1s)
+
+Checking CIK 0001750821...
+  No new filings for CIK 0001750821, skipping (2.2s)
+
+Checking CIK 0001760588...
+  No new filings for CIK 0001760588, skipping (2.3s)
+
+Checking CIK 0001761055...
+  No new filings for CIK 0001761055, skipping (2.5s)
+
+Checking CIK 0001771146...
+2026-02-17 22:17:14,351 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+2026-02-17 22:17:17,022 - etf_pipeline.parsers.prospectus - WARNING - CIK 0001771146: Filing 1 has no effective_date, using filing date
+2026-02-17 22:20:17,144 - etf_pipeline.parsers.prospectus - WARNING - CIK 0001771146: Filing 65 has no RR or OEF iXBRL tags, skipping
+2026-02-17 22:21:06,533 - etf_pipeline.parsers.prospectus - INFO - CIK 0001771146: Successfully processed 485BPOS filing
+2026-02-17 22:21:06,535 - etf_pipeline.parsers.prospectus - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 22:21:06,606 - etf_pipeline.parsers.prospectus - INFO - Cache cleared: 727 files deleted, 78.03 MB freed
+  Completed processing for CIK 0001771146 in 234.5s
+
+Checking CIK 0001779306...
+  No new filings for CIK 0001779306, skipping (2.3s)
+
+Checking CIK 0001782952...
+  No new filings for CIK 0001782952, skipping (2.3s)
+
+Checking CIK 0001792795...
+  No new filings for CIK 0001792795, skipping (2.3s)
+
+Checking CIK 0001795351...
+  No new filings for CIK 0001795351, skipping (2.4s)
+
+Checking CIK 0001796383...
+  No new filings for CIK 0001796383, skipping (2.1s)
+
+Checking CIK 0001797318...
+  No new filings for CIK 0001797318, skipping (2.2s)
+
+Checking CIK 0001807486...
+  No new filings for CIK 0001807486, skipping (2.1s)
+
+Checking CIK 0001810747...
+  No new filings for CIK 0001810747, skipping (2.4s)
+
+Checking CIK 0001816125...
+2026-02-17 22:22:01,682 - etf_pipeline.parsers.finhigh - INFO - CIK 0001816125: Found 0 Financial Highlights tables in filing 0
+  Process crashed for CIK 0001816125 (exit code: -9, 47.2s)
+
+Checking CIK 0001831313...
+  No new filings for CIK 0001831313, skipping (7.5s)
+
+Checking CIK 0001848758...
+  No new filings for CIK 0001848758, skipping (2.1s)
+
+Checking CIK 0001849998...
+  No new filings for CIK 0001849998, skipping (2.3s)
+
+Checking CIK 0001860434...
+  No new filings for CIK 0001860434, skipping (2.1s)
+
+Checking CIK 0001869991...
+  No new filings for CIK 0001869991, skipping (2.1s)
+
+Checking CIK 0001870102...
+  No new filings for CIK 0001870102, skipping (2.1s)
+
+Checking CIK 0001870116...
+  No new filings for CIK 0001870116, skipping (2.1s)
+
+Checking CIK 0001870117...
+  No new filings for CIK 0001870117, skipping (2.0s)
+
+Checking CIK 0001870128...
+  No new filings for CIK 0001870128, skipping (2.3s)
+
+Checking CIK 0001870130...
+  No new filings for CIK 0001870130, skipping (2.6s)
+
+Checking CIK 0001873280...
+  No new filings for CIK 0001873280, skipping (2.0s)
+
+Checking CIK 0001875710...
+  No new filings for CIK 0001875710, skipping (2.0s)
+
+Checking CIK 0001877493...
+  No new filings for CIK 0001877493, skipping (2.1s)
+
+Checking CIK 0001879238...
+  No new filings for CIK 0001879238, skipping (2.2s)
+
+Checking CIK 0001882879...
+  No new filings for CIK 0001882879, skipping (2.2s)
+
+Checking CIK 0001884021...
+  No new filings for CIK 0001884021, skipping (2.1s)
+
+Checking CIK 0001886172...
+  No new filings for CIK 0001886172, skipping (2.1s)
+
+Checking CIK 0001888997...
+  No new filings for CIK 0001888997, skipping (2.0s)
+
+Checking CIK 0001896670...
+  No new filings for CIK 0001896670, skipping (2.1s)
+
+Checking CIK 0001898391...
+  No new filings for CIK 0001898391, skipping (2.2s)
+
+Checking CIK 0001919700...
+  No new filings for CIK 0001919700, skipping (2.1s)
+
+Checking CIK 0001924447...
+  No new filings for CIK 0001924447, skipping (2.1s)
+
+Checking CIK 0001924868...
+2026-02-17 22:23:06,577 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+2026-02-17 21:40:59,297 - etf_pipeline.parsers.prospectus - INFO - Processing 1 CIK(s) from ciks parameter
+2026-02-17 21:41:17,710 - etf_pipeline.parsers.prospectus - WARNING - CIK 0001100663: Filing 1 has no effective_date, using filing date
+  Process crashed for CIK 0001100663 (exit code: -9, 307.5s)2026-02-17 22:29:21,083 - etf_pipeline.parsers.prospectus - INFO - CIK 0001924868: Successfully processed 485BPOS filing
+2026-02-17 22:29:21,085 - etf_pipeline.parsers.prospectus - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 22:29:21,182 - etf_pipeline.parsers.prospectus - INFO - Cache cleared: 1060 files deleted, 184.69 MB freed
+2026-02-17 22:29:22,546 - etf_pipeline.parsers.finhigh - INFO - CIK 0001924868: Found 1 Financial Highlights tables in filing 0
+2026-02-17 22:29:31,025 - etf_pipeline.parsers.finhigh - INFO - CIK 0001924868: Found 0 Financial Highlights tables in filing 1
+2026-02-17 22:29:32,344 - etf_pipeline.parsers.finhigh - INFO - CIK 0001924868: Processed 0 ETF(s), skipped 0
+2026-02-17 22:29:32,346 - etf_pipeline.parsers.finhigh - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 22:29:32,351 - etf_pipeline.parsers.finhigh - INFO - Cache cleared: 24 files deleted, 8.27 MB freed
+2026-02-17 22:29:33,010 - etf_pipeline.parsers.flows - INFO - CIK 0001924868: Inserted flow data for fiscal year 2025-10-31, filing_date 2026-01-26
+2026-02-17 22:29:33,027 - etf_pipeline.parsers.flows - INFO - Summary: 1 CIKs succeeded, 0 CIKs failed
+2026-02-17 22:29:33,029 - etf_pipeline.parsers.flows - INFO - Cache cleared: 9 files deleted, 0.07 MB freed
+  Completed processing for CIK 0001924868 in 390.2s
+
+Checking CIK 0001928561...
+  No new filings for CIK 0001928561, skipping (2.3s)
+
+Checking CIK 0001936157...
+  No new filings for CIK 0001936157, skipping (2.1s)
+
+Checking CIK 0001944285...
+  No new filings for CIK 0001944285, skipping (2.2s)
+
+Checking CIK 0001969445...
+  No new filings for CIK 0001969445, skipping (2.1s)
+
+Checking CIK 0001969489...
+  No new filings for CIK 0001969489, skipping (2.0s)
+
+Checking CIK 0001969674...
+  No new filings for CIK 0001969674, skipping (1.9s)
+
+Checking CIK 0001969995...
+  No new filings for CIK 0001969995, skipping (2.0s)
+
+Checking CIK 0001970533...
+  No new filings for CIK 0001970533, skipping (2.1s)
+
+Checking CIK 0001970751...
+  No new filings for CIK 0001970751, skipping (2.2s)
+
+Checking CIK 0001972459...
+  No new filings for CIK 0001972459, skipping (2.2s)
+
+Checking CIK 0001976322...
+  No new filings for CIK 0001976322, skipping (2.0s)
+
+Checking CIK 0001976517...
+  No new filings for CIK 0001976517, skipping (2.0s)
+
+Checking CIK 0001976672...
+  No new filings for CIK 0001976672, skipping (2.2s)
+
+Checking CIK 0001976877...
+  No new filings for CIK 0001976877, skipping (2.3s)
+
+Checking CIK 0001981627...
+  No new filings for CIK 0001981627, skipping (2.1s)
+
+Checking CIK 0001989916...
+  No new filings for CIK 0001989916, skipping (2.2s)
+
+Checking CIK 0001992104...
+  No new filings for CIK 0001992104, skipping (2.2s)
+
+Checking CIK 0002008359...
+  No new filings for CIK 0002008359, skipping (2.1s)
+
+Checking CIK 0002008374...
+  No new filings for CIK 0002008374, skipping (2.3s)
+
+Checking CIK 0002008516...
+  No new filings for CIK 0002008516, skipping (2.2s)
+
+Checking CIK 0002008517...
+  No new filings for CIK 0002008517, skipping (2.3s)
+
+Checking CIK 0002018846...
+  No new filings for CIK 0002018846, skipping (2.3s)
+
+Checking CIK 0002025968...
+  No new filings for CIK 0002025968, skipping (2.3s)
+
+Checking CIK 0002034928...
+  No new filings for CIK 0002034928, skipping (2.2s)
+
+Checking CIK 0002035827...
+  No new filings for CIK 0002035827, skipping (1.9s)
+
+Checking CIK 0002038383...
+  No new filings for CIK 0002038383, skipping (2.2s)
+
+Checking CIK 0002042513...
+  No new filings for CIK 0002042513, skipping (2.6s)
+
+Checking CIK 0002043954...
+  No new filings for CIK 0002043954, skipping (2.7s)
+
+Checking CIK 0002051630...
+  No new filings for CIK 0002051630, skipping (3.0s)
+
+Checking CIK 0002055464...
+  No new filings for CIK 0002055464, skipping (2.4s)
+
+Checking CIK 0002071107...
+  No new filings for CIK 0002071107, skipping (2.1s)
+
+Checking CIK 0002081199...
+  No new filings for CIK 0002081199, skipping (1.9s)
+
+Checking CIK 0002083193...
+  No new filings for CIK 0002083193, skipping (2.1s)
