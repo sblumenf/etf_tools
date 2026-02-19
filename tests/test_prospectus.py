@@ -21,7 +21,7 @@ def sample_filing():
     fixture_path = Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos.html"
     with open(fixture_path, 'r', encoding='utf-8') as f:
         html = f.read()
-    return BeautifulSoup(html, 'html.parser')
+    return BeautifulSoup(html, 'lxml')
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ def sample_filing_oef():
     fixture_path = Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos_oef.html"
     with open(fixture_path, 'r', encoding='utf-8') as f:
         html = f.read()
-    return BeautifulSoup(html, 'html.parser')
+    return BeautifulSoup(html, 'lxml')
 
 
 @pytest.fixture
@@ -96,7 +96,7 @@ class TestConvertNumericValue:
     def test_scale_factor_negative_two(self):
         """Test scale factor -2: displayed 0.70 → Decimal('0.0070')."""
         html = '<ix:ix:nonfraction scale="-2">0.70</ix:ix:nonfraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:ix:nonfraction')
 
         result = convert_numeric_value(element, scale="-2")
         assert result == Decimal('0.0070')
@@ -112,14 +112,14 @@ class TestConvertNumericValue:
 
         for displayed, expected in test_cases:
             html = f'<ix:nonFraction scale="-2">{displayed}</ix:nonFraction>'
-            element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+            element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
             result = convert_numeric_value(element, scale="-2")
             assert result == expected, f"Failed for {displayed}"
 
     def test_format_numwordsen_none(self):
         """Test ixt-sec:numwordsen 'None' → NULL."""
         html = '<ix:nonFraction format="ixt-sec:numwordsen" scale="-2">None</ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element, scale="-2", format_attr="ixt-sec:numwordsen")
         assert result is None
@@ -127,7 +127,7 @@ class TestConvertNumericValue:
     def test_format_numwordsen_na(self):
         """Test ixt-sec:numwordsen 'N/A' → NULL."""
         html = '<ix:nonFraction format="ixt-sec:numwordsen" scale="-2">N/A</ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element, scale="-2", format_attr="ixt-sec:numwordsen")
         assert result is None
@@ -135,7 +135,7 @@ class TestConvertNumericValue:
     def test_format_zerodash(self):
         """Test ixt:zerodash '—' → Decimal('0')."""
         html = '<ix:nonFraction format="ixt:zerodash" scale="-2">—</ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element, scale="-2", format_attr="ixt:zerodash")
         assert result == Decimal('0')
@@ -143,7 +143,7 @@ class TestConvertNumericValue:
     def test_sign_negative(self):
         """Test sign="-" negates the value."""
         html = '<ix:nonFraction scale="-2" sign="-">0.10</ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element, scale="-2", sign="-")
         # 0.10 * 10^-2 = 0.0010, then negate to -0.0010
@@ -152,7 +152,7 @@ class TestConvertNumericValue:
     def test_negate_to_positive_fee_waiver(self):
         """Test negate_to_positive=True converts negative to positive."""
         html = '<ix:nonFraction scale="-2" sign="-">0.10</ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element, scale="-2", sign="-", negate_to_positive=True)
         # 0.10 * 10^-2 = 0.0010, then negate to -0.0010, then flip to +0.0010
@@ -161,7 +161,7 @@ class TestConvertNumericValue:
     def test_negate_to_positive_redemption_fee(self):
         """Test negate_to_positive=True for redemption fee (displayed 2.00, sign=-)."""
         html = '<ix:nonFraction scale="-2" sign="-">2.00</ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element, scale="-2", sign="-", negate_to_positive=True)
         # 2.00 * 10^-2 = 0.0200, then negate to -0.0200, then flip to +0.0200
@@ -170,7 +170,7 @@ class TestConvertNumericValue:
     def test_no_scale(self):
         """Test numeric value without scale factor."""
         html = '<ix:nonFraction>695</ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element)
         assert result == Decimal('695')
@@ -178,7 +178,7 @@ class TestConvertNumericValue:
     def test_decimal_formatting(self):
         """Test value with comma formatting."""
         html = '<ix:nonFraction>1,223</ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element)
         assert result == Decimal('1223')
@@ -363,11 +363,18 @@ class TestExtractTagValue:
         series_id = "S000014796"
         risk_blocks = []
 
+        context_map = parse_contexts(sample_filing)
+        context_to_series = {
+            ctx_id: ctx_data['series_id']
+            for ctx_id, ctx_data in context_map.items()
+            if ctx_data.get('series_id')
+        }
+
         for element in sample_filing.find_all('ix:nonnumeric'):
             tag_name = element.get('name', '')
             element_context_ref = element.get('contextref', '')
 
-            if 'risktextblock' in tag_name.lower() and series_id in element_context_ref:
+            if ('risktextblock' in tag_name.lower() or 'risknarrativetextblock' in tag_name.lower()) and context_to_series.get(element_context_ref) == series_id:
                 risk_text = element.get_text().strip()
                 if risk_text:
                     risk_blocks.append(risk_text)
@@ -439,7 +446,7 @@ class TestParseDateTagFormats:
             f'<ix:nonnumeric name="{tag_name}" contextref="{context_id}">{date_text}</ix:nonnumeric>'
             f'</body></html>'
         )
-        return BeautifulSoup(html, 'html.parser')
+        return BeautifulSoup(html, 'lxml')
 
     def test_iso_format(self):
         """Test ISO format: 2024-12-31."""
@@ -488,7 +495,7 @@ class TestEdgeCases:
     def test_convert_numeric_value_empty_text(self):
         """Test convert_numeric_value with empty text."""
         html = '<ix:nonFraction scale="-2"></ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element, scale="-2")
         assert result is None
@@ -496,7 +503,7 @@ class TestEdgeCases:
     def test_convert_numeric_value_invalid_number(self):
         """Test convert_numeric_value with invalid number text."""
         html = '<ix:nonFraction scale="-2">ABC</ix:nonFraction>'
-        element = BeautifulSoup(html, 'html.parser').find('ix:nonfraction')
+        element = BeautifulSoup(html, 'lxml').find('ix:nonfraction')
 
         result = convert_numeric_value(element, scale="-2")
         assert result is None
@@ -509,7 +516,7 @@ class TestEdgeCases:
           </xbrli:entity>
         </xbrli:context>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, 'lxml')
         context_map = parse_contexts(soup)
 
         # Context should be found even if CIK is missing

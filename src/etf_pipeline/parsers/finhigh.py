@@ -185,7 +185,7 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
         - fiscal_year_end: date object
         - math_validated: bool
     """
-    soup = BeautifulSoup(html_table_str, "html.parser")
+    soup = BeautifulSoup(html_table_str, "lxml")
     table = soup.find("table")
 
     if not table:
@@ -458,7 +458,7 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                 continue
 
             # Parse HTML to find Financial Highlights tables
-            soup = BeautifulSoup(html, 'html.parser')
+            soup = BeautifulSoup(html, 'lxml')
 
             # Strategy: Find tables that contain Financial Highlights data
             # by looking for characteristic row patterns (Net Asset Value, etc.)

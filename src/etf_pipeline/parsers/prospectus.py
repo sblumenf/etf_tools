@@ -199,7 +199,7 @@ def strip_html_to_text(html_fragment: str) -> str:
     if not html_fragment:
         return ''
 
-    soup = BeautifulSoup(html_fragment, 'html.parser')
+    soup = BeautifulSoup(html_fragment, 'lxml')
     text = soup.get_text()
 
     # Normalize whitespace
@@ -432,7 +432,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 continue
 
             # Parse iXBRL
-            soup = BeautifulSoup(html, 'html.parser')
+            soup = BeautifulSoup(html, 'lxml')
 
             # Extract contexts
             context_map = parse_contexts(soup)
@@ -557,6 +557,13 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 if sid and not cid and sid not in series_context_map:
                     series_context_map[sid] = ctx_id
 
+            # Build reverse mapping: context_id -> series_id (for all contexts with a series)
+            context_to_series = {}
+            for ctx_id, ctx_data in context_map.items():
+                sid = ctx_data.get('series_id')
+                if sid:
+                    context_to_series[ctx_id] = sid
+
             # Iterate known series from the database to avoid redundant RiskAxis-dimensioned iterations
             for series_id, etf_list in series_id_to_etfs.items():
                 context_id = series_context_map.get(series_id)
@@ -579,7 +586,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                     element_context_ref = element.get('contextref', '')
 
                     # Match RiskTextBlock tags (case-insensitive) for this series
-                    if ('risktextblock' in tag_name.lower() or 'risknarrativetextblock' in tag_name.lower()) and series_id in element_context_ref:
+                    if ('risktextblock' in tag_name.lower() or 'risknarrativetextblock' in tag_name.lower()) and context_to_series.get(element_context_ref) == series_id:
                         # Extract and strip HTML from the risk block
                         escape_attr = element.get('escape')
                         if escape_attr == 'true':
