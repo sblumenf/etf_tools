@@ -182,8 +182,35 @@ def test_get_stale_parsers_partial_stale(session):
     assert set(stale) == {"nport", "prospectus", "finhigh", "flows"}
 
 
-def test_get_stale_parsers_no_sec_filings(session):
-    """Test get_stale_parsers returns empty list when SEC has no filings."""
+def test_get_stale_parsers_no_sec_filings_never_processed(session):
+    """Test get_stale_parsers returns all parsers when SEC has no filings but CIK was never processed."""
+    latest_sec_filings = {
+        "NPORT-P": None,
+        "N-CSR": None,
+        "485BPOS": None,
+        "24F-2NT": None,
+    }
+
+    from etf_pipeline.cli import get_stale_parsers
+
+    stale = get_stale_parsers(session, "0000001234", latest_sec_filings)
+
+    assert set(stale) == {"nport", "ncsr", "prospectus", "finhigh", "flows"}
+
+
+def test_get_stale_parsers_no_sec_filings_already_processed(session):
+    """Test get_stale_parsers returns empty list when SEC has no filings but all parsers were already run."""
+    for parser_type in ["nport", "ncsr", "prospectus", "finhigh", "flows"]:
+        session.add(
+            ProcessingLog(
+                cik="0000001234",
+                parser_type=parser_type,
+                last_run_at=datetime(2026, 1, 20),
+                latest_filing_date_seen=date(2026, 1, 15),
+            )
+        )
+    session.commit()
+
     latest_sec_filings = {
         "NPORT-P": None,
         "N-CSR": None,
@@ -212,7 +239,7 @@ def test_get_stale_parsers_ncsr_shared_form(session):
 
     latest_sec_filings = {
         "NPORT-P": None,
-        "N-CSR": date(2026, 1, 15),  # Newer than both ncsr and finhigh logs
+        "N-CSR": date(2026, 1, 15),  # Newer than ncsr log; finhigh has no log entry
         "485BPOS": None,
         "24F-2NT": None,
     }
@@ -221,7 +248,8 @@ def test_get_stale_parsers_ncsr_shared_form(session):
 
     stale = get_stale_parsers(session, "0000001234", latest_sec_filings)
 
-    assert set(stale) == {"ncsr", "finhigh"}
+    # ncsr: stale (newer SEC date); finhigh: never processed; nport/prospectus/flows: never processed
+    assert set(stale) == {"ncsr", "finhigh", "nport", "prospectus", "flows"}
 
 
 def _make_mock_ctx(mock_worker_fn=None):
@@ -576,7 +604,7 @@ def test_get_stale_parsers_check_failed_never_processed(session):
 
     from etf_pipeline.cli import get_stale_parsers
 
-    stale = get_stale_parsers(session, "0000001234", latest_sec_filings, check_failed=True)
+    stale = get_stale_parsers(session, "0000001234", latest_sec_filings)
 
     assert set(stale) == {"nport", "ncsr", "prospectus", "finhigh", "flows"}
 
@@ -610,7 +638,7 @@ def test_get_stale_parsers_check_failed_already_processed(session):
 
     from etf_pipeline.cli import get_stale_parsers
 
-    stale = get_stale_parsers(session, "0000001234", latest_sec_filings, check_failed=True)
+    stale = get_stale_parsers(session, "0000001234", latest_sec_filings)
 
     # Only parsers without ProcessingLog entries should be included
     assert set(stale) == {"prospectus", "finhigh", "flows"}

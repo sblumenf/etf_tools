@@ -193,23 +193,21 @@ def get_processing_log(session, cik, parser_type):
     return session.execute(stmt).scalar_one_or_none()
 
 
-def get_stale_parsers(session, cik, latest_sec_filings, check_failed=False):
+def get_stale_parsers(session, cik, latest_sec_filings):
     """Return list of parser_types that need to run for this CIK.
 
     A parser is needed if:
     - Never processed before (no processing_log entry)
     - New filing available (SEC latest date > log's latest_filing_date_seen)
-    - Filing date check failed and parser was never processed (check_failed=True)
     """
     needed = []
 
     for parser_type, form_type in PARSER_FORM_MAP.items():
         sec_latest_date = latest_sec_filings.get(form_type)
         if sec_latest_date is None:
-            if check_failed:
-                log_entry = get_processing_log(session, cik, parser_type)
-                if log_entry is None:
-                    needed.append(parser_type)
+            log_entry = get_processing_log(session, cik, parser_type)
+            if log_entry is None:
+                needed.append(parser_type)
             continue
 
         log_entry = get_processing_log(session, cik, parser_type)
@@ -313,10 +311,18 @@ def run_all(limit):
             if check_failed:
                 click.echo(f"  Warning: SEC filing date check failed for CIK {cik}, will attempt unprocessed parsers")
 
-            stale_parsers = get_stale_parsers(session, cik, latest_sec_filings, check_failed=check_failed)
+            stale_parsers = get_stale_parsers(session, cik, latest_sec_filings)
+            from sqlalchemy import select
+            from etf_pipeline.models import ProcessingLog
+            any_log = session.execute(
+                select(ProcessingLog.cik).where(ProcessingLog.cik == cik).limit(1)
+            ).scalar_one_or_none()
 
         if not stale_parsers:
-            click.echo(f"  No new filings for CIK {cik}, skipping")
+            if any_log is None:
+                click.echo(f"  No known filings for CIK {cik} (never processed), skipping")
+            else:
+                click.echo(f"  Already up-to-date for CIK {cik}, skipping")
             skipped += 1
             continue
 
