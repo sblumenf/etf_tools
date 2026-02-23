@@ -83,7 +83,7 @@ Individual portfolio holdings from NPORT-P filings.
 | `borrower_name` | String(500) | | Borrower name for repurchase agreements (typically NULL) |
 | `liquidity_classification` | String(50) | | SEC liquidity classification (HLI/MLI/LLI/ILI) |
 
-**Unique:** `(etf_id, report_date, holding_key, filing_date)`
+**Unique:** `(etf_id, report_date, holding_key, liquidity_classification, filing_date)`
 **Indexes:** `(etf_id, report_date)`, `(cusip)`, `(report_date)`
 
 > **Note**: `holding_key` is computed as the first non-null value among cusip, isin, and name. This ensures foreign holdings without CUSIP identifiers can be uniquely identified without constraint violations on NULL cusip values.
@@ -123,7 +123,7 @@ Derivative positions from NPORT-P filings.
 | `written_notional_amt` | Numeric(18,2) | | Notional amount for written options/swaptions |
 | `other_amt` | Numeric(18,2) | | Catch-all for other derivative amounts |
 
-**Unique:** `(etf_id, report_date, derivative_type, underlying_name, filing_date)`
+**Unique:** `(etf_id, report_date, derivative_type, underlying_name, expiration_date, filing_date, counterparty)`
 **Indexes:** `(etf_id, report_date)`, `(report_date)`
 
 ---
@@ -460,11 +460,11 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 | etf | — | UNIQUE | `ticker` |
 | etf | — | INDEX | `cik` |
 | etf | — | INDEX | `class_id` |
-| holding | `holding_uniq` | UNIQUE | `etf_id, report_date, holding_key, filing_date` |
+| holding | `holding_uniq` | UNIQUE | `etf_id, report_date, holding_key, liquidity_classification, filing_date` |
 | holding | `holding_etf_report_idx` | INDEX | `etf_id, report_date` |
 | holding | `holding_cusip_idx` | INDEX | `cusip` |
 | holding | `holding_report_date_idx` | INDEX | `report_date` |
-| derivative | `derivative_etf_report_type_name_filing_uniq` | UNIQUE | `etf_id, report_date, derivative_type, underlying_name, filing_date` |
+| derivative | `derivative_etf_report_type_name_filing_uniq` | UNIQUE | `etf_id, report_date, derivative_type, underlying_name, expiration_date, filing_date, counterparty` |
 | derivative | `derivative_etf_report_idx` | INDEX | `etf_id, report_date` |
 | derivative | `derivative_report_date_idx` | INDEX | `report_date` |
 | performance | `performance_etf_fy_filing_uniq` | UNIQUE | `etf_id, fiscal_year_end, filing_date` |
