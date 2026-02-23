@@ -25,33 +25,11 @@ from etf_pipeline.models import (
 )
 from etf_pipeline.parsers.nport import _parse_delta, parse_nport
 
+from tests.conftest import _add_mock_fund_info
+
 
 def test_parse_delta_invalid_string_returns_none():
     assert _parse_delta("XXXX") is None
-
-
-def _add_mock_fund_info(mock_report):
-    """Helper to add fund_info to a mock FundReport."""
-    fund_info = Mock()
-    fund_info.total_assets = Decimal("10000000.00")
-    fund_info.total_liabilities = Decimal("500000.00")
-    fund_info.net_assets = Decimal("9500000.00")
-    fund_info.cash_not_reported = Decimal("50000.00")
-    fund_info.assets_invested = Decimal("9800000.00")
-    fund_info.assets_misc_sec = Decimal("150000.00")
-    fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
-    fund_info.amt_pay_one_yr_ctrld_comp = Decimal("0.00")
-    fund_info.amt_pay_one_yr_oth_affil = Decimal("0.00")
-    fund_info.amt_pay_one_yr_other = Decimal("50000.00")
-    fund_info.amt_pay_aft_one_yr_banks_borr = Decimal("250000.00")
-    fund_info.amt_pay_aft_one_yr_ctrld_comp = Decimal("0.00")
-    fund_info.amt_pay_aft_one_yr_oth_affil = Decimal("0.00")
-    fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
-    fund_info.delay_deliv = Decimal("0.00")
-    fund_info.stand_by_commit = Decimal("0.00")
-    fund_info.liquidity_pref = Decimal("0.00")
-    fund_info.is_non_cash_collateral = False
-    mock_report.fund_info = fund_info
 
 
 @pytest.fixture
@@ -581,6 +559,104 @@ def test_parse_nport_does_not_deduplicate_none_cusip_holdings(session, engine, s
     assert "Skipping duplicate CUSIP" not in caplog.text
 
 
+def test_parse_nport_does_not_deduplicate_holdings_with_different_liquidity(
+    session, engine, sample_etfs, mock_nport_db, caplog
+):
+    """Test that holdings with the same CUSIP but different liquidity_classification are
+    treated as distinct positions and are NOT deduplicated."""
+    import logging
+    caplog.set_level(logging.INFO)
+
+    def create_mock_investment_with_cusip(name, cusip):
+        inv = Mock()
+        inv.name = name
+        inv.lei = "N/A"
+        inv.title = "N/A"
+        inv.cusip = cusip
+        inv.balance = Decimal("100.0")
+        inv.units = "NS"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("1000000")
+        inv.pct_value = Decimal("5.0")
+        inv.asset_category = "EC"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "1"
+        inv.ticker = name[:4]
+        inv.debt_security = None
+
+        identifiers = Mock()
+        identifiers.isin = f"{cusip}XX"
+        identifiers.ticker = name[:4]
+        inv.identifiers = identifiers
+
+        return inv
+
+    # Two names, same CUSIP — xml_custom_fields maps each name|cusip| key to a
+    # different liquidity bucket so the composite dedup key differs.
+    CUSIP = "037833100"
+    xml_fields = {
+        f"Apple Inc HLI|{CUSIP}|": {"liquidity_classification": "HLI", "borrower_name": None},
+        f"Apple Inc LLI|{CUSIP}|": {"liquidity_classification": "LLI", "borrower_name": None},
+    }
+
+    def create_report_with_different_liquidity(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [
+            create_mock_investment_with_cusip("Apple Inc HLI", CUSIP),
+            create_mock_investment_with_cusip("Apple Inc LLI", CUSIP),
+        ]
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.parse_nport_investments_xml",
+            return_value=xml_fields,
+        ):
+            with patch(
+                "etf_pipeline.parsers.nport.FundReport.from_filing",
+                return_value=create_report_with_different_liquidity("S000002839"),
+            ):
+                parse_nport(cik="36405")
+
+    # Both holdings should be inserted — different liquidity_classification means distinct positions
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    assert len(holdings) == 2
+
+    # Both share the same CUSIP
+    assert all(h.cusip == CUSIP for h in holdings)
+
+    # Verify they carry the distinct liquidity values
+    liquidity_values = {h.liquidity_classification for h in holdings}
+    assert liquidity_values == {"HLI", "LLI"}
+
+    # No duplicate holdings message should appear
+    assert "duplicate holdings" not in caplog.text
+
+
 def test_parse_nport_deduplicates_derivatives_with_same_key(session, engine, sample_etfs, mock_nport_db, caplog):
     """Test that parse_nport deduplicates derivatives with same derivative_type and underlying_name."""
     import logging
@@ -612,10 +688,10 @@ def test_parse_nport_deduplicates_derivatives_with_same_key(session, engine, sam
         mock_report = Mock()
         mock_report.reporting_period = date(2024, 12, 31)
         mock_report.non_derivatives = []
-        # Create two derivatives with same type and underlying_name but different underlying_cusip
+        # Create two derivatives with same type, underlying_name, expiration_date, and counterparty
         mock_report.derivatives = [
             create_mock_derivative("FUT", "S&P 500 Index", "12345678X", "Goldman Sachs"),
-            create_mock_derivative("FUT", "S&P 500 Index", "87654321X", "Morgan Stanley"),
+            create_mock_derivative("FUT", "S&P 500 Index", "87654321X", "Goldman Sachs"),
             create_mock_derivative("FUT", "NASDAQ Index", "11111111X", "JP Morgan"),
         ]
 
@@ -657,6 +733,83 @@ def test_parse_nport_deduplicates_derivatives_with_same_key(session, engine, sam
 
     # Verify aggregated duplicate message was logged
     assert "Skipped 0 duplicate holdings, 1 duplicate derivatives" in caplog.text
+
+
+def test_parse_nport_does_not_deduplicate_derivatives_with_different_expiry_or_counterparty(
+    session, engine, sample_etfs, mock_nport_db, caplog
+):
+    """Test that derivatives with same (type, underlying_name) but different expiration_date
+    or counterparty are treated as distinct positions and are NOT deduplicated."""
+    import logging
+    caplog.set_level(logging.INFO)
+
+    def create_mock_derivative(deriv_type, underlying_name, underlying_cusip, counterparty, expiration_date):
+        inv = Mock()
+        inv.name = "Derivative Investment"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = deriv_type
+
+        fut = Mock()
+        fut.counterparty_name = counterparty
+        fut.counterparty_lei = "123456789012345678AA"
+        fut.reference_entity_name = underlying_name
+        fut.reference_entity_cusip = underlying_cusip
+        fut.notional_amount = Decimal("100000.00")
+        fut.expiration_date = expiration_date
+        inv.derivative_info.future_derivative = fut
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swap_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        return inv
+
+    def create_report_with_distinct_derivatives(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        # Same type and underlying_name, but different expiration_date — distinct positions
+        # Same type and underlying_name, but different counterparty — also distinct positions
+        mock_report.derivatives = [
+            create_mock_derivative("FUT", "S&P 500 Index", "12345678X", "Goldman Sachs", "2025-06-30"),
+            create_mock_derivative("FUT", "S&P 500 Index", "12345678X", "Goldman Sachs", "2025-09-30"),
+            create_mock_derivative("FUT", "S&P 500 Index", "12345678X", "JP Morgan", "2025-06-30"),
+        ]
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_distinct_derivatives("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # All 3 should be inserted — different expiry or counterparty means distinct positions
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 3
+
+    # No duplicates found, so the "Skipped" summary line is not emitted at all
+    assert "duplicate derivatives" not in caplog.text
 
 
 def test_parse_nport_fundreport_parse_error(session, engine, sample_etfs, mock_nport_db, caplog):
@@ -723,6 +876,15 @@ def test_parse_nport_creates_derivatives(session, engine, sample_etfs, mock_npor
             opt.share_number = Decimal("1000")
             opt.delta = Decimal("0.5")
             opt.expiration_date = "2025-03-15"
+            opt.put_or_call = None
+            opt.written_or_purchased = None
+            opt.exercise_price = None
+            opt.exercise_price_currency = None
+            opt.index_name = None
+            opt.index_identifier = None
+            opt.swap_derivative = None
+            opt.forward_derivative = None
+            opt.future_derivative = None
             inv.derivative_info.option_derivative = opt
             inv.derivative_info.forward_derivative = None
             inv.derivative_info.future_derivative = None
@@ -739,6 +901,19 @@ def test_parse_nport_creates_derivatives(session, engine, sample_etfs, mock_npor
             swp.reference_entity_cusip = None
             swp.notional_amount = Decimal("5000000.00")
             swp.termination_date = "2030-12-31"
+            swp.upfront_payment = None
+            swp.upfront_receipt = None
+            swp.payment_currency = None
+            swp.receipt_currency = None
+            swp.swap_flag = None
+            swp.fixed_rate_pay = None
+            swp.fixed_amount_pay = None
+            swp.floating_spread_pay = None
+            swp.floating_amount_pay = None
+            swp.fixed_rate_receive = None
+            swp.fixed_amount_receive = None
+            swp.floating_spread_receive = None
+            swp.floating_amount_receive = None
             inv.derivative_info.swap_derivative = swp
             inv.derivative_info.forward_derivative = None
             inv.derivative_info.future_derivative = None
@@ -990,8 +1165,19 @@ def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, s
             swo.counterparty_name = counterparty
             swo.counterparty_lei = "123456789012345678EE"
             swo.expiration_date = "2026-12-31"
+            swo.put_or_call = None
+            swo.written_or_purchased = None
+            swo.share_number = None
+            swo.exercise_price = None
+            swo.exercise_price_currency = None
+            swo.index_name = None
+            swo.index_identifier = None
+            swo.forward_derivative = None
+            swo.future_derivative = None
             swap_nested = Mock()
             swap_nested.notional_amount = Decimal("10000000.00")
+            swap_nested.counterparty = None
+            swap_nested.currency = None
             swo.swap_derivative = swap_nested
             inv.derivative_info.swaption_derivative = swo
             inv.derivative_info.forward_derivative = None
@@ -1093,6 +1279,14 @@ def test_parse_nport_option_derivative_index_name_fallback(session, engine, samp
         opt.share_number = Decimal("1000")
         opt.delta = Decimal("0.5")
         opt.expiration_date = "2025-03-15"
+        opt.put_or_call = None
+        opt.written_or_purchased = None
+        opt.exercise_price = None
+        opt.exercise_price_currency = None
+        opt.index_identifier = None
+        opt.swap_derivative = None
+        opt.forward_derivative = None
+        opt.future_derivative = None
         inv.derivative_info.option_derivative = opt
         inv.derivative_info.forward_derivative = None
         inv.derivative_info.future_derivative = None
@@ -2168,6 +2362,13 @@ def test_parse_nport_written_option_notional_amt(session, engine, sample_etfs, m
         opt.written_or_purchased = "W"  # Written
         opt.delta = Decimal("-0.45")
         opt.expiration_date = "2025-03-21"
+        opt.put_or_call = None
+        opt.exercise_price = None
+        opt.exercise_price_currency = None
+        opt.index_identifier = None
+        opt.swap_derivative = None
+        opt.forward_derivative = None
+        opt.future_derivative = None
         inv.derivative_info.option_derivative = opt
         inv.derivative_info.forward_derivative = None
         inv.derivative_info.future_derivative = None
@@ -3134,6 +3335,13 @@ def test_parse_nport_derivative_parent_fields_option(session, engine, sample_etf
         opt.delta = Decimal("0.65")
         opt.expiration_date = "2025-04-18"
         opt.written_or_purchased = "P"
+        opt.put_or_call = None
+        opt.exercise_price = None
+        opt.exercise_price_currency = None
+        opt.index_identifier = None
+        opt.swap_derivative = None
+        opt.forward_derivative = None
+        opt.future_derivative = None
 
         # Parent-level reference_entity_* fields
         opt.currency_code = "USD"
@@ -3224,6 +3432,19 @@ def test_parse_nport_derivative_parent_fields_swap(session, engine, sample_etfs,
         swp.reference_entity_cusip = None
         swp.notional_amount = Decimal("10000000.00")
         swp.termination_date = "2030-12-31"
+        swp.upfront_payment = None
+        swp.upfront_receipt = None
+        swp.payment_currency = None
+        swp.receipt_currency = None
+        swp.swap_flag = None
+        swp.fixed_rate_pay = None
+        swp.fixed_amount_pay = None
+        swp.floating_spread_pay = None
+        swp.floating_amount_pay = None
+        swp.fixed_rate_receive = None
+        swp.fixed_amount_receive = None
+        swp.floating_spread_receive = None
+        swp.floating_amount_receive = None
 
         # Parent-level deriv_addl_* fields (preferred for swaps)
         swp.currency_code = "USD"
@@ -3311,6 +3532,14 @@ def test_parse_nport_derivative_parent_fields_swaption(session, engine, sample_e
         swo.expiration_date = "2026-06-30"
         swo.written_or_purchased = "P"
         swo.share_number = None
+        swo.put_or_call = None
+        swo.exercise_price = None
+        swo.exercise_price_currency = None
+        swo.index_name = None
+        swo.index_identifier = None
+        swo.swap_derivative = None
+        swo.forward_derivative = None
+        swo.future_derivative = None
 
         # Parent-level reference_entity_* fields
         swo.reference_entity_title = "5-Year Interest Rate Swaption"
@@ -4272,3 +4501,102 @@ def test_parse_nport_swap_derivatives_integration(session, engine):
         f"Receive leg reset_date_unit not populated correctly: {receive_leg.reset_date_unit}"
     assert receive_leg.fixed_rate is None, \
         "Receive leg should not have fixed_rate (it's a floating leg)"
+
+
+def test_parse_nport_matches_series_across_filing_dates(session, engine, sample_etfs, mock_nport_db):
+    """Regression test: both series are matched even when each appears in a filing
+    from a different date.
+
+    Before the fix, _get_latest_filings_per_series only examined filings from
+    the most-recent filing date, so series covered by older filings were skipped
+    with 'No matching NPORT-P filing found'.  The rewritten function iterates all
+    filings sorted by date (newest first) so every series is captured.
+
+    Setup:
+      - VOO  (S000002839) filed on 2025-02-10  (older)
+      - VTV  (S000002840) filed on 2025-02-28  (newer)
+
+    Expected: both ETFs have holdings inserted.
+    """
+    def create_report(series_id, report_date):
+        mock_report = Mock()
+        mock_report.reporting_period = report_date
+        mock_report.non_derivatives = [
+            Mock(
+                name="Apple Inc",
+                lei=None,
+                title="Apple Inc",
+                cusip="037833100",
+                balance=Decimal("100.0"),
+                units="NS",
+                currency_code="USD",
+                value_usd=Decimal("1000000.00"),
+                pct_value=Decimal("10.0"),
+                asset_category="EC",
+                issuer_category="CORP",
+                investment_country="US",
+                is_restricted_security=False,
+                fair_value_level="1",
+                ticker="AAPL",
+                debt_security=None,
+                identifiers=Mock(isin="US0378331005", ticker="AAPL"),
+            )
+        ]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    # Two filings for the same CIK, each carrying a different series on a different date.
+    filing_voo = Mock()
+    filing_voo.filing_date = date(2025, 2, 10)
+    filing_voo.accession_number = "0000000000-25-000001"
+
+    filing_vtv = Mock()
+    filing_vtv.filing_date = date(2025, 2, 28)
+    filing_vtv.accession_number = "0000000000-25-000002"
+
+    filings_list = [filing_voo, filing_vtv]
+
+    filings_obj = Mock()
+    filings_obj.empty = False
+    filings_obj.__len__ = Mock(return_value=len(filings_list))
+    filings_obj.__iter__ = Mock(return_value=iter(filings_list))
+
+    # Map each filing to the fund report for its series.
+    filing_to_series = {
+        id(filing_voo): ("S000002839", date(2025, 1, 31)),
+        id(filing_vtv): ("S000002840", date(2025, 2, 28)),
+    }
+
+    def fund_report_side_effect(filing):
+        series_id, report_date = filing_to_series[id(filing)]
+        return create_report(series_id, report_date)
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        company.get_filings = Mock(return_value=filings_obj)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            side_effect=fund_report_side_effect,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+
+    etf_ids_with_holdings = {h.etf_id for h in holdings}
+
+    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+    vtv = session.execute(select(ETF).where(ETF.ticker == "VTV")).scalar_one()
+
+    assert voo.id in etf_ids_with_holdings, (
+        "VOO (filed Feb 10) has no holdings — series was not matched across filing dates"
+    )
+    assert vtv.id in etf_ids_with_holdings, (
+        "VTV (filed Feb 28) has no holdings — series was not matched across filing dates"
+    )
