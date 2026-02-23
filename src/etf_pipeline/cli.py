@@ -6,6 +6,12 @@ from datetime import date
 
 import click
 
+from etf_pipeline.parsers.nport import parse_nport
+from etf_pipeline.parsers.ncsr import parse_ncsr
+from etf_pipeline.parsers.prospectus import parse_prospectus
+from etf_pipeline.parsers.finhigh import parse_finhigh
+from etf_pipeline.parsers.flows import parse_flows
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,8 +67,6 @@ def load_etfs_cmd(cik, limit):
 @click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
 def nport(cik, limit, keep_cache):
     """Parse NPORT-P filings for holdings and derivatives."""
-    from etf_pipeline.parsers.nport import parse_nport
-
     _configure_logging()
 
     parse_nport(cik=cik, limit=limit, clear_cache=not keep_cache)
@@ -74,8 +78,6 @@ def nport(cik, limit, keep_cache):
 @click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
 def ncsr(cik, limit, keep_cache):
     """Parse N-CSR filings for performance data."""
-    from etf_pipeline.parsers.ncsr import parse_ncsr
-
     _configure_logging()
 
     parse_ncsr(cik=cik, limit=limit, clear_cache=not keep_cache)
@@ -88,7 +90,6 @@ def ncsr(cik, limit, keep_cache):
               help="Keep edgartools HTTP cache after processing (default: clear)")
 def prospectus(cik, limit, keep_cache):
     """Parse 485BPOS filings for fee schedules, shareholder fees, and strategy."""
-    from etf_pipeline.parsers.prospectus import parse_prospectus
     _configure_logging()
     parse_prospectus(cik=cik, limit=limit, clear_cache=not keep_cache)
 
@@ -99,8 +100,6 @@ def prospectus(cik, limit, keep_cache):
 @click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
 def flows(cik, limit, keep_cache):
     """Parse 24F-2NT filings for fund flow data."""
-    from etf_pipeline.parsers.flows import parse_flows
-
     _configure_logging()
 
     parse_flows(cik=cik, limit=limit, clear_cache=not keep_cache)
@@ -112,20 +111,20 @@ def flows(cik, limit, keep_cache):
 @click.option("--keep-cache", is_flag=True, default=False, help="Keep edgartools HTTP cache after processing (default: clear)")
 def finhigh(cik, limit, keep_cache):
     """Parse N-CSR filings for Financial Highlights data (per-share operating, distributions, ratios)."""
-    from etf_pipeline.parsers.finhigh import parse_finhigh
-
     _configure_logging()
 
     parse_finhigh(cik=cik, limit=limit, clear_cache=not keep_cache)
 
 
-PARSER_FORM_MAP = {
-    "nport": "NPORT-P",
-    "ncsr": "N-CSR",
-    "prospectus": "485BPOS",
-    "finhigh": "N-CSR",
-    "flows": "24F-2NT",
+PARSERS = {
+    "nport": (parse_nport, "NPORT-P"),
+    "ncsr": (parse_ncsr, "N-CSR"),
+    "prospectus": (parse_prospectus, "485BPOS"),
+    "finhigh": (parse_finhigh, "N-CSR"),
+    "flows": (parse_flows, "24F-2NT"),
 }
+
+PARSER_FORM_MAP = {name: form_type for name, (_, form_type) in PARSERS.items()}
 
 PARSER_ORDER = ["nport", "ncsr", "prospectus", "finhigh", "flows"]
 
@@ -168,9 +167,6 @@ def check_sec_filing_dates(cik: str) -> tuple[dict[str, date | None], bool]:
                 if all(v is not None for v in result.values()):
                     break
 
-        del filings
-        del company
-
     except Exception as e:
         logger.warning("CIK %s: Failed to check SEC filing dates: %s", cik, e)
         had_error = True
@@ -202,7 +198,7 @@ def get_stale_parsers(session, cik, latest_sec_filings):
     """
     needed = []
 
-    for parser_type, form_type in PARSER_FORM_MAP.items():
+    for parser_type, (_, form_type) in PARSERS.items():
         sec_latest_date = latest_sec_filings.get(form_type)
         if sec_latest_date is None:
             log_entry = get_processing_log(session, cik, parser_type)
@@ -221,22 +217,10 @@ def get_stale_parsers(session, cik, latest_sec_filings):
 
 def run_parser_for_cik(cik, parser_type):
     """Dispatch to the correct parser function for a single CIK."""
-    from etf_pipeline.parsers.nport import parse_nport
-    from etf_pipeline.parsers.ncsr import parse_ncsr
-    from etf_pipeline.parsers.prospectus import parse_prospectus
-    from etf_pipeline.parsers.finhigh import parse_finhigh
-    from etf_pipeline.parsers.flows import parse_flows
-
-    parser_map = {
-        "nport": parse_nport,
-        "ncsr": parse_ncsr,
-        "prospectus": parse_prospectus,
-        "finhigh": parse_finhigh,
-        "flows": parse_flows,
-    }
-
-    parser_func = parser_map[parser_type]
-    parser_func(ciks=[cik], clear_cache=True)
+    import sys
+    parser_fn, _ = PARSERS[parser_type]
+    mod = sys.modules[parser_fn.__module__]
+    getattr(mod, parser_fn.__name__)(ciks=[cik], clear_cache=True)
 
 
 def _worker_process_parser(result_queue, cik, parser_type):

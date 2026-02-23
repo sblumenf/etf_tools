@@ -15,7 +15,7 @@ def fetch():
     """Download company_tickers_mf.json and filter to ETFs."""
     DATA_DIR.mkdir(exist_ok=True)
 
-    identity = EDGAR_IDENTITY or "etf-pipeline admin@example.com"
+    identity = EDGAR_IDENTITY
     req = urllib.request.Request(SEC_TICKERS_URL, headers={"User-Agent": identity})
     with urllib.request.urlopen(req) as resp:
         raw = json.loads(resp.read())

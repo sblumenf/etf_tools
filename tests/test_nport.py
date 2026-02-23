@@ -113,27 +113,7 @@ def mock_fund_report():
         general_info.series_id = series_id
         mock_report.general_info = general_info
 
-        # Add fund_info with balance sheet data
-        fund_info = Mock()
-        fund_info.total_assets = Decimal("10000000.00")
-        fund_info.total_liabilities = Decimal("500000.00")
-        fund_info.net_assets = Decimal("9500000.00")
-        fund_info.cash_not_reported = Decimal("50000.00")
-        fund_info.assets_invested = Decimal("9800000.00")
-        fund_info.assets_misc_sec = Decimal("150000.00")
-        fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
-        fund_info.amt_pay_one_yr_ctrld_comp = Decimal("0.00")
-        fund_info.amt_pay_one_yr_oth_affil = Decimal("0.00")
-        fund_info.amt_pay_one_yr_other = Decimal("50000.00")
-        fund_info.amt_pay_aft_one_yr_banks_borr = Decimal("250000.00")
-        fund_info.amt_pay_aft_one_yr_ctrld_comp = Decimal("0.00")
-        fund_info.amt_pay_aft_one_yr_oth_affil = Decimal("0.00")
-        fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
-        fund_info.delay_deliv = Decimal("0.00")
-        fund_info.stand_by_commit = Decimal("0.00")
-        fund_info.liquidity_pref = Decimal("0.00")
-        fund_info.is_non_cash_collateral = False
-        mock_report.fund_info = fund_info
+        _add_mock_fund_info(mock_report)
 
         return mock_report
 

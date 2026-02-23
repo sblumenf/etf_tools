@@ -1,10 +1,15 @@
 """Shared utilities for ETF pipeline parsers."""
+import logging
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+
+from dateutil.parser import parse as _du_parse
 
 from sqlalchemy.orm import Session
 
 from etf_pipeline.models import ProcessingLog
+
+logger = logging.getLogger(__name__)
 
 
 def clean_str(val):
@@ -16,18 +21,8 @@ def clean_str(val):
     return val_str
 
 
-def safe_numeric(val):
-    if val is None:
-        return None
-    return val
-
-
 def get_clean(obj, attr):
     return clean_str(getattr(obj, attr, None))
-
-
-def get_numeric(obj, attr):
-    return safe_numeric(getattr(obj, attr, None))
 
 
 def parse_decimal(val):
@@ -57,30 +52,25 @@ def parse_decimal(val):
             decimal_value = -decimal_value
         return decimal_value
     except (ValueError, TypeError, InvalidOperation):
+        logger.warning("Could not parse decimal: %s", val)
         return None
 
 
 def parse_date(val):
     if val is None:
         return None
-
     if isinstance(val, datetime):
         return val.date()
-
     if isinstance(val, date):
         return val
-
     s = str(val).strip()
     if not s:
         return None
-
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y-%m-%dT%H:%M:%S", "%B %d, %Y", "%b %d, %Y"):
-        try:
-            return datetime.strptime(s, fmt).date()
-        except ValueError:
-            continue
-
-    return None
+    try:
+        return _du_parse(s).date()
+    except (ValueError, OverflowError):
+        logger.warning("Could not parse date: %s", s)
+        return None
 
 
 def ensure_date(value) -> date:

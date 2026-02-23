@@ -34,7 +34,6 @@ from etf_pipeline.parser_utils import (
     clean_str,
     ensure_date,
     get_clean,
-    get_numeric,
     parse_date,
     parse_decimal,
     update_processing_log,
@@ -638,9 +637,9 @@ def _build_derivative_swap(swp, derivative_id: int) -> DerivativeSwap:
     Returns:
         DerivativeSwap instance
     """
-    upfront_payment = get_numeric(swp, 'upfront_payment')
+    upfront_payment = getattr(swp, 'upfront_payment', None)
     upfront_payment_currency = get_clean(swp, 'payment_currency')
-    upfront_receipt = get_numeric(swp, 'upfront_receipt')
+    upfront_receipt = getattr(swp, 'upfront_receipt', None)
     upfront_receipt_currency = get_clean(swp, 'receipt_currency')
     swap_flag = get_clean(swp, 'swap_flag')
 
@@ -666,61 +665,33 @@ def _build_swap_legs(swp, swap_id: int) -> list[DerivativeSwapLeg]:
     """
     legs = []
 
-    # Build pay leg
-    pay_leg_type = None
-    if hasattr(swp, 'fixed_rate_pay') and swp.fixed_rate_pay is not None:
-        pay_leg_type = "fixed"
-    elif hasattr(swp, 'floating_index_pay') and swp.floating_index_pay:
-        pay_leg_type = "floating"
-    elif hasattr(swp, 'other_description_pay') and swp.other_description_pay:
-        pay_leg_type = "other"
+    for direction in ("pay", "receive"):
+        leg_type = None
+        if hasattr(swp, f'fixed_rate_{direction}') and getattr(swp, f'fixed_rate_{direction}') is not None:
+            leg_type = "fixed"
+        elif hasattr(swp, f'floating_index_{direction}') and getattr(swp, f'floating_index_{direction}'):
+            leg_type = "floating"
+        elif hasattr(swp, f'other_description_{direction}') and getattr(swp, f'other_description_{direction}'):
+            leg_type = "other"
 
-    pay_leg = DerivativeSwapLeg(
-        swap_id=swap_id,
-        direction="pay",
-        leg_type=pay_leg_type,
-        fixed_rate=get_numeric(swp, 'fixed_rate_pay'),
-        fixed_amount=get_numeric(swp, 'fixed_amount_pay'),
-        fixed_currency=get_clean(swp, 'fixed_currency_pay'),
-        floating_index=get_clean(swp, 'floating_index_pay'),
-        floating_spread=get_numeric(swp, 'floating_spread_pay'),
-        floating_amount=get_numeric(swp, 'floating_amount_pay'),
-        floating_currency=get_clean(swp, 'floating_currency_pay'),
-        tenor=get_clean(swp, 'floating_tenor_pay'),
-        tenor_unit=get_clean(swp, 'floating_tenor_unit_pay'),
-        reset_date_tenor=get_clean(swp, 'floating_reset_date_tenor_pay'),
-        reset_date_unit=get_clean(swp, 'floating_reset_date_unit_pay'),
-        other_description=get_clean(swp, 'other_description_pay'),
-    )
-    legs.append(pay_leg)
-
-    # Build receive leg
-    receive_leg_type = None
-    if hasattr(swp, 'fixed_rate_receive') and swp.fixed_rate_receive is not None:
-        receive_leg_type = "fixed"
-    elif hasattr(swp, 'floating_index_receive') and swp.floating_index_receive:
-        receive_leg_type = "floating"
-    elif hasattr(swp, 'other_description_receive') and swp.other_description_receive:
-        receive_leg_type = "other"
-
-    receive_leg = DerivativeSwapLeg(
-        swap_id=swap_id,
-        direction="receive",
-        leg_type=receive_leg_type,
-        fixed_rate=get_numeric(swp, 'fixed_rate_receive'),
-        fixed_amount=get_numeric(swp, 'fixed_amount_receive'),
-        fixed_currency=get_clean(swp, 'fixed_currency_receive'),
-        floating_index=get_clean(swp, 'floating_index_receive'),
-        floating_spread=get_numeric(swp, 'floating_spread_receive'),
-        floating_amount=get_numeric(swp, 'floating_amount_receive'),
-        floating_currency=get_clean(swp, 'floating_currency_receive'),
-        tenor=get_clean(swp, 'floating_tenor_receive'),
-        tenor_unit=get_clean(swp, 'floating_tenor_unit_receive'),
-        reset_date_tenor=get_clean(swp, 'floating_reset_date_tenor_receive'),
-        reset_date_unit=get_clean(swp, 'floating_reset_date_unit_receive'),
-        other_description=get_clean(swp, 'other_description_receive'),
-    )
-    legs.append(receive_leg)
+        leg = DerivativeSwapLeg(
+            swap_id=swap_id,
+            direction=direction,
+            leg_type=leg_type,
+            fixed_rate=getattr(swp, f'fixed_rate_{direction}', None),
+            fixed_amount=getattr(swp, f'fixed_amount_{direction}', None),
+            fixed_currency=get_clean(swp, f'fixed_currency_{direction}'),
+            floating_index=get_clean(swp, f'floating_index_{direction}'),
+            floating_spread=getattr(swp, f'floating_spread_{direction}', None),
+            floating_amount=getattr(swp, f'floating_amount_{direction}', None),
+            floating_currency=get_clean(swp, f'floating_currency_{direction}'),
+            tenor=get_clean(swp, f'floating_tenor_{direction}'),
+            tenor_unit=get_clean(swp, f'floating_tenor_unit_{direction}'),
+            reset_date_tenor=get_clean(swp, f'floating_reset_date_tenor_{direction}'),
+            reset_date_unit=get_clean(swp, f'floating_reset_date_unit_{direction}'),
+            other_description=get_clean(swp, f'other_description_{direction}'),
+        )
+        legs.append(leg)
 
     return legs
 
@@ -740,8 +711,8 @@ def _build_derivative_option(opt, derivative_id: int) -> DerivativeOption:
     """
     put_or_call = get_clean(opt, 'put_or_call')
     written_or_purchased = get_clean(opt, 'written_or_purchased')
-    share_number = get_numeric(opt, 'share_number')
-    exercise_price = get_numeric(opt, 'exercise_price')
+    share_number = getattr(opt, 'share_number', None)
+    exercise_price = getattr(opt, 'exercise_price', None)
     exercise_price_currency = get_clean(opt, 'exercise_price_currency')
     index_name = get_clean(opt, 'index_name')
     index_identifier = get_clean(opt, 'index_identifier')
@@ -756,21 +727,21 @@ def _build_derivative_option(opt, derivative_id: int) -> DerivativeOption:
     if hasattr(opt, 'swap_derivative') and opt.swap_derivative:
         nested_swap = opt.swap_derivative
         nested_deriv_type = "SWP"
-        nested_deriv_notional = get_numeric(nested_swap, 'notional_amount')
+        nested_deriv_notional = getattr(nested_swap, 'notional_amount', None)
         nested_deriv_counterparty = get_clean(nested_swap, 'counterparty')
         nested_deriv_currency = get_clean(nested_swap, 'currency')
     # Check for nested forward
     elif hasattr(opt, 'forward_derivative') and opt.forward_derivative:
         nested_fwd = opt.forward_derivative
         nested_deriv_type = "FWD"
-        nested_deriv_notional = get_numeric(nested_fwd, 'notional_amount')
+        nested_deriv_notional = getattr(nested_fwd, 'notional_amount', None)
         nested_deriv_counterparty = get_clean(nested_fwd, 'counterparty')
         nested_deriv_currency = get_clean(nested_fwd, 'currency')
     # Check for nested future
     elif hasattr(opt, 'future_derivative') and opt.future_derivative:
         nested_fut = opt.future_derivative
         nested_deriv_type = "FUT"
-        nested_deriv_notional = get_numeric(nested_fut, 'notional_amount')
+        nested_deriv_notional = getattr(nested_fut, 'notional_amount', None)
         nested_deriv_counterparty = get_clean(nested_fut, 'counterparty')
         nested_deriv_currency = get_clean(nested_fut, 'currency')
 
@@ -801,9 +772,9 @@ def _build_derivative_forward(fwd, derivative_id: int) -> DerivativeForward:
         DerivativeForward instance
     """
     currency_sold = get_clean(fwd, 'currency_sold')
-    amount_sold = get_numeric(fwd, 'amount_sold')
+    amount_sold = getattr(fwd, 'amount_sold', None)
     currency_purchased = get_clean(fwd, 'currency_purchased')
-    amount_purchased = get_numeric(fwd, 'amount_purchased')
+    amount_purchased = getattr(fwd, 'amount_purchased', None)
     settlement_date = parse_date(fwd.settlement_date) if hasattr(fwd, 'settlement_date') and fwd.settlement_date else None
 
     return DerivativeForward(

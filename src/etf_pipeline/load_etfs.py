@@ -43,13 +43,12 @@ def load_etfs(cik: Optional[str] = None, limit: Optional[int] = None) -> None:
 
     if cik is not None:
         cik_int = int(cik)
-        if cik_int in ciks:
-            ciks = [cik_int]
-            logger.info(f"Processing single CIK: {cik}")
-        else:
+        if cik_int not in by_cik:
             logger.warning(f"CIK {cik} not found in etf_tickers.json")
             print(f"CIK {cik} not found in etf_tickers.json")
             return
+        ciks = [cik_int]
+        logger.info(f"Processing single CIK: {cik}")
 
     if limit is not None:
         ciks = ciks[:limit]

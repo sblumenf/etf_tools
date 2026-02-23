@@ -3,7 +3,6 @@
 import logging
 import xml.etree.ElementTree as ET
 from datetime import date
-from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from edgar import Company
@@ -13,50 +12,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
 from etf_pipeline.models import ETF, FlowData
-from etf_pipeline.parser_utils import ensure_date, parse_date, update_processing_log
+from etf_pipeline.parser_utils import ensure_date, parse_date, parse_decimal, update_processing_log
 
 logger = logging.getLogger(__name__)
 
 # XML namespace for 24F-2NT filings
 NS = {"f2": "http://www.sec.gov/edgar/twentyfourf2filer"}
-
-
-def _parse_money(val: Optional[str]) -> Optional[Decimal]:
-    """Parse money string handling commas and accounting negatives.
-
-    Examples:
-        "1,234.56" -> Decimal("1234.56")
-        "(20.00)" -> Decimal("-20.00")
-        None -> None
-
-    Args:
-        val: Money string from XML
-
-    Returns:
-        Decimal value or None if parsing fails
-    """
-    if not val:
-        return None
-
-    val = val.strip()
-    if not val:
-        return None
-
-    # Handle accounting notation for negatives: (20.00) -> -20.00
-    is_negative = val.startswith("(") and val.endswith(")")
-    if is_negative:
-        val = val[1:-1]  # Strip parens
-
-    # Remove commas
-    val = val.replace(",", "")
-
-    try:
-        result = Decimal(val)
-        return -result if is_negative else result
-    except (InvalidOperation, ValueError) as e:
-        logger.warning(f"Failed to parse money value '{val}': {e}")
-        return None
-
 
 
 def _extract_flow_data_from_xml(xml_content: str, cik: str) -> Optional[dict]:
@@ -110,9 +71,9 @@ def _extract_flow_data_from_xml(xml_content: str, cik: str) -> Optional[dict]:
     redemptions_elem = item5.find("f2:aggregatePriceOfSecuritiesRedeemedOrRepurchasedInFiscalYear", NS)
     net_sales_elem = item5.find("f2:netSales", NS)
 
-    sales_value = _parse_money(sales_elem.text if sales_elem is not None else None)
-    redemptions_value = _parse_money(redemptions_elem.text if redemptions_elem is not None else None)
-    net_sales = _parse_money(net_sales_elem.text if net_sales_elem is not None else None)
+    sales_value = parse_decimal(sales_elem.text if sales_elem is not None else None)
+    redemptions_value = parse_decimal(redemptions_elem.text if redemptions_elem is not None else None)
+    net_sales = parse_decimal(net_sales_elem.text if net_sales_elem is not None else None)
 
     return {
         "fiscal_year_end": fiscal_year_end,
