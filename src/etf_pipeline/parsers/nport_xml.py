@@ -8,25 +8,12 @@ import logging
 import xml.etree.ElementTree as ET
 from typing import Optional
 
+from etf_pipeline.parser_utils import clean_str
+
 logger = logging.getLogger(__name__)
 
 # NPORT XML namespace
 NPORT_NS = {"ns": "http://www.sec.gov/edgar/nport"}
-
-
-def _clean_str(val):
-    """Return None if val is None, 'N/A', or empty, else str(val).
-
-    This function matches the cleaning logic in nport.py to ensure
-    holding keys are constructed consistently between XML parsing
-    and edgartools FundReport parsing.
-    """
-    if val is None:
-        return None
-    val_str = str(val).strip()
-    if val_str == "N/A" or val_str == "":
-        return None
-    return val_str
 
 
 def extract_liquidity_classification(invst_or_sec_element: ET.Element) -> Optional[str]:
@@ -105,7 +92,6 @@ def extract_borrower_name(invst_or_sec_element: ET.Element) -> Optional[str]:
         None (borrower data not available at holding level in current schema)
     """
     # Borrower information is at fund level, not holding level in NPORT schema
-    # This function exists for API consistency but will always return None
     return None
 
 
@@ -140,9 +126,9 @@ def parse_nport_investments_xml(xml_content: str) -> dict[str, dict]:
             cusip_raw = cusip_elem.text if cusip_elem is not None else None
             lei_raw = lei_elem.text if lei_elem is not None else None
 
-            name_clean = _clean_str(name_raw) or ""
-            cusip_clean = _clean_str(cusip_raw) or ""
-            lei_clean = _clean_str(lei_raw) or ""
+            name_clean = clean_str(name_raw) or ""
+            cusip_clean = clean_str(cusip_raw) or ""
+            lei_clean = clean_str(lei_raw) or ""
 
             holding_key = f"{name_clean}|{cusip_clean}|{lei_clean}"
 

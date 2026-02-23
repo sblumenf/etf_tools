@@ -2,7 +2,7 @@
 
 import logging
 import xml.etree.ElementTree as ET
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
 from etf_pipeline.models import ETF, FlowData
-from etf_pipeline.parser_utils import ensure_date, update_processing_log
+from etf_pipeline.parser_utils import ensure_date, parse_date, update_processing_log
 
 logger = logging.getLogger(__name__)
 
@@ -58,24 +58,6 @@ def _parse_money(val: Optional[str]) -> Optional[Decimal]:
         return None
 
 
-def _parse_date(date_str: Optional[str]) -> Optional[date]:
-    """Parse MM/DD/YYYY date string.
-
-    Args:
-        date_str: Date string from XML (format: MM/DD/YYYY)
-
-    Returns:
-        date object or None if parsing fails
-    """
-    if not date_str:
-        return None
-
-    try:
-        return datetime.strptime(date_str.strip(), "%m/%d/%Y").date()
-    except ValueError as e:
-        logger.warning(f"Failed to parse date '{date_str}': {e}")
-        return None
-
 
 def _extract_flow_data_from_xml(xml_content: str, cik: str) -> Optional[dict]:
     """Extract flow data from 24F-2NT XML.
@@ -114,7 +96,7 @@ def _extract_flow_data_from_xml(xml_content: str, cik: str) -> Optional[dict]:
         logger.warning(f"CIK {cik}: lastDayOfFiscalYear not found")
         return None
 
-    fiscal_year_end = _parse_date(fiscal_year_elem.text)
+    fiscal_year_end = parse_date(fiscal_year_elem.text)
     if fiscal_year_end is None:
         return None
 

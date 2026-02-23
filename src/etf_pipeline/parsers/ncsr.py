@@ -2,10 +2,8 @@
 
 import logging
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
 from typing import Optional
 
-import pandas as pd
 from edgar import Company
 from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import select
@@ -13,9 +11,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
 from etf_pipeline.models import ETF, Performance
-from etf_pipeline.parser_utils import ensure_date, update_processing_log
+from etf_pipeline.parser_utils import ensure_date, parse_decimal, update_processing_log
 
 logger = logging.getLogger(__name__)
+
+_parse_decimal = parse_decimal
 
 
 def _extract_class_id(member_value: str) -> Optional[str]:
@@ -116,26 +116,6 @@ def _map_return_period(period_start: date, period_end: date) -> Optional[str]:
     else:
         return "return_since_inception"
 
-
-def _parse_decimal(value) -> Optional[Decimal]:
-    """Parse value to Decimal, handling None and various types.
-
-    Args:
-        value: Value to parse (can be Decimal, float, str, int, or None)
-
-    Returns:
-        Decimal or None
-    """
-    if value is None:
-        return None
-
-    if isinstance(value, Decimal):
-        return value
-
-    try:
-        return Decimal(str(value))
-    except (ValueError, TypeError, InvalidOperation):
-        return None
 
 
 def _process_cik_ncsr(session: Session, cik: str) -> bool:
@@ -289,7 +269,7 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                                     # Map to benchmark field name
                                     benchmark_field = field_name.replace('return_', 'benchmark_return_')
                                     if benchmark_field in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
-                                        benchmark_returns[benchmark_field] = _parse_decimal(numeric_value)
+                                        benchmark_returns[benchmark_field] = parse_decimal(numeric_value)
 
                     logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark: {benchmark_name}, returns: {benchmark_returns}")
 
@@ -372,13 +352,13 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
 
                             field_name = _map_return_period(period_start, period_end)
                             if field_name:
-                                returns_data[field_name] = _parse_decimal(numeric_value)
+                                returns_data[field_name] = parse_decimal(numeric_value)
 
                     elif concept == 'oef:ExpenseRatioPct':
-                        expense_ratio = _parse_decimal(numeric_value)
+                        expense_ratio = parse_decimal(numeric_value)
 
                     elif concept == 'us-gaap:InvestmentCompanyPortfolioTurnover':
-                        portfolio_turnover = _parse_decimal(numeric_value)
+                        portfolio_turnover = parse_decimal(numeric_value)
 
                 # Upsert Performance record
                 stmt = select(Performance).where(

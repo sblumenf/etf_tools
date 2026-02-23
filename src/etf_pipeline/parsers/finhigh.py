@@ -9,7 +9,7 @@ import gc
 import logging
 import re
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Optional
 
 from bs4 import BeautifulSoup
@@ -31,47 +31,22 @@ from etf_pipeline.sgml import parse_series_class_info
 logger = logging.getLogger(__name__)
 
 
-def _parse_decimal(value) -> Optional[Decimal]:
-    """Parse value to Decimal, handling None, strings with formatting, and various types.
-
-    Handles:
-    - None -> None
-    - "$1.23" -> 1.23
-    - "(1.23)" -> -1.23 (parentheses indicate negative)
-    - "1,234.56" -> 1234.56
-    - "0.05%" -> 0.0005 (percentage to decimal)
-
-    Args:
-        value: Value to parse
-
-    Returns:
-        Decimal or None
-    """
+def _parse_decimal(value):
+    from decimal import InvalidOperation
     if value is None:
         return None
-
     if isinstance(value, Decimal):
         return value
-
-    # Convert to string for parsing
     s = str(value).strip()
-
     if not s or s in ("-", "—", "N/A", "n/a"):
         return None
-
-    # Handle percentage
     is_percentage = "%" in s
     s = s.replace("%", "")
-
-    # Handle parentheses as negative
     is_negative = False
     if s.startswith("(") and s.endswith(")"):
         is_negative = True
         s = s[1:-1]
-
-    # Remove currency symbols and commas
     s = s.replace("$", "").replace(",", "")
-
     try:
         decimal_value = Decimal(s)
         if is_negative:
@@ -83,37 +58,15 @@ def _parse_decimal(value) -> Optional[Decimal]:
         return None
 
 
-def _parse_date(value: str) -> Optional[date]:
-    """Parse date string to date object.
-
-    Handles various formats like:
-    - "12/31/2023"
-    - "December 31, 2023"
-    - "2023-12-31"
-
-    Args:
-        value: Date string
-
-    Returns:
-        date object or None
-    """
+def _parse_date(value):
     if not value:
         return None
-
     s = str(value).strip()
-
-    # Try various formats
-    for fmt in [
-        "%m/%d/%Y",
-        "%Y-%m-%d",
-        "%B %d, %Y",
-        "%b %d, %Y",
-    ]:
+    for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%B %d, %Y", "%b %d, %Y"):
         try:
             return datetime.strptime(s, fmt).date()
         except ValueError:
             continue
-
     return None
 
 

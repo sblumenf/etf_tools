@@ -1,13 +1,10 @@
 """Fetch SEC company tickers and filter to ETFs."""
 
 import json
-import os
 import urllib.request
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
+from etf_pipeline.config import EDGAR_IDENTITY
 
 SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers_mf.json"
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
@@ -18,7 +15,7 @@ def fetch():
     """Download company_tickers_mf.json and filter to ETFs."""
     DATA_DIR.mkdir(exist_ok=True)
 
-    identity = os.environ.get("EDGAR_IDENTITY", "etf-pipeline admin@example.com")
+    identity = EDGAR_IDENTITY or "etf-pipeline admin@example.com"
     req = urllib.request.Request(SEC_TICKERS_URL, headers={"User-Agent": identity})
     with urllib.request.urlopen(req) as resp:
         raw = json.loads(resp.read())
