@@ -32,3 +32,13 @@ ralph-*.md
 inspect_*.py
 *.log.txt
 docs/specs/completed/
+
+# Bloat
+Thumbs.db
+docs/failed-ciks.txt
+
+# OS files
+.DS_Store
+
+# PM artifacts
+.scope-lock.json
