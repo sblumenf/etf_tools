@@ -79,7 +79,7 @@ class Holding(Base):
     __tablename__ = "holding"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "report_date", "holding_key", "filing_date", name="holding_uniq"
+            "etf_id", "report_date", "holding_key", "liquidity_classification", "filing_date", name="holding_uniq"
         ),
         Index("holding_etf_report_idx", "etf_id", "report_date"),
         Index("holding_cusip_idx", "cusip"),
@@ -129,6 +129,7 @@ class Derivative(Base):
             "report_date",
             "derivative_type",
             "underlying_name",
+            "expiration_date",
             "filing_date",
             "counterparty",
             name="derivative_uniq",

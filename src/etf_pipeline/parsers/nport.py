@@ -30,33 +30,19 @@ from etf_pipeline.models import (
     NPORTMonthlyReturn,
     SecurityLending,
 )
-from etf_pipeline.parser_utils import ensure_date, update_processing_log
+from etf_pipeline.parser_utils import (
+    clean_str,
+    ensure_date,
+    get_clean,
+    get_numeric,
+    parse_date,
+    parse_decimal,
+    update_processing_log,
+)
 from etf_pipeline.parsers.nport_xml import parse_nport_investments_xml
 
 logger = logging.getLogger(__name__)
 
-
-def _clean_str(val):
-    """Return None if val is None, 'N/A', or Mock object, else str(val)."""
-    if val is None:
-        return None
-    # Check if it's a Mock object (check for _mock_name attribute)
-    if hasattr(val, '_mock_name'):
-        return None
-    val_str = str(val).strip()
-    if val_str == "N/A":
-        return None
-    return val_str if val_str else None
-
-
-def _safe_numeric(val):
-    """Return None if val is None or Mock object, otherwise return val as-is."""
-    if val is None:
-        return None
-    # Check if it's a Mock object
-    if hasattr(val, '_mock_name'):
-        return None
-    return val
 
 
 def parse_nport(
@@ -134,7 +120,7 @@ def parse_nport(
 
 
 def _get_latest_filings_per_series(filings):
-    """Get latest filings grouped by series_id.
+    """Get the most recent filing per series_id across all filing dates.
 
     Args:
         filings: EntityFilings collection from edgartools
@@ -145,27 +131,24 @@ def _get_latest_filings_per_series(filings):
     if not filings or (hasattr(filings, 'empty') and filings.empty):
         return {}
 
-    # Group filings by filing_date
-    by_date = defaultdict(list)
-    for filing in filings:
-        by_date[filing.filing_date].append(filing)
+    # Sort all filings by filing_date descending so first match wins (most recent)
+    all_filings = sorted(filings, key=lambda f: f.filing_date, reverse=True)
 
-    if not by_date:
+    if not all_filings:
         return {}
 
-    # Get the most recent filing date
-    latest_date = max(by_date.keys())
-    latest_filings = sorted(by_date[latest_date], key=lambda f: f.accession_number)
-
-    # Parse each filing and extract series_id
+    # Parse each filing; first time we see a series_id is the most recent
     series_map = {}
-    for filing in latest_filings:
+    for filing in all_filings:
         try:
             fund_report = FundReport.from_filing(filing)
             series_id = fund_report.general_info.series_id
 
             if not series_id:
                 logger.warning(f"Filing has no series_id, skipping (filing_date={filing.filing_date})")
+                continue
+
+            if series_id in series_map:
                 continue
 
             report_date = fund_report.reporting_period
@@ -202,7 +185,7 @@ def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> Non
         logger.warning(f"CIK {cik}: No valid series found in filings")
         return
 
-    logger.info(f"CIK {cik}: Parsed {len(series_map)} series from latest filings")
+    logger.info(f"CIK {cik}: Parsed {len(series_map)} series from filings")
 
     # Track the latest filing date seen across all filings processed
     latest_filing_date = max(filing_date for _, _, _, filing_date in series_map.values()) if series_map else None
@@ -265,156 +248,47 @@ def _extract_fund_snapshot(
         logger.debug(f"Fund snapshot already exists for CIK {cik} on {report_date}")
         return
 
-    # Extract fund_info data
     try:
-        fund_info = fund_report.fund_info
+        fi = fund_report.fund_info
     except AttributeError:
         logger.warning(f"No fund_info found in FundReport for CIK {cik}")
         return
 
-    total_assets = None
-    total_liabilities = None
-    net_assets = None
-    cash_not_reported = None
-    assets_invested = None
-    assets_misc_sec = None
-    amt_pay_one_yr_banks_borr = None
-    amt_pay_one_yr_ctrld_comp = None
-    amt_pay_one_yr_oth_affil = None
-    amt_pay_one_yr_other = None
-    amt_pay_aft_one_yr_banks_borr = None
-    amt_pay_aft_one_yr_ctrld_comp = None
-    amt_pay_aft_one_yr_oth_affil = None
-    amt_pay_aft_one_yr_other = None
-    delay_deliv = None
-    stand_by_commit = None
-    liquidity_pref = None
-    is_non_cash_collateral = False
-
-    try:
-        total_assets = fund_info.total_assets
-    except AttributeError:
-        pass
-
-    try:
-        total_liabilities = fund_info.total_liabilities
-    except AttributeError:
-        pass
-
-    try:
-        net_assets = fund_info.net_assets
-    except AttributeError:
-        pass
-
-    try:
-        cash_not_reported = fund_info.cash_not_reported
-    except AttributeError:
-        pass
-
-    try:
-        assets_invested = fund_info.assets_invested
-    except AttributeError:
-        pass
-
-    try:
-        assets_misc_sec = fund_info.assets_misc_sec
-    except AttributeError:
-        pass
-
-    try:
-        amt_pay_one_yr_banks_borr = fund_info.amt_pay_one_yr_banks_borr
-    except AttributeError:
-        pass
-
-    try:
-        amt_pay_one_yr_ctrld_comp = fund_info.amt_pay_one_yr_ctrld_comp
-    except AttributeError:
-        pass
-
-    try:
-        amt_pay_one_yr_oth_affil = fund_info.amt_pay_one_yr_oth_affil
-    except AttributeError:
-        pass
-
-    try:
-        amt_pay_one_yr_other = fund_info.amt_pay_one_yr_other
-    except AttributeError:
-        pass
-
-    try:
-        amt_pay_aft_one_yr_banks_borr = fund_info.amt_pay_aft_one_yr_banks_borr
-    except AttributeError:
-        pass
-
-    try:
-        amt_pay_aft_one_yr_ctrld_comp = fund_info.amt_pay_aft_one_yr_ctrld_comp
-    except AttributeError:
-        pass
-
-    try:
-        amt_pay_aft_one_yr_oth_affil = fund_info.amt_pay_aft_one_yr_oth_affil
-    except AttributeError:
-        pass
-
-    try:
-        amt_pay_aft_one_yr_other = fund_info.amt_pay_aft_one_yr_other
-    except AttributeError:
-        pass
-
-    try:
-        delay_deliv = fund_info.delay_deliv
-    except AttributeError:
-        pass
-
-    try:
-        stand_by_commit = fund_info.stand_by_commit
-    except AttributeError:
-        pass
-
-    try:
-        liquidity_pref = fund_info.liquidity_pref
-    except AttributeError:
-        pass
-
-    try:
-        is_non_cash_collateral_val = fund_info.is_non_cash_collateral
-        if is_non_cash_collateral_val is not None:
-            is_non_cash_collateral = bool(is_non_cash_collateral_val)
-    except AttributeError:
-        pass
+    is_non_cash_collateral_val = getattr(fi, 'is_non_cash_collateral', None)
+    is_non_cash_collateral = bool(is_non_cash_collateral_val) if is_non_cash_collateral_val is not None else False
 
     snapshot = FundSnapshot(
         cik=cik,
         report_date=report_date,
         filing_date=filing_date,
-        total_assets=total_assets,
-        total_liabilities=total_liabilities,
-        net_assets=net_assets,
-        cash_not_reported=cash_not_reported,
-        assets_invested=assets_invested,
-        assets_misc_sec=assets_misc_sec,
-        amt_pay_one_yr_banks_borr=amt_pay_one_yr_banks_borr,
-        amt_pay_one_yr_ctrld_comp=amt_pay_one_yr_ctrld_comp,
-        amt_pay_one_yr_oth_affil=amt_pay_one_yr_oth_affil,
-        amt_pay_one_yr_other=amt_pay_one_yr_other,
-        amt_pay_aft_one_yr_banks_borr=amt_pay_aft_one_yr_banks_borr,
-        amt_pay_aft_one_yr_ctrld_comp=amt_pay_aft_one_yr_ctrld_comp,
-        amt_pay_aft_one_yr_oth_affil=amt_pay_aft_one_yr_oth_affil,
-        amt_pay_aft_one_yr_other=amt_pay_aft_one_yr_other,
-        delay_deliv=delay_deliv,
-        stand_by_commit=stand_by_commit,
-        liquidity_pref=liquidity_pref,
+        total_assets=getattr(fi, 'total_assets', None),
+        total_liabilities=getattr(fi, 'total_liabilities', None),
+        net_assets=getattr(fi, 'net_assets', None),
+        cash_not_reported=getattr(fi, 'cash_not_reported', None),
+        assets_invested=getattr(fi, 'assets_invested', None),
+        assets_misc_sec=getattr(fi, 'assets_misc_sec', None),
+        amt_pay_one_yr_banks_borr=getattr(fi, 'amt_pay_one_yr_banks_borr', None),
+        amt_pay_one_yr_ctrld_comp=getattr(fi, 'amt_pay_one_yr_ctrld_comp', None),
+        amt_pay_one_yr_oth_affil=getattr(fi, 'amt_pay_one_yr_oth_affil', None),
+        amt_pay_one_yr_other=getattr(fi, 'amt_pay_one_yr_other', None),
+        amt_pay_aft_one_yr_banks_borr=getattr(fi, 'amt_pay_aft_one_yr_banks_borr', None),
+        amt_pay_aft_one_yr_ctrld_comp=getattr(fi, 'amt_pay_aft_one_yr_ctrld_comp', None),
+        amt_pay_aft_one_yr_oth_affil=getattr(fi, 'amt_pay_aft_one_yr_oth_affil', None),
+        amt_pay_aft_one_yr_other=getattr(fi, 'amt_pay_aft_one_yr_other', None),
+        delay_deliv=getattr(fi, 'delay_deliv', None),
+        stand_by_commit=getattr(fi, 'stand_by_commit', None),
+        liquidity_pref=getattr(fi, 'liquidity_pref', None),
         is_non_cash_collateral=is_non_cash_collateral,
     )
     session.add(snapshot)
     logger.info(f"Created fund snapshot for CIK {cik} on {report_date}")
 
 
-def _extract_monthly_returns(filing, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyReturn]:
+def _extract_monthly_returns(xml_text, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyReturn]:
     """Extract monthly return data from NPORT-P filing XML.
 
     Args:
-        filing: Filing object from edgartools
+        xml_text: Raw XML string from filing
         etf_id: ETF ID to associate returns with
         report_date: Report date for the filing
         filing_date: Filing date
@@ -425,14 +299,12 @@ def _extract_monthly_returns(filing, etf_id: int, report_date, filing_date) -> l
     monthly_returns = []
 
     try:
-        # Get raw XML content from filing
-        xml_content = filing.xml()
-        if not xml_content:
+        if not xml_text:
             logger.debug(f"No XML content found in filing for etf_id={etf_id}")
             return monthly_returns
 
         # Parse XML
-        root = ET.fromstring(xml_content)
+        root = ET.fromstring(xml_text)
 
         # Find monthlyTotReturns element
         # Path: /edgarSubmission/formData/fundInfo/returnInfo/monthlyTotReturns
@@ -455,13 +327,7 @@ def _extract_monthly_returns(filing, etf_id: int, report_date, filing_date) -> l
 
             # Convert "N/A" to None, otherwise convert to Decimal
             def parse_return(val):
-                if val is None or val.strip().upper() == "N/A":
-                    return None
-                try:
-                    return Decimal(val)
-                except (ValueError, Exception) as e:
-                    logger.warning(f"Could not parse return value '{val}': {e}")
-                    return None
+                return parse_decimal(val)
 
             month_1 = parse_return(rtn1)
             month_2 = parse_return(rtn2)
@@ -488,11 +354,11 @@ def _extract_monthly_returns(filing, etf_id: int, report_date, filing_date) -> l
     return monthly_returns
 
 
-def _extract_monthly_flows(filing, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyFlow]:
+def _extract_monthly_flows(xml_text, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyFlow]:
     """Extract monthly flow data from NPORT-P filing XML.
 
     Args:
-        filing: Filing object from edgartools
+        xml_text: Raw XML string from filing
         etf_id: ETF ID to associate flows with
         report_date: Report date for the filing
         filing_date: Filing date
@@ -503,14 +369,12 @@ def _extract_monthly_flows(filing, etf_id: int, report_date, filing_date) -> lis
     monthly_flows = []
 
     try:
-        # Get raw XML content from filing
-        xml_content = filing.xml()
-        if not xml_content:
+        if not xml_text:
             logger.debug(f"No XML content found in filing for etf_id={etf_id}")
             return monthly_flows
 
         # Parse XML
-        root = ET.fromstring(xml_content)
+        root = ET.fromstring(xml_text)
 
         # Find fundInfo element which contains monthly flow data
         # Path: /edgarSubmission/formData/fundInfo
@@ -535,13 +399,7 @@ def _extract_monthly_flows(filing, etf_id: int, report_date, filing_date) -> lis
 
         # Convert "N/A" to None, otherwise convert to Decimal
         def parse_flow(val):
-            if val is None or val.strip().upper() == "N/A":
-                return None
-            try:
-                return Decimal(val)
-            except (ValueError, Exception) as e:
-                logger.warning(f"Could not parse flow value '{val}': {e}")
-                return None
+            return parse_decimal(val)
 
         # Extract flow data from attributes
         month_1_sales = parse_flow(mon1_flow.get('sales')) if mon1_flow is not None else None
@@ -584,11 +442,11 @@ def _extract_monthly_flows(filing, etf_id: int, report_date, filing_date) -> lis
     return monthly_flows
 
 
-def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -> list[InterestRateRisk]:
+def _extract_interest_rate_risk(xml_text, etf_id: int, report_date, filing_date) -> list[InterestRateRisk]:
     """Extract interest rate risk data from NPORT-P filing XML.
 
     Args:
-        filing: Filing object from edgartools
+        xml_text: Raw XML string from filing
         etf_id: ETF ID to associate interest rate risk data with
         report_date: Report date for the filing
         filing_date: Filing date
@@ -599,14 +457,12 @@ def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -
     interest_rate_risks = []
 
     try:
-        # Get raw XML content from filing
-        xml_content = filing.xml()
-        if not xml_content:
+        if not xml_text:
             logger.debug(f"No XML content found in filing for etf_id={etf_id}")
             return interest_rate_risks
 
         # Parse XML
-        root = ET.fromstring(xml_content)
+        root = ET.fromstring(xml_text)
 
         # Find curMetrics element
         # Path: /edgarSubmission/formData/fundinfo/curMetrics
@@ -637,11 +493,11 @@ def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -
             dv01_30y = None
 
             if dv01_elem is not None:
-                dv01_3m = _parse_decimal(dv01_elem.get('period3Mon'))
-                dv01_1y = _parse_decimal(dv01_elem.get('period1Yr'))
-                dv01_5y = _parse_decimal(dv01_elem.get('period5Yr'))
-                dv01_10y = _parse_decimal(dv01_elem.get('period10Yr'))
-                dv01_30y = _parse_decimal(dv01_elem.get('period30Yr'))
+                dv01_3m = parse_decimal(dv01_elem.get('period3Mon'))
+                dv01_1y = parse_decimal(dv01_elem.get('period1Yr'))
+                dv01_5y = parse_decimal(dv01_elem.get('period5Yr'))
+                dv01_10y = parse_decimal(dv01_elem.get('period10Yr'))
+                dv01_30y = parse_decimal(dv01_elem.get('period30Yr'))
 
             # Extract DV100 risk metrics
             dv100_elem = cur_metric_elem.find('nport:intrstRtRiskdv100', ns)
@@ -652,11 +508,11 @@ def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -
             dv100_30y = None
 
             if dv100_elem is not None:
-                dv100_3m = _parse_decimal(dv100_elem.get('period3Mon'))
-                dv100_1y = _parse_decimal(dv100_elem.get('period1Yr'))
-                dv100_5y = _parse_decimal(dv100_elem.get('period5Yr'))
-                dv100_10y = _parse_decimal(dv100_elem.get('period10Yr'))
-                dv100_30y = _parse_decimal(dv100_elem.get('period30Yr'))
+                dv100_3m = parse_decimal(dv100_elem.get('period3Mon'))
+                dv100_1y = parse_decimal(dv100_elem.get('period1Yr'))
+                dv100_5y = parse_decimal(dv100_elem.get('period5Yr'))
+                dv100_10y = parse_decimal(dv100_elem.get('period10Yr'))
+                dv100_30y = parse_decimal(dv100_elem.get('period30Yr'))
 
             # Create InterestRateRisk object
             interest_rate_risk = InterestRateRisk(
@@ -686,11 +542,11 @@ def _extract_interest_rate_risk(filing, etf_id: int, report_date, filing_date) -
     return interest_rate_risks
 
 
-def _extract_credit_spread_risk(filing, etf_id: int, report_date, filing_date) -> Optional[CreditSpreadRisk]:
+def _extract_credit_spread_risk(xml_text, etf_id: int, report_date, filing_date) -> Optional[CreditSpreadRisk]:
     """Extract credit spread risk data from NPORT-P filing XML.
 
     Args:
-        filing: Filing object from edgartools
+        xml_text: Raw XML string from filing
         etf_id: ETF ID to associate credit spread risk data with
         report_date: Report date for the filing
         filing_date: Filing date
@@ -699,14 +555,12 @@ def _extract_credit_spread_risk(filing, etf_id: int, report_date, filing_date) -
         CreditSpreadRisk object if data found, None otherwise
     """
     try:
-        # Get raw XML content from filing
-        xml_content = filing.xml()
-        if not xml_content:
+        if not xml_text:
             logger.debug(f"No XML content found in filing for etf_id={etf_id}")
             return None
 
         # Parse XML
-        root = ET.fromstring(xml_content)
+        root = ET.fromstring(xml_text)
 
         # Find credit spread risk elements
         # Path: /edgarSubmission/formData/fundInfo/creditSprdRiskInvstGrade and creditSprdRiskNonInvstGrade
@@ -728,11 +582,11 @@ def _extract_credit_spread_risk(filing, etf_id: int, report_date, filing_date) -
         invst_grade_30y = None
 
         if invst_grade_elem is not None:
-            invst_grade_3m = _parse_decimal(invst_grade_elem.get('period3Mon'))
-            invst_grade_1y = _parse_decimal(invst_grade_elem.get('period1Yr'))
-            invst_grade_5y = _parse_decimal(invst_grade_elem.get('period5Yr'))
-            invst_grade_10y = _parse_decimal(invst_grade_elem.get('period10Yr'))
-            invst_grade_30y = _parse_decimal(invst_grade_elem.get('period30Yr'))
+            invst_grade_3m = parse_decimal(invst_grade_elem.get('period3Mon'))
+            invst_grade_1y = parse_decimal(invst_grade_elem.get('period1Yr'))
+            invst_grade_5y = parse_decimal(invst_grade_elem.get('period5Yr'))
+            invst_grade_10y = parse_decimal(invst_grade_elem.get('period10Yr'))
+            invst_grade_30y = parse_decimal(invst_grade_elem.get('period30Yr'))
 
         # Extract non-investment grade metrics
         non_invst_grade_3m = None
@@ -742,11 +596,11 @@ def _extract_credit_spread_risk(filing, etf_id: int, report_date, filing_date) -
         non_invst_grade_30y = None
 
         if non_invst_grade_elem is not None:
-            non_invst_grade_3m = _parse_decimal(non_invst_grade_elem.get('period3Mon'))
-            non_invst_grade_1y = _parse_decimal(non_invst_grade_elem.get('period1Yr'))
-            non_invst_grade_5y = _parse_decimal(non_invst_grade_elem.get('period5Yr'))
-            non_invst_grade_10y = _parse_decimal(non_invst_grade_elem.get('period10Yr'))
-            non_invst_grade_30y = _parse_decimal(non_invst_grade_elem.get('period30Yr'))
+            non_invst_grade_3m = parse_decimal(non_invst_grade_elem.get('period3Mon'))
+            non_invst_grade_1y = parse_decimal(non_invst_grade_elem.get('period1Yr'))
+            non_invst_grade_5y = parse_decimal(non_invst_grade_elem.get('period5Yr'))
+            non_invst_grade_10y = parse_decimal(non_invst_grade_elem.get('period10Yr'))
+            non_invst_grade_30y = parse_decimal(non_invst_grade_elem.get('period30Yr'))
 
         # Create CreditSpreadRisk object
         credit_spread_risk = CreditSpreadRisk(
@@ -773,16 +627,6 @@ def _extract_credit_spread_risk(filing, etf_id: int, report_date, filing_date) -
         return None
 
 
-def _parse_decimal(val: Optional[str]) -> Optional[Decimal]:
-    """Parse a string value to Decimal, handling N/A and None."""
-    if val is None or val.strip().upper() == "N/A":
-        return None
-    try:
-        return Decimal(val)
-    except (ValueError, Exception) as e:
-        logger.warning(f"Could not parse decimal value '{val}': {e}")
-        return None
-
 
 def _build_derivative_swap(swp, derivative_id: int) -> DerivativeSwap:
     """Build a DerivativeSwap instance from a SwapDerivative object.
@@ -794,11 +638,11 @@ def _build_derivative_swap(swp, derivative_id: int) -> DerivativeSwap:
     Returns:
         DerivativeSwap instance
     """
-    upfront_payment = _safe_numeric(swp.upfront_payment) if hasattr(swp, 'upfront_payment') else None
-    upfront_payment_currency = _clean_str(swp.payment_currency) if hasattr(swp, 'payment_currency') else None
-    upfront_receipt = _safe_numeric(swp.upfront_receipt) if hasattr(swp, 'upfront_receipt') else None
-    upfront_receipt_currency = _clean_str(swp.receipt_currency) if hasattr(swp, 'receipt_currency') else None
-    swap_flag = _clean_str(swp.swap_flag) if hasattr(swp, 'swap_flag') else None
+    upfront_payment = get_numeric(swp, 'upfront_payment')
+    upfront_payment_currency = get_clean(swp, 'payment_currency')
+    upfront_receipt = get_numeric(swp, 'upfront_receipt')
+    upfront_receipt_currency = get_clean(swp, 'receipt_currency')
+    swap_flag = get_clean(swp, 'swap_flag')
 
     return DerivativeSwap(
         derivative_id=derivative_id,
@@ -835,18 +679,18 @@ def _build_swap_legs(swp, swap_id: int) -> list[DerivativeSwapLeg]:
         swap_id=swap_id,
         direction="pay",
         leg_type=pay_leg_type,
-        fixed_rate=_safe_numeric(swp.fixed_rate_pay) if hasattr(swp, 'fixed_rate_pay') else None,
-        fixed_amount=_safe_numeric(swp.fixed_amount_pay) if hasattr(swp, 'fixed_amount_pay') else None,
-        fixed_currency=_clean_str(swp.fixed_currency_pay) if hasattr(swp, 'fixed_currency_pay') else None,
-        floating_index=_clean_str(swp.floating_index_pay) if hasattr(swp, 'floating_index_pay') else None,
-        floating_spread=_safe_numeric(swp.floating_spread_pay) if hasattr(swp, 'floating_spread_pay') else None,
-        floating_amount=_safe_numeric(swp.floating_amount_pay) if hasattr(swp, 'floating_amount_pay') else None,
-        floating_currency=_clean_str(swp.floating_currency_pay) if hasattr(swp, 'floating_currency_pay') else None,
-        tenor=_clean_str(swp.floating_tenor_pay) if hasattr(swp, 'floating_tenor_pay') else None,
-        tenor_unit=_clean_str(swp.floating_tenor_unit_pay) if hasattr(swp, 'floating_tenor_unit_pay') else None,
-        reset_date_tenor=_clean_str(swp.floating_reset_date_tenor_pay) if hasattr(swp, 'floating_reset_date_tenor_pay') else None,
-        reset_date_unit=_clean_str(swp.floating_reset_date_unit_pay) if hasattr(swp, 'floating_reset_date_unit_pay') else None,
-        other_description=_clean_str(swp.other_description_pay) if hasattr(swp, 'other_description_pay') else None,
+        fixed_rate=get_numeric(swp, 'fixed_rate_pay'),
+        fixed_amount=get_numeric(swp, 'fixed_amount_pay'),
+        fixed_currency=get_clean(swp, 'fixed_currency_pay'),
+        floating_index=get_clean(swp, 'floating_index_pay'),
+        floating_spread=get_numeric(swp, 'floating_spread_pay'),
+        floating_amount=get_numeric(swp, 'floating_amount_pay'),
+        floating_currency=get_clean(swp, 'floating_currency_pay'),
+        tenor=get_clean(swp, 'floating_tenor_pay'),
+        tenor_unit=get_clean(swp, 'floating_tenor_unit_pay'),
+        reset_date_tenor=get_clean(swp, 'floating_reset_date_tenor_pay'),
+        reset_date_unit=get_clean(swp, 'floating_reset_date_unit_pay'),
+        other_description=get_clean(swp, 'other_description_pay'),
     )
     legs.append(pay_leg)
 
@@ -863,18 +707,18 @@ def _build_swap_legs(swp, swap_id: int) -> list[DerivativeSwapLeg]:
         swap_id=swap_id,
         direction="receive",
         leg_type=receive_leg_type,
-        fixed_rate=_safe_numeric(swp.fixed_rate_receive) if hasattr(swp, 'fixed_rate_receive') else None,
-        fixed_amount=_safe_numeric(swp.fixed_amount_receive) if hasattr(swp, 'fixed_amount_receive') else None,
-        fixed_currency=_clean_str(swp.fixed_currency_receive) if hasattr(swp, 'fixed_currency_receive') else None,
-        floating_index=_clean_str(swp.floating_index_receive) if hasattr(swp, 'floating_index_receive') else None,
-        floating_spread=_safe_numeric(swp.floating_spread_receive) if hasattr(swp, 'floating_spread_receive') else None,
-        floating_amount=_safe_numeric(swp.floating_amount_receive) if hasattr(swp, 'floating_amount_receive') else None,
-        floating_currency=_clean_str(swp.floating_currency_receive) if hasattr(swp, 'floating_currency_receive') else None,
-        tenor=_clean_str(swp.floating_tenor_receive) if hasattr(swp, 'floating_tenor_receive') else None,
-        tenor_unit=_clean_str(swp.floating_tenor_unit_receive) if hasattr(swp, 'floating_tenor_unit_receive') else None,
-        reset_date_tenor=_clean_str(swp.floating_reset_date_tenor_receive) if hasattr(swp, 'floating_reset_date_tenor_receive') else None,
-        reset_date_unit=_clean_str(swp.floating_reset_date_unit_receive) if hasattr(swp, 'floating_reset_date_unit_receive') else None,
-        other_description=_clean_str(swp.other_description_receive) if hasattr(swp, 'other_description_receive') else None,
+        fixed_rate=get_numeric(swp, 'fixed_rate_receive'),
+        fixed_amount=get_numeric(swp, 'fixed_amount_receive'),
+        fixed_currency=get_clean(swp, 'fixed_currency_receive'),
+        floating_index=get_clean(swp, 'floating_index_receive'),
+        floating_spread=get_numeric(swp, 'floating_spread_receive'),
+        floating_amount=get_numeric(swp, 'floating_amount_receive'),
+        floating_currency=get_clean(swp, 'floating_currency_receive'),
+        tenor=get_clean(swp, 'floating_tenor_receive'),
+        tenor_unit=get_clean(swp, 'floating_tenor_unit_receive'),
+        reset_date_tenor=get_clean(swp, 'floating_reset_date_tenor_receive'),
+        reset_date_unit=get_clean(swp, 'floating_reset_date_unit_receive'),
+        other_description=get_clean(swp, 'other_description_receive'),
     )
     legs.append(receive_leg)
 
@@ -894,13 +738,13 @@ def _build_derivative_option(opt, derivative_id: int) -> DerivativeOption:
     Returns:
         DerivativeOption instance
     """
-    put_or_call = _clean_str(opt.put_or_call) if hasattr(opt, 'put_or_call') else None
-    written_or_purchased = _clean_str(opt.written_or_purchased) if hasattr(opt, 'written_or_purchased') else None
-    share_number = _safe_numeric(opt.share_number) if hasattr(opt, 'share_number') else None
-    exercise_price = _safe_numeric(opt.exercise_price) if hasattr(opt, 'exercise_price') else None
-    exercise_price_currency = _clean_str(opt.exercise_price_currency) if hasattr(opt, 'exercise_price_currency') else None
-    index_name = _clean_str(opt.index_name) if hasattr(opt, 'index_name') else None
-    index_identifier = _clean_str(opt.index_identifier) if hasattr(opt, 'index_identifier') else None
+    put_or_call = get_clean(opt, 'put_or_call')
+    written_or_purchased = get_clean(opt, 'written_or_purchased')
+    share_number = get_numeric(opt, 'share_number')
+    exercise_price = get_numeric(opt, 'exercise_price')
+    exercise_price_currency = get_clean(opt, 'exercise_price_currency')
+    index_name = get_clean(opt, 'index_name')
+    index_identifier = get_clean(opt, 'index_identifier')
 
     # Handle nested derivative info (e.g., swaption-on-swap)
     nested_deriv_type = None
@@ -912,23 +756,23 @@ def _build_derivative_option(opt, derivative_id: int) -> DerivativeOption:
     if hasattr(opt, 'swap_derivative') and opt.swap_derivative:
         nested_swap = opt.swap_derivative
         nested_deriv_type = "SWP"
-        nested_deriv_notional = _safe_numeric(nested_swap.notional_amount) if hasattr(nested_swap, 'notional_amount') else None
-        nested_deriv_counterparty = _clean_str(nested_swap.counterparty) if hasattr(nested_swap, 'counterparty') else None
-        nested_deriv_currency = _clean_str(nested_swap.currency) if hasattr(nested_swap, 'currency') else None
+        nested_deriv_notional = get_numeric(nested_swap, 'notional_amount')
+        nested_deriv_counterparty = get_clean(nested_swap, 'counterparty')
+        nested_deriv_currency = get_clean(nested_swap, 'currency')
     # Check for nested forward
     elif hasattr(opt, 'forward_derivative') and opt.forward_derivative:
         nested_fwd = opt.forward_derivative
         nested_deriv_type = "FWD"
-        nested_deriv_notional = _safe_numeric(nested_fwd.notional_amount) if hasattr(nested_fwd, 'notional_amount') else None
-        nested_deriv_counterparty = _clean_str(nested_fwd.counterparty) if hasattr(nested_fwd, 'counterparty') else None
-        nested_deriv_currency = _clean_str(nested_fwd.currency) if hasattr(nested_fwd, 'currency') else None
+        nested_deriv_notional = get_numeric(nested_fwd, 'notional_amount')
+        nested_deriv_counterparty = get_clean(nested_fwd, 'counterparty')
+        nested_deriv_currency = get_clean(nested_fwd, 'currency')
     # Check for nested future
     elif hasattr(opt, 'future_derivative') and opt.future_derivative:
         nested_fut = opt.future_derivative
         nested_deriv_type = "FUT"
-        nested_deriv_notional = _safe_numeric(nested_fut.notional_amount) if hasattr(nested_fut, 'notional_amount') else None
-        nested_deriv_counterparty = _clean_str(nested_fut.counterparty) if hasattr(nested_fut, 'counterparty') else None
-        nested_deriv_currency = _clean_str(nested_fut.currency) if hasattr(nested_fut, 'currency') else None
+        nested_deriv_notional = get_numeric(nested_fut, 'notional_amount')
+        nested_deriv_counterparty = get_clean(nested_fut, 'counterparty')
+        nested_deriv_currency = get_clean(nested_fut, 'currency')
 
     return DerivativeOption(
         derivative_id=derivative_id,
@@ -956,11 +800,11 @@ def _build_derivative_forward(fwd, derivative_id: int) -> DerivativeForward:
     Returns:
         DerivativeForward instance
     """
-    currency_sold = _clean_str(fwd.currency_sold) if hasattr(fwd, 'currency_sold') else None
-    amount_sold = _safe_numeric(fwd.amount_sold) if hasattr(fwd, 'amount_sold') else None
-    currency_purchased = _clean_str(fwd.currency_purchased) if hasattr(fwd, 'currency_purchased') else None
-    amount_purchased = _safe_numeric(fwd.amount_purchased) if hasattr(fwd, 'amount_purchased') else None
-    settlement_date = _parse_date(fwd.settlement_date) if hasattr(fwd, 'settlement_date') and fwd.settlement_date else None
+    currency_sold = get_clean(fwd, 'currency_sold')
+    amount_sold = get_numeric(fwd, 'amount_sold')
+    currency_purchased = get_clean(fwd, 'currency_purchased')
+    amount_purchased = get_numeric(fwd, 'amount_purchased')
+    settlement_date = parse_date(fwd.settlement_date) if hasattr(fwd, 'settlement_date') and fwd.settlement_date else None
 
     return DerivativeForward(
         derivative_id=derivative_id,
@@ -979,38 +823,40 @@ def _process_etf(
     # Extract fund-level snapshot
     _extract_fund_snapshot(session, etf.cik, fund_report, report_date, filing_date)
 
+    xml_text = filing.xml()
+
     # Extract monthly returns
-    monthly_returns = _extract_monthly_returns(filing, etf.id, report_date, filing_date)
+    monthly_returns = _extract_monthly_returns(xml_text, etf.id, report_date, filing_date)
     for monthly_return in monthly_returns:
         session.add(monthly_return)
 
     # Extract monthly flows
-    monthly_flows = _extract_monthly_flows(filing, etf.id, report_date, filing_date)
+    monthly_flows = _extract_monthly_flows(xml_text, etf.id, report_date, filing_date)
     for monthly_flow in monthly_flows:
         session.add(monthly_flow)
 
     # Extract interest rate risk
-    interest_rate_risks = _extract_interest_rate_risk(filing, etf.id, report_date, filing_date)
+    interest_rate_risks = _extract_interest_rate_risk(xml_text, etf.id, report_date, filing_date)
     for interest_rate_risk in interest_rate_risks:
         session.add(interest_rate_risk)
 
     # Extract credit spread risk
-    credit_spread_risk = _extract_credit_spread_risk(filing, etf.id, report_date, filing_date)
+    credit_spread_risk = _extract_credit_spread_risk(xml_text, etf.id, report_date, filing_date)
     if credit_spread_risk:
         session.add(credit_spread_risk)
 
     # Parse XML for custom fields not exposed by edgartools
-    xml_custom_fields = parse_nport_investments_xml(filing.xml())
+    xml_custom_fields = parse_nport_investments_xml(xml_text)
 
     holdings_count = 0
     seen_holding_keys = set()
     dup_holdings_count = 0
     for investment in fund_report.non_derivatives:
         holding = _map_investment_to_holding(etf, investment, report_date, filing_date, xml_custom_fields)
-        if holding.holding_key in seen_holding_keys:
+        if (holding.holding_key, holding.liquidity_classification) in seen_holding_keys:
             dup_holdings_count += 1
             continue
-        seen_holding_keys.add(holding.holding_key)
+        seen_holding_keys.add((holding.holding_key, holding.liquidity_classification))
         session.add(holding)
 
         # Check for debt security details and attach to holding
@@ -1031,12 +877,11 @@ def _process_etf(
     for investment in fund_report.derivatives:
         derivative = _map_investment_to_derivative(etf, investment, report_date, filing_date)
         if derivative:
-            deriv_key = (derivative.derivative_type, derivative.underlying_name)
-            if deriv_key != (None, None) and deriv_key in seen_derivative_keys:
+            deriv_key = (derivative.derivative_type, derivative.underlying_name, derivative.expiration_date, derivative.counterparty)
+            if deriv_key in seen_derivative_keys:
                 dup_derivatives_count += 1
                 continue
-            if deriv_key != (None, None):
-                seen_derivative_keys.add(deriv_key)
+            seen_derivative_keys.add(deriv_key)
             session.add(derivative)
             session.flush()  # Flush to get derivative.id
 
@@ -1118,11 +963,11 @@ def _map_investment_to_holding(
             logger.debug(f"Could not parse fair_value_level: {investment.fair_value_level}")
 
     # Extract new fields
-    title = _clean_str(investment.title) if hasattr(investment, "title") else None
+    title = get_clean(investment, "title")
 
     payoff_profile = None
     if hasattr(investment, "payoff_profile"):
-        payoff_profile = _clean_str(investment.payoff_profile)
+        payoff_profile = clean_str(investment.payoff_profile)
 
     exchange_rate = None
     if hasattr(investment, "exchange_rate") and investment.exchange_rate is not None:
@@ -1132,10 +977,10 @@ def _map_investment_to_holding(
             logger.debug(f"Could not parse exchange_rate: {investment.exchange_rate}")
 
     # Compute holding_key: COALESCE(cusip, isin, name)
-    cusip_clean = _clean_str(investment.cusip)
-    isin_clean = _clean_str(isin)
-    name_clean = _clean_str(investment.name) or ""
-    lei_clean = _clean_str(investment.lei)
+    cusip_clean = clean_str(investment.cusip)
+    isin_clean = clean_str(isin)
+    name_clean = clean_str(investment.name) or ""
+    lei_clean = clean_str(investment.lei)
     holding_key = cusip_clean or isin_clean or name_clean
 
     # Extract custom XML fields using holding key
@@ -1143,7 +988,6 @@ def _map_investment_to_holding(
     xml_key = f"{name_clean}|{cusip_clean or ''}|{lei_clean or ''}"
     custom_fields = xml_custom_fields.get(xml_key, {})
     liquidity_classification = custom_fields.get("liquidity_classification")
-    borrower_name = custom_fields.get("borrower_name")
 
     return Holding(
         etf_id=etf.id,
@@ -1152,15 +996,15 @@ def _map_investment_to_holding(
         name=name_clean,
         cusip=cusip_clean,
         isin=isin_clean,
-        ticker=_clean_str(ticker),
+        ticker=clean_str(ticker),
         lei=lei_clean,
         balance=investment.balance,
         units=investment.units,
         value_usd=investment.value_usd,
         pct_val=investment.pct_value,
-        asset_category=_clean_str(investment.asset_category),
-        issuer_category=_clean_str(investment.issuer_category),
-        country=_clean_str(investment.investment_country),
+        asset_category=clean_str(investment.asset_category),
+        issuer_category=clean_str(investment.issuer_category),
+        country=clean_str(investment.investment_country),
         currency=currency,
         fair_value_level=fair_value_level,
         is_restricted=is_restricted,
@@ -1168,7 +1012,6 @@ def _map_investment_to_holding(
         payoff_profile=payoff_profile,
         exchange_rate=exchange_rate,
         holding_key=holding_key,
-        borrower_name=borrower_name,
         liquidity_classification=liquidity_classification,
     )
 
@@ -1198,7 +1041,6 @@ def _map_investment_to_derivative(
     currency_amt_sold = None
     settlement_date = None
     written_notional_amt = None
-    other_amt = None
 
     # New parent-level fields (US-1)
     unrealized_appreciation = None
@@ -1227,19 +1069,19 @@ def _map_investment_to_derivative(
             notional_value = fwd.amount_sold
         elif fwd.amount_purchased:
             notional_value = fwd.amount_purchased
-        expiration_date = _parse_date(fwd.settlement_date)
+        expiration_date = parse_date(fwd.settlement_date)
         # New fields for forward derivatives
-        currency_sold = _clean_str(fwd.currency_sold)
+        currency_sold = clean_str(fwd.currency_sold)
         currency_amt_sold = fwd.amount_sold
-        settlement_date = _parse_date(fwd.settlement_date)
+        settlement_date = parse_date(fwd.settlement_date)
 
         # Parent-level fields for forwards (deriv_addl_*)
-        currency = _clean_str(fwd.deriv_addl_currency) if hasattr(fwd, 'deriv_addl_currency') else None
-        underlying_title = _clean_str(fwd.deriv_addl_title) if hasattr(fwd, 'deriv_addl_title') else None
-        underlying_isin = _clean_str(fwd.deriv_addl_isin) if hasattr(fwd, 'deriv_addl_isin') else None
-        underlying_ticker = _clean_str(fwd.deriv_addl_ticker) if hasattr(fwd, 'deriv_addl_ticker') else None
-        underlying_other_id = _clean_str(fwd.deriv_addl_other_id) if hasattr(fwd, 'deriv_addl_other_id') else None
-        underlying_other_id_type = _clean_str(fwd.deriv_addl_other_id_type) if hasattr(fwd, 'deriv_addl_other_id_type') else None
+        currency = get_clean(fwd, 'deriv_addl_currency')
+        underlying_title = get_clean(fwd, 'deriv_addl_title')
+        underlying_isin = get_clean(fwd, 'deriv_addl_isin')
+        underlying_ticker = get_clean(fwd, 'deriv_addl_ticker')
+        underlying_other_id = get_clean(fwd, 'deriv_addl_other_id')
+        underlying_other_id_type = get_clean(fwd, 'deriv_addl_other_id_type')
 
     elif deriv_info.future_derivative:
         fut = deriv_info.future_derivative
@@ -1248,16 +1090,16 @@ def _map_investment_to_derivative(
         underlying_name = fut.reference_entity_name
         underlying_cusip = fut.reference_entity_cusip
         notional_value = fut.notional_amount
-        expiration_date = _parse_date(fut.expiration_date)
+        expiration_date = parse_date(fut.expiration_date)
 
         # Parent-level fields for futures (reference_entity_* + payoff_profile)
-        currency = _clean_str(fut.currency) if hasattr(fut, 'currency') else None
-        payoff_profile = _clean_str(fut.payoff_profile) if hasattr(fut, 'payoff_profile') else None
-        underlying_title = _clean_str(fut.reference_entity_title) if hasattr(fut, 'reference_entity_title') else None
-        underlying_isin = _clean_str(fut.reference_entity_isin) if hasattr(fut, 'reference_entity_isin') else None
-        underlying_ticker = _clean_str(fut.reference_entity_ticker) if hasattr(fut, 'reference_entity_ticker') else None
-        underlying_other_id = _clean_str(fut.reference_entity_other_id) if hasattr(fut, 'reference_entity_other_id') else None
-        underlying_other_id_type = _clean_str(fut.reference_entity_other_id_type) if hasattr(fut, 'reference_entity_other_id_type') else None
+        currency = get_clean(fut, 'currency')
+        payoff_profile = get_clean(fut, 'payoff_profile')
+        underlying_title = get_clean(fut, 'reference_entity_title')
+        underlying_isin = get_clean(fut, 'reference_entity_isin')
+        underlying_ticker = get_clean(fut, 'reference_entity_ticker')
+        underlying_other_id = get_clean(fut, 'reference_entity_other_id')
+        underlying_other_id_type = get_clean(fut, 'reference_entity_other_id_type')
 
     elif deriv_info.option_derivative:
         opt = deriv_info.option_derivative
@@ -1268,18 +1110,18 @@ def _map_investment_to_derivative(
         if opt.share_number:
             notional_value = opt.share_number
         delta = _parse_delta(opt.delta)
-        expiration_date = _parse_date(opt.expiration_date)
+        expiration_date = parse_date(opt.expiration_date)
         # New field for written options
         if opt.written_or_purchased == "W" and opt.share_number:
             written_notional_amt = opt.share_number
 
         # Parent-level fields for options (reference_entity_*)
-        currency = _clean_str(opt.currency_code) if hasattr(opt, 'currency_code') else None
-        underlying_title = _clean_str(opt.reference_entity_title) if hasattr(opt, 'reference_entity_title') else None
-        underlying_isin = _clean_str(opt.reference_entity_isin) if hasattr(opt, 'reference_entity_isin') else None
-        underlying_ticker = _clean_str(opt.reference_entity_ticker) if hasattr(opt, 'reference_entity_ticker') else None
-        underlying_other_id = _clean_str(opt.reference_entity_other_id) if hasattr(opt, 'reference_entity_other_id') else None
-        underlying_other_id_type = _clean_str(opt.reference_entity_other_id_type) if hasattr(opt, 'reference_entity_other_id_type') else None
+        currency = get_clean(opt, 'currency_code')
+        underlying_title = get_clean(opt, 'reference_entity_title')
+        underlying_isin = get_clean(opt, 'reference_entity_isin')
+        underlying_ticker = get_clean(opt, 'reference_entity_ticker')
+        underlying_other_id = get_clean(opt, 'reference_entity_other_id')
+        underlying_other_id_type = get_clean(opt, 'reference_entity_other_id_type')
 
     elif deriv_info.swap_derivative:
         swp = deriv_info.swap_derivative
@@ -1288,50 +1130,49 @@ def _map_investment_to_derivative(
         underlying_name = swp.deriv_addl_name or swp.reference_entity_name
         underlying_cusip = swp.deriv_addl_cusip or swp.reference_entity_cusip
         notional_value = swp.notional_amount
-        expiration_date = _parse_date(swp.termination_date)
+        expiration_date = parse_date(swp.termination_date)
 
         # Parent-level fields for swaps (deriv_addl_* or reference_entity_*)
-        currency = _clean_str(swp.currency_code) if hasattr(swp, 'currency_code') else None
+        currency = get_clean(swp, 'currency_code')
         # Prefer deriv_addl_* fields, fallback to reference_entity_*
-        underlying_title = _clean_str(swp.deriv_addl_title) if hasattr(swp, 'deriv_addl_title') and swp.deriv_addl_title else (_clean_str(swp.reference_entity_title) if hasattr(swp, 'reference_entity_title') else None)
-        underlying_isin = _clean_str(swp.deriv_addl_isin) if hasattr(swp, 'deriv_addl_isin') and swp.deriv_addl_isin else (_clean_str(swp.reference_entity_isin) if hasattr(swp, 'reference_entity_isin') else None)
-        underlying_ticker = _clean_str(swp.deriv_addl_ticker) if hasattr(swp, 'deriv_addl_ticker') and swp.deriv_addl_ticker else (_clean_str(swp.reference_entity_ticker) if hasattr(swp, 'reference_entity_ticker') else None)
-        underlying_other_id = _clean_str(swp.deriv_addl_other_id) if hasattr(swp, 'deriv_addl_other_id') and swp.deriv_addl_other_id else (_clean_str(swp.reference_entity_other_id) if hasattr(swp, 'reference_entity_other_id') else None)
-        underlying_other_id_type = _clean_str(swp.deriv_addl_other_id_type) if hasattr(swp, 'deriv_addl_other_id_type') and swp.deriv_addl_other_id_type else (_clean_str(swp.reference_entity_other_id_type) if hasattr(swp, 'reference_entity_other_id_type') else None)
+        underlying_title = clean_str(swp.deriv_addl_title) if hasattr(swp, 'deriv_addl_title') and swp.deriv_addl_title else (clean_str(swp.reference_entity_title) if hasattr(swp, 'reference_entity_title') else None)
+        underlying_isin = clean_str(swp.deriv_addl_isin) if hasattr(swp, 'deriv_addl_isin') and swp.deriv_addl_isin else (clean_str(swp.reference_entity_isin) if hasattr(swp, 'reference_entity_isin') else None)
+        underlying_ticker = clean_str(swp.deriv_addl_ticker) if hasattr(swp, 'deriv_addl_ticker') and swp.deriv_addl_ticker else (clean_str(swp.reference_entity_ticker) if hasattr(swp, 'reference_entity_ticker') else None)
+        underlying_other_id = clean_str(swp.deriv_addl_other_id) if hasattr(swp, 'deriv_addl_other_id') and swp.deriv_addl_other_id else (clean_str(swp.reference_entity_other_id) if hasattr(swp, 'reference_entity_other_id') else None)
+        underlying_other_id_type = clean_str(swp.deriv_addl_other_id_type) if hasattr(swp, 'deriv_addl_other_id_type') and swp.deriv_addl_other_id_type else (clean_str(swp.reference_entity_other_id_type) if hasattr(swp, 'reference_entity_other_id_type') else None)
 
     elif deriv_info.swaption_derivative:
         swo = deriv_info.swaption_derivative
         counterparty = swo.counterparty_name
         counterparty_lei = swo.counterparty_lei
-        expiration_date = _parse_date(swo.expiration_date)
+        expiration_date = parse_date(swo.expiration_date)
         # New field for written swaptions
         if swo.written_or_purchased == "W" and swo.share_number:
             written_notional_amt = swo.share_number
 
         # Parent-level fields for swaptions (reference_entity_*)
-        underlying_title = _clean_str(swo.reference_entity_title) if hasattr(swo, 'reference_entity_title') else None
-        underlying_isin = _clean_str(swo.reference_entity_isin) if hasattr(swo, 'reference_entity_isin') else None
-        underlying_ticker = _clean_str(swo.reference_entity_ticker) if hasattr(swo, 'reference_entity_ticker') else None
-        underlying_other_id = _clean_str(swo.reference_entity_other_id) if hasattr(swo, 'reference_entity_other_id') else None
-        underlying_other_id_type = _clean_str(swo.reference_entity_other_id_type) if hasattr(swo, 'reference_entity_other_id_type') else None
+        underlying_title = get_clean(swo, 'reference_entity_title')
+        underlying_isin = get_clean(swo, 'reference_entity_isin')
+        underlying_ticker = get_clean(swo, 'reference_entity_ticker')
+        underlying_other_id = get_clean(swo, 'reference_entity_other_id')
+        underlying_other_id_type = get_clean(swo, 'reference_entity_other_id_type')
 
     return Derivative(
         etf_id=etf.id,
         report_date=report_date,
         filing_date=filing_date,
         derivative_type=derivative_type,
-        underlying_name=_clean_str(underlying_name),
-        underlying_cusip=_clean_str(underlying_cusip),
+        underlying_name=clean_str(underlying_name),
+        underlying_cusip=clean_str(underlying_cusip),
         notional_value=notional_value,
-        counterparty=_clean_str(counterparty),
-        counterparty_lei=_clean_str(counterparty_lei),
+        counterparty=clean_str(counterparty),
+        counterparty_lei=clean_str(counterparty_lei),
         delta=delta,
         expiration_date=expiration_date,
         currency_sold=currency_sold,
         currency_amt_sold=currency_amt_sold,
         settlement_date=settlement_date,
         written_notional_amt=written_notional_amt,
-        other_amt=other_amt,
         # New parent-level fields (US-1)
         unrealized_appreciation=unrealized_appreciation,
         currency=currency,
@@ -1343,15 +1184,6 @@ def _map_investment_to_derivative(
         payoff_profile=payoff_profile,
     )
 
-
-def _parse_date(date_str: Optional[str]) -> Optional[date]:
-    """Parse a date string in YYYY-MM-DD format to a date object."""
-    if not date_str:
-        return None
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%d").date()
-    except (ValueError, TypeError):
-        return None
 
 
 def _parse_delta(delta_value) -> Optional[Decimal]:
@@ -1380,72 +1212,38 @@ def _map_debt_security_detail(investment) -> Optional[DebtSecurityDetail]:
 
     # Extract maturity_date
     maturity_date = None
-    try:
-        if hasattr(debt_sec, 'maturity_date') and debt_sec.maturity_date:
-            mat_date_raw = debt_sec.maturity_date
-            if isinstance(mat_date_raw, str):
-                if mat_date_raw == "N/A":
-                    maturity_date = None
-                else:
-                    maturity_date = _parse_date(mat_date_raw)
-            elif isinstance(mat_date_raw, datetime):
-                maturity_date = mat_date_raw.date()
-            elif isinstance(mat_date_raw, date):
-                maturity_date = mat_date_raw
-    except (AttributeError, TypeError):
-        pass
+    mat_date_raw = getattr(debt_sec, 'maturity_date', None)
+    if mat_date_raw:
+        if isinstance(mat_date_raw, str):
+            if mat_date_raw != "N/A":
+                maturity_date = parse_date(mat_date_raw)
+        elif isinstance(mat_date_raw, datetime):
+            maturity_date = mat_date_raw.date()
+        elif isinstance(mat_date_raw, date):
+            maturity_date = mat_date_raw
 
     # Extract coupon_kind
-    coupon_kind = None
-    try:
-        if hasattr(debt_sec, 'coupon_kind') and debt_sec.coupon_kind:
-            coupon_kind = _clean_str(debt_sec.coupon_kind)
-    except (AttributeError, TypeError):
-        pass
+    raw_coupon_kind = getattr(debt_sec, 'coupon_kind', None)
+    coupon_kind = clean_str(raw_coupon_kind) if raw_coupon_kind else None
 
     # Extract annualized_rate
-    annualized_rate = None
-    try:
-        if hasattr(debt_sec, 'annualized_rate') and debt_sec.annualized_rate is not None:
-            annualized_rate = debt_sec.annualized_rate
-    except (AttributeError, TypeError):
-        pass
+    annualized_rate = getattr(debt_sec, 'annualized_rate', None)
 
     # Extract boolean fields
-    is_default = False
-    try:
-        if hasattr(debt_sec, 'is_default') and debt_sec.is_default is not None:
-            is_default = bool(debt_sec.is_default)
-    except (AttributeError, TypeError):
-        pass
+    raw_is_default = getattr(debt_sec, 'is_default', None)
+    is_default = bool(raw_is_default) if raw_is_default is not None else False
 
-    is_in_arrears = False
-    try:
-        if hasattr(debt_sec, 'are_instrument_payents_in_arrears') and debt_sec.are_instrument_payents_in_arrears is not None:
-            is_in_arrears = bool(debt_sec.are_instrument_payents_in_arrears)
-    except (AttributeError, TypeError):
-        pass
+    raw_in_arrears = getattr(debt_sec, 'are_instrument_payents_in_arrears', None)
+    is_in_arrears = bool(raw_in_arrears) if raw_in_arrears is not None else False
 
-    is_paid_kind = False
-    try:
-        if hasattr(debt_sec, 'is_paid_kind') and debt_sec.is_paid_kind is not None:
-            is_paid_kind = bool(debt_sec.is_paid_kind)
-    except (AttributeError, TypeError):
-        pass
+    raw_paid_kind = getattr(debt_sec, 'is_paid_kind', None)
+    is_paid_kind = bool(raw_paid_kind) if raw_paid_kind is not None else False
 
-    is_mandatory_convertible = False
-    try:
-        if hasattr(debt_sec, 'is_mandatory_convertible') and debt_sec.is_mandatory_convertible is not None:
-            is_mandatory_convertible = bool(debt_sec.is_mandatory_convertible)
-    except (AttributeError, TypeError):
-        pass
+    raw_mandatory_conv = getattr(debt_sec, 'is_mandatory_convertible', None)
+    is_mandatory_convertible = bool(raw_mandatory_conv) if raw_mandatory_conv is not None else False
 
-    is_contingent_convertible = False
-    try:
-        if hasattr(debt_sec, 'is_continuing_convertible') and debt_sec.is_continuing_convertible is not None:
-            is_contingent_convertible = bool(debt_sec.is_continuing_convertible)
-    except (AttributeError, TypeError):
-        pass
+    raw_contingent_conv = getattr(debt_sec, 'is_continuing_convertible', None)
+    is_contingent_convertible = bool(raw_contingent_conv) if raw_contingent_conv is not None else False
 
     return DebtSecurityDetail(
         maturity_date=maturity_date,
@@ -1473,26 +1271,14 @@ def _map_security_lending(investment) -> Optional[SecurityLending]:
         return None
 
     # Extract boolean fields
-    is_cash_collateral = False
-    try:
-        if hasattr(sec_lending, 'is_cash_collateral') and sec_lending.is_cash_collateral is not None:
-            is_cash_collateral = (sec_lending.is_cash_collateral == "Y")
-    except (AttributeError, TypeError):
-        pass
+    raw_cash_collateral = getattr(sec_lending, 'is_cash_collateral', None)
+    is_cash_collateral = (raw_cash_collateral == "Y") if raw_cash_collateral is not None else False
 
-    is_non_cash_collateral = False
-    try:
-        if hasattr(sec_lending, 'is_non_cash_collateral') and sec_lending.is_non_cash_collateral is not None:
-            is_non_cash_collateral = (sec_lending.is_non_cash_collateral == "Y")
-    except (AttributeError, TypeError):
-        pass
+    raw_non_cash_collateral = getattr(sec_lending, 'is_non_cash_collateral', None)
+    is_non_cash_collateral = (raw_non_cash_collateral == "Y") if raw_non_cash_collateral is not None else False
 
-    is_loan_by_fund = False
-    try:
-        if hasattr(sec_lending, 'is_loan_by_fund') and sec_lending.is_loan_by_fund is not None:
-            is_loan_by_fund = (sec_lending.is_loan_by_fund == "Y")
-    except (AttributeError, TypeError):
-        pass
+    raw_loan_by_fund = getattr(sec_lending, 'is_loan_by_fund', None)
+    is_loan_by_fund = (raw_loan_by_fund == "Y") if raw_loan_by_fund is not None else False
 
     return SecurityLending(
         is_cash_collateral=is_cash_collateral,
