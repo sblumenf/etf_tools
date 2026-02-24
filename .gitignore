@@ -27,6 +27,7 @@ data/
 htmlcov/
 
 # Scratch / logs
+logs/
 ralph-*.txt
 ralph-*.md
 inspect_*.py

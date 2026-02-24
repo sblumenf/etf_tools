@@ -2,7 +2,8 @@ import logging
 import multiprocessing
 import queue
 import time
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 
 import click
 
@@ -16,11 +17,39 @@ logger = logging.getLogger(__name__)
 
 
 def _configure_logging():
-    """Configure logging with external library noise suppressed."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    """Configure logging to console and a timestamped markdown file."""
+    import atexit
+
+    log_dir = Path(__file__).resolve().parent.parent.parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+    log_file = log_dir / f"pipeline_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.md"
+
+    console_fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    file_fmt = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(console_fmt)
+
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setFormatter(file_fmt)
+
+    # Write markdown header before the handler starts appending
+    with open(log_file, "w", encoding="utf-8") as f:
+        f.write(f"# Pipeline Log — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        f.write("```\n")
+
+    def _close_log():
+        file_handler.close()
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write("```\n")
+
+    atexit.register(_close_log)
+
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    root.addHandler(console_handler)
+    root.addHandler(file_handler)
+
     # Suppress noisy HTTP/cache library loggers — only show warnings and errors
     for noisy_logger in (
         "httpx",
@@ -31,6 +60,8 @@ def _configure_logging():
         "httpxthrottlecache.ratelimiter",
     ):
         logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
+    logger.info("Log file: %s", log_file)
 
 
 @click.group()
