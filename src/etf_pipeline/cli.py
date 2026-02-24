@@ -261,8 +261,6 @@ def _worker_process_parser(result_queue, cik, parser_type):
     - status: "ok" or "failed"
     - parser_type: the parser that was run
     """
-    _configure_logging()
-
     result = {"status": "failed", "parser_type": parser_type}
 
     try:
