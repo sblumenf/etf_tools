@@ -557,6 +557,12 @@ def _process_cik_prospectus(session, cik: str) -> bool:
                 if sid and not cid and sid not in series_context_map:
                     series_context_map[sid] = ctx_id
 
+            # For series with no series-only context, use a class-level context
+            for ctx_id, ctx_data in context_map.items():
+                sid = ctx_data.get('series_id')
+                if sid and sid not in series_context_map:
+                    series_context_map[sid] = ctx_id
+
             # Build reverse mapping: context_id -> series_id (for all contexts with a series)
             context_to_series = {}
             for ctx_id, ctx_data in context_map.items():
