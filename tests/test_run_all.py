@@ -254,14 +254,8 @@ def test_get_stale_parsers_ncsr_shared_form(session):
 
 def _make_mock_ctx(mock_worker_fn=None):
     """Build a mock multiprocessing context that executes target synchronously."""
-    mock_queue_obj = MagicMock()
-    results = []
-
-    mock_queue_obj.put = lambda item: results.append(item)
-    mock_queue_obj.get = lambda timeout=None: results.pop(0) if results else None
-
     mock_context = MagicMock()
-    mock_context.Queue = lambda: mock_queue_obj
+    mock_context.Queue = lambda: queue.Queue()
 
     def mock_process_factory(target, args):
         proc = MagicMock()
@@ -280,7 +274,7 @@ def _make_mock_ctx(mock_worker_fn=None):
         return proc
 
     mock_context.Process = mock_process_factory
-    return mock_context, mock_queue_obj
+    return mock_context, None
 
 
 @patch("etf_pipeline.cli._worker_process_parser")
@@ -305,7 +299,7 @@ def test_run_all_skips_cik_with_no_new_filings(
     # First CIK: no stale parsers (skip). Second CIK: one stale parser.
     mock_get_stale.side_effect = [[], ["nport"]]
 
-    def fake_worker(result_queue, cik, parser_type):
+    def fake_worker(result_queue, log_queue, cik, parser_type):
         result_queue.put({"status": "ok", "parser_type": parser_type})
 
     mock_worker.side_effect = fake_worker
@@ -344,7 +338,7 @@ def test_run_all_runs_parsers_in_order(
 
     call_order = []
 
-    def fake_worker(result_queue, cik, parser_type):
+    def fake_worker(result_queue, log_queue, cik, parser_type):
         call_order.append(parser_type)
         result_queue.put({"status": "ok", "parser_type": parser_type})
 
@@ -381,7 +375,7 @@ def test_run_all_processes_multiple_ciks(
     mock_check_sec.return_value = ({}, False)
     mock_get_stale.return_value = ["nport"]
 
-    def fake_worker(result_queue, cik, parser_type):
+    def fake_worker(result_queue, log_queue, cik, parser_type):
         result_queue.put({"status": "ok", "parser_type": parser_type})
 
     mock_worker.side_effect = fake_worker
@@ -418,7 +412,7 @@ def test_run_all_continues_on_cik_failure(
     mock_get_stale.return_value = ["nport"]
 
     # Second CIK's nport parser fails (clean exit, status: failed)
-    def fake_worker(result_queue, cik, parser_type):
+    def fake_worker(result_queue, log_queue, cik, parser_type):
         if cik == "0000005678":
             result_queue.put({"status": "failed", "parser_type": parser_type})
         else:
@@ -459,7 +453,7 @@ def test_run_all_respects_limit(
     mock_check_sec.return_value = ({}, False)
     mock_get_stale.return_value = ["nport"]
 
-    def fake_worker(result_queue, cik, parser_type):
+    def fake_worker(result_queue, log_queue, cik, parser_type):
         result_queue.put({"status": "ok", "parser_type": parser_type})
 
     mock_worker.side_effect = fake_worker
@@ -665,7 +659,7 @@ def test_run_all_when_sec_check_fails(
     mock_check_sec.return_value = ({}, True)  # had_error=True
     mock_get_stale.return_value = ["nport"]
 
-    def fake_worker(result_queue, cik, parser_type):
+    def fake_worker(result_queue, log_queue, cik, parser_type):
         result_queue.put({"status": "ok", "parser_type": parser_type})
 
     mock_worker.side_effect = fake_worker
@@ -702,10 +696,8 @@ def test_run_all_handles_subprocess_timeout(
     mock_get_stale.return_value = ["nport"]
 
     with patch("multiprocessing.get_context") as mock_ctx:
-        mock_queue_obj = MagicMock()
-
         mock_context = MagicMock()
-        mock_context.Queue = lambda: mock_queue_obj
+        mock_context.Queue = lambda: queue.Queue()
 
         def mock_process_factory(target, args):
             proc = MagicMock()
@@ -748,10 +740,8 @@ def test_run_all_handles_subprocess_crash(
     mock_get_stale.return_value = ["nport"]
 
     with patch("multiprocessing.get_context") as mock_ctx:
-        mock_queue_obj = MagicMock()
-
         mock_context = MagicMock()
-        mock_context.Queue = lambda: mock_queue_obj
+        mock_context.Queue = lambda: queue.Queue()
 
         def mock_process_factory(target, args):
             proc = MagicMock()
@@ -794,11 +784,12 @@ def test_run_all_handles_empty_queue(
     mock_get_stale.return_value = ["nport"]
 
     with patch("multiprocessing.get_context") as mock_ctx:
-        mock_queue_obj = MagicMock()
-        mock_queue_obj.get = MagicMock(side_effect=queue.Empty)  # Simulates empty queue
+        mock_result_queue = MagicMock()
+        mock_result_queue.get = MagicMock(side_effect=queue.Empty)  # Simulates empty queue
+        queues = iter([queue.Queue(), mock_result_queue])
 
         mock_context = MagicMock()
-        mock_context.Queue = lambda: mock_queue_obj
+        mock_context.Queue = lambda: next(queues)
 
         def mock_process_factory(target, args):
             proc = MagicMock()

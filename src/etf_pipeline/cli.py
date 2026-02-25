@@ -1,4 +1,6 @@
+import atexit
 import logging
+import logging.handlers
 import multiprocessing
 import queue
 import time
@@ -18,8 +20,6 @@ logger = logging.getLogger(__name__)
 
 def _configure_logging():
     """Configure logging to console and a timestamped markdown file."""
-    import atexit
-
     log_dir = Path(__file__).resolve().parent.parent.parent / "logs"
     log_dir.mkdir(exist_ok=True)
     log_file = log_dir / f"pipeline_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.md"
@@ -62,6 +62,8 @@ def _configure_logging():
         logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
     logger.info("Log file: %s", log_file)
+
+    return console_handler, file_handler
 
 
 @click.group()
@@ -254,13 +256,18 @@ def run_parser_for_cik(cik, parser_type):
     getattr(mod, parser_fn.__name__)(ciks=[cik], clear_cache=True)
 
 
-def _worker_process_parser(result_queue, cik, parser_type):
+def _worker_process_parser(result_queue, log_queue, cik, parser_type):
     """Worker function for multiprocessing: runs a single parser for a single CIK.
 
     Puts a result dict into result_queue with keys:
     - status: "ok" or "failed"
     - parser_type: the parser that was run
     """
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(logging.INFO)
+    root.addHandler(logging.handlers.QueueHandler(log_queue))
+
     result = {"status": "failed", "parser_type": parser_type}
 
     try:
@@ -284,7 +291,7 @@ def run_all(limit):
     from etf_pipeline.discover import fetch
     from etf_pipeline.load_etfs import load_etfs
 
-    _configure_logging()
+    console_handler, file_handler = _configure_logging()
 
     click.echo("--- Step 0: Ensuring database tables exist ---")
     engine = get_engine()
@@ -314,81 +321,88 @@ def run_all(limit):
     failed_parsers = []
 
     ctx = multiprocessing.get_context('spawn')
+    log_queue = ctx.Queue()
+    listener = logging.handlers.QueueListener(log_queue, console_handler, file_handler, respect_handler_level=True)
+    listener.start()
 
-    for cik in ciks:
-        click.echo(f"\nChecking CIK {cik}...")
+    try:
+        for cik in ciks:
+            click.echo(f"\nChecking CIK {cik}...")
 
-        # Staleness check runs in the main process — it's just HTTP + DB, not heavy parsing
-        with session_factory() as session:
-            latest_sec_filings, check_failed = check_sec_filing_dates(cik)
-            if check_failed:
-                click.echo(f"  Warning: SEC filing date check failed for CIK {cik}, will attempt unprocessed parsers")
+            # Staleness check runs in the main process — it's just HTTP + DB, not heavy parsing
+            with session_factory() as session:
+                latest_sec_filings, check_failed = check_sec_filing_dates(cik)
+                if check_failed:
+                    click.echo(f"  Warning: SEC filing date check failed for CIK {cik}, will attempt unprocessed parsers")
 
-            stale_parsers = get_stale_parsers(session, cik, latest_sec_filings)
-            from sqlalchemy import select
-            from etf_pipeline.models import ProcessingLog
-            any_log = session.execute(
-                select(ProcessingLog.cik).where(ProcessingLog.cik == cik).limit(1)
-            ).scalar_one_or_none()
+                stale_parsers = get_stale_parsers(session, cik, latest_sec_filings)
+                from sqlalchemy import select
+                from etf_pipeline.models import ProcessingLog
+                any_log = session.execute(
+                    select(ProcessingLog.cik).where(ProcessingLog.cik == cik).limit(1)
+                ).scalar_one_or_none()
 
-        if not stale_parsers:
-            if any_log is None:
-                click.echo(f"  No known filings for CIK {cik} (never processed), skipping")
+            if not stale_parsers:
+                if any_log is None:
+                    click.echo(f"  No known filings for CIK {cik} (never processed), skipping")
+                else:
+                    click.echo(f"  Already up-to-date for CIK {cik}, skipping")
+                skipped += 1
+                continue
+
+            cik_process_failed = False
+
+            for parser_type in PARSER_ORDER:
+                if parser_type not in stale_parsers:
+                    continue
+
+                start_time = time.time()
+                result_queue = ctx.Queue()
+
+                proc = ctx.Process(
+                    target=_worker_process_parser,
+                    args=(result_queue, log_queue, cik, parser_type),
+                )
+                proc.start()
+                proc.join(timeout=600)
+
+                duration = time.time() - start_time
+
+                if proc.is_alive():
+                    proc.terminate()
+                    proc.join()
+                    click.echo(f"  Process timed out for CIK {cik} parser {parser_type} ({duration:.1f}s)")
+                    failed_parsers.append(f"{parser_type}({cik})")
+                    cik_process_failed = True
+                    continue
+
+                if proc.exitcode != 0:
+                    click.echo(f"  Process crashed for CIK {cik} parser {parser_type} (exit code: {proc.exitcode}, {duration:.1f}s)")
+                    failed_parsers.append(f"{parser_type}({cik})")
+                    cik_process_failed = True
+                    continue
+
+                try:
+                    result = result_queue.get(timeout=5)
+                except queue.Empty:
+                    click.echo(f"  No result received from subprocess for CIK {cik} parser {parser_type} ({duration:.1f}s)")
+                    failed_parsers.append(f"{parser_type}({cik})")
+                    cik_process_failed = True
+                    continue
+
+                if result["status"] == "failed":
+                    click.echo(f"  Failed parser: {parser_type}({cik}) ({duration:.1f}s)")
+                    failed_parsers.append(f"{parser_type}({cik})")
+                else:
+                    click.echo(f"  Completed {parser_type} for CIK {cik} in {duration:.1f}s")
+
+            if cik_process_failed:
+                failed += 1
             else:
-                click.echo(f"  Already up-to-date for CIK {cik}, skipping")
-            skipped += 1
-            continue
+                processed += 1
 
-        cik_process_failed = False
-
-        for parser_type in PARSER_ORDER:
-            if parser_type not in stale_parsers:
-                continue
-
-            start_time = time.time()
-            result_queue = ctx.Queue()
-
-            proc = ctx.Process(
-                target=_worker_process_parser,
-                args=(result_queue, cik, parser_type),
-            )
-            proc.start()
-            proc.join(timeout=600)
-
-            duration = time.time() - start_time
-
-            if proc.is_alive():
-                proc.terminate()
-                proc.join()
-                click.echo(f"  Process timed out for CIK {cik} parser {parser_type} ({duration:.1f}s)")
-                failed_parsers.append(f"{parser_type}({cik})")
-                cik_process_failed = True
-                continue
-
-            if proc.exitcode != 0:
-                click.echo(f"  Process crashed for CIK {cik} parser {parser_type} (exit code: {proc.exitcode}, {duration:.1f}s)")
-                failed_parsers.append(f"{parser_type}({cik})")
-                cik_process_failed = True
-                continue
-
-            try:
-                result = result_queue.get(timeout=5)
-            except queue.Empty:
-                click.echo(f"  No result received from subprocess for CIK {cik} parser {parser_type} ({duration:.1f}s)")
-                failed_parsers.append(f"{parser_type}({cik})")
-                cik_process_failed = True
-                continue
-
-            if result["status"] == "failed":
-                click.echo(f"  Failed parser: {parser_type}({cik}) ({duration:.1f}s)")
-                failed_parsers.append(f"{parser_type}({cik})")
-            else:
-                click.echo(f"  Completed {parser_type} for CIK {cik} in {duration:.1f}s")
-
-        if cik_process_failed:
-            failed += 1
-        else:
-            processed += 1
+    finally:
+        listener.stop()
 
     click.echo("\n--- Step 4: Pipeline complete ---")
     click.echo(f"Summary: {processed} CIKs processed, {skipped} CIKs skipped (no new filings), {failed} CIKs failed")
