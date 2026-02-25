@@ -6,9 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from etf_pipeline.parser_utils import parse_date, parse_decimal
 from etf_pipeline.parsers.finhigh import (
-    _parse_date,
-    _parse_decimal,
     parse_financial_highlights_table,
 )
 
@@ -16,77 +15,77 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures" / "finhigh"
 
 
 class TestParseDecimal:
-    """Tests for _parse_decimal helper."""
+    """Tests for parse_decimal helper."""
 
     def test_none(self):
-        assert _parse_decimal(None) is None
+        assert parse_decimal(None) is None
 
     def test_empty_string(self):
-        assert _parse_decimal("") is None
-        assert _parse_decimal("  ") is None
+        assert parse_decimal("") is None
+        assert parse_decimal("  ") is None
 
     def test_dash_variants(self):
-        assert _parse_decimal("-") is None
-        assert _parse_decimal("—") is None
-        assert _parse_decimal("N/A") is None
-        assert _parse_decimal("n/a") is None
+        assert parse_decimal("-") is None
+        assert parse_decimal("—") is None
+        assert parse_decimal("N/A") is None
+        assert parse_decimal("n/a") is None
 
     def test_simple_decimal(self):
-        assert _parse_decimal("1.23") == Decimal("1.23")
-        assert _parse_decimal("0.05") == Decimal("0.05")
+        assert parse_decimal("1.23") == Decimal("1.23")
+        assert parse_decimal("0.05") == Decimal("0.05")
 
     def test_with_dollar_sign(self):
-        assert _parse_decimal("$1.23") == Decimal("1.23")
-        assert _parse_decimal("$102.18") == Decimal("102.18")
+        assert parse_decimal("$1.23") == Decimal("1.23")
+        assert parse_decimal("$102.18") == Decimal("102.18")
 
     def test_with_commas(self):
-        assert _parse_decimal("1,234.56") == Decimal("1234.56")
-        assert _parse_decimal("$1,234.56") == Decimal("1234.56")
+        assert parse_decimal("1,234.56") == Decimal("1234.56")
+        assert parse_decimal("$1,234.56") == Decimal("1234.56")
 
     def test_parentheses_negative(self):
-        assert _parse_decimal("(1.23)") == Decimal("-1.23")
-        assert _parse_decimal("($1.23)") == Decimal("-1.23")
-        assert _parse_decimal("(1,234.56)") == Decimal("-1234.56")
+        assert parse_decimal("(1.23)") == Decimal("-1.23")
+        assert parse_decimal("($1.23)") == Decimal("-1.23")
+        assert parse_decimal("(1,234.56)") == Decimal("-1234.56")
 
     def test_percentage(self):
-        assert _parse_decimal("0.17%") == Decimal("0.0017")
-        assert _parse_decimal("14.10%") == Decimal("0.1410")
-        assert _parse_decimal("-17.71%") == Decimal("-0.1771")
+        assert parse_decimal("0.17%", pct=True) == Decimal("0.0017")
+        assert parse_decimal("14.10%", pct=True) == Decimal("0.1410")
+        assert parse_decimal("-17.71%", pct=True) == Decimal("-0.1771")
 
     def test_existing_decimal(self):
         d = Decimal("1.23")
-        assert _parse_decimal(d) == d
+        assert parse_decimal(d) == d
 
 
 class TestParseDate:
-    """Tests for _parse_date helper."""
+    """Tests for parse_date helper."""
 
     def test_none(self):
-        assert _parse_date(None) is None
+        assert parse_date(None) is None
 
     def test_empty_string(self):
-        assert _parse_date("") is None
+        assert parse_date("") is None
 
     def test_slash_format(self):
-        result = _parse_date("12/31/2024")
+        result = parse_date("12/31/2024")
         assert result.year == 2024
         assert result.month == 12
         assert result.day == 31
 
     def test_iso_format(self):
-        result = _parse_date("2024-12-31")
+        result = parse_date("2024-12-31")
         assert result.year == 2024
         assert result.month == 12
         assert result.day == 31
 
     def test_long_month_format(self):
-        result = _parse_date("December 31, 2024")
+        result = parse_date("December 31, 2024")
         assert result.year == 2024
         assert result.month == 12
         assert result.day == 31
 
     def test_invalid_format(self):
-        assert _parse_date("not a date") is None
+        assert parse_date("not a date") is None
 
 
 class TestParseFinancialHighlightsTable:

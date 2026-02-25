@@ -157,8 +157,6 @@ PARSERS = {
     "flows": (parse_flows, "24F-2NT"),
 }
 
-PARSER_FORM_MAP = {name: form_type for name, (_, form_type) in PARSERS.items()}
-
 PARSER_ORDER = ["nport", "ncsr", "prospectus", "finhigh", "flows"]
 
 
@@ -233,16 +231,10 @@ def get_stale_parsers(session, cik, latest_sec_filings):
 
     for parser_type, (_, form_type) in PARSERS.items():
         sec_latest_date = latest_sec_filings.get(form_type)
-        if sec_latest_date is None:
-            log_entry = get_processing_log(session, cik, parser_type)
-            if log_entry is None:
-                needed.append(parser_type)
-            continue
-
         log_entry = get_processing_log(session, cik, parser_type)
         if log_entry is None:
             needed.append(parser_type)
-        elif sec_latest_date > log_entry.latest_filing_date_seen:
+        elif sec_latest_date is not None and sec_latest_date > log_entry.latest_filing_date_seen:
             needed.append(parser_type)
 
     return needed
@@ -250,10 +242,8 @@ def get_stale_parsers(session, cik, latest_sec_filings):
 
 def run_parser_for_cik(cik, parser_type):
     """Dispatch to the correct parser function for a single CIK."""
-    import sys
     parser_fn, _ = PARSERS[parser_type]
-    mod = sys.modules[parser_fn.__module__]
-    getattr(mod, parser_fn.__name__)(ciks=[cik], clear_cache=True)
+    parser_fn(ciks=[cik], clear_cache=True)
 
 
 def _worker_process_parser(result_queue, log_queue, cik, parser_type):

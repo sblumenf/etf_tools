@@ -170,31 +170,29 @@ def test_load_etfs_upsert_existing(session, engine, sample_tickers_file, mock_co
     assert len(all_etfs) == 2
 
 
-def test_load_etfs_file_not_found(session, engine, tmp_path, mock_company, mock_load_etfs_db, capsys):
+def test_load_etfs_file_not_found(session, engine, tmp_path, mock_company, mock_load_etfs_db, caplog):
     """Test behavior when etf_tickers.json does not exist."""
     nonexistent_file = tmp_path / "nonexistent.json"
 
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", nonexistent_file):
         load_etfs()
 
-    captured = capsys.readouterr()
-    assert "does not exist" in captured.out
+    assert "File not found" in caplog.text
 
 
-def test_load_etfs_invalid_cik(session, engine, sample_tickers_file, mock_company, mock_load_etfs_db, capsys):
+def test_load_etfs_invalid_cik(session, engine, sample_tickers_file, mock_company, mock_load_etfs_db, caplog):
     """Test behavior when requested CIK is not in the file."""
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", sample_tickers_file):
         load_etfs(cik="99999")
 
-    captured = capsys.readouterr()
-    assert "not found" in captured.out
+    assert "not found" in caplog.text
 
     stmt = select(ETF)
     etfs = session.execute(stmt).scalars().all()
     assert len(etfs) == 0
 
 
-def test_load_etfs_company_error(session, engine, sample_tickers_file, mock_load_etfs_db, capsys):
+def test_load_etfs_company_error(session, engine, sample_tickers_file, mock_load_etfs_db, caplog):
     """Test that CIK-level errors are caught and logged."""
     with patch("etf_pipeline.load_etfs.TICKERS_FILE", sample_tickers_file):
         with patch("etf_pipeline.load_etfs.Company") as mock_company:
@@ -202,8 +200,7 @@ def test_load_etfs_company_error(session, engine, sample_tickers_file, mock_load
 
             load_etfs()
 
-    captured = capsys.readouterr()
-    assert "failed" in captured.out.lower()
+    assert "failed" in caplog.text.lower()
 
     stmt = select(ETF)
     etfs = session.execute(stmt).scalars().all()

@@ -25,7 +25,7 @@ def get_clean(obj, attr):
     return clean_str(getattr(obj, attr, None))
 
 
-def parse_decimal(val):
+def parse_decimal(val, pct=False):
     if val is None:
         return None
 
@@ -37,6 +37,7 @@ def parse_decimal(val):
     if not s or s in ("-", "—", "N/A", "NA", "n/a"):
         return None
 
+    is_percentage = pct and "%" in s
     s = s.replace("%", "")
 
     is_negative = False
@@ -50,6 +51,8 @@ def parse_decimal(val):
         decimal_value = Decimal(s)
         if is_negative:
             decimal_value = -decimal_value
+        if is_percentage:
+            decimal_value = decimal_value / 100
         return decimal_value
     except (ValueError, TypeError, InvalidOperation):
         logger.warning("Could not parse decimal: %s", val)

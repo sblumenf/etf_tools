@@ -25,49 +25,11 @@ from etf_pipeline.models import (
     PerShareOperating,
     PerShareRatios,
 )
-from etf_pipeline.parser_utils import ensure_date, update_processing_log
+from etf_pipeline.parser_utils import ensure_date, parse_date, parse_decimal, update_processing_log
 from etf_pipeline.sgml import parse_series_class_info
 
 logger = logging.getLogger(__name__)
 
-
-def _parse_decimal(value):
-    from decimal import InvalidOperation
-    if value is None:
-        return None
-    if isinstance(value, Decimal):
-        return value
-    s = str(value).strip()
-    if not s or s in ("-", "—", "N/A", "n/a"):
-        return None
-    is_percentage = "%" in s
-    s = s.replace("%", "")
-    is_negative = False
-    if s.startswith("(") and s.endswith(")"):
-        is_negative = True
-        s = s[1:-1]
-    s = s.replace("$", "").replace(",", "")
-    try:
-        decimal_value = Decimal(s)
-        if is_negative:
-            decimal_value = -decimal_value
-        if is_percentage:
-            decimal_value = decimal_value / 100
-        return decimal_value
-    except (ValueError, TypeError, InvalidOperation):
-        return None
-
-
-def _parse_date(value):
-    if not value:
-        return None
-    s = str(value).strip()
-    for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%B %d, %Y", "%b %d, %Y"):
-        try:
-            return datetime.strptime(s, fmt).date()
-        except ValueError:
-            continue
-    return None
 
 
 def _find_table_context(table) -> tuple[Optional[str], Optional[str]]:
@@ -191,7 +153,7 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
         # Direct date pattern: "12/31/2024"
         date_match = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', row_text)
         if date_match:
-            fiscal_year_end = _parse_date(date_match.group(1))
+            fiscal_year_end = parse_date(date_match.group(1))
             break
 
         # "Year Ended <Month> <Day>," pattern — extract month/day, find year in next row
@@ -208,7 +170,7 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
                     for cell in next_cells:
                         year_match = re.search(r'\d{4}', cell.get_text().strip())
                         if year_match:
-                            fiscal_year_end = _parse_date(
+                            fiscal_year_end = parse_date(
                                 f"{month_day_str}, {year_match.group(0)}"
                             )
                             break
@@ -262,26 +224,26 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
             row_map['portfolio_turnover'] = i
 
     # Extract values using mapped rows
-    result['operating']['nav_beginning'] = _parse_decimal(get_value(row_map.get('nav_beginning'))) if 'nav_beginning' in row_map else None
-    result['operating']['net_investment_income'] = _parse_decimal(get_value(row_map.get('net_investment_income'))) if 'net_investment_income' in row_map else None
-    result['operating']['net_realized_unrealized_gain'] = _parse_decimal(get_value(row_map.get('net_realized_unrealized_gain'))) if 'net_realized_unrealized_gain' in row_map else None
-    result['operating']['total_from_operations'] = _parse_decimal(get_value(row_map.get('total_from_operations'))) if 'total_from_operations' in row_map else None
-    result['operating']['equalization'] = _parse_decimal(get_value(row_map.get('equalization'))) if 'equalization' in row_map else None
-    result['operating']['nav_end'] = _parse_decimal(get_value(row_map.get('nav_end'))) if 'nav_end' in row_map else None
-    result['operating']['total_return'] = _parse_decimal(get_value(row_map.get('total_return'))) if 'total_return' in row_map else None
+    result['operating']['nav_beginning'] = parse_decimal(get_value(row_map.get('nav_beginning'))) if 'nav_beginning' in row_map else None
+    result['operating']['net_investment_income'] = parse_decimal(get_value(row_map.get('net_investment_income'))) if 'net_investment_income' in row_map else None
+    result['operating']['net_realized_unrealized_gain'] = parse_decimal(get_value(row_map.get('net_realized_unrealized_gain'))) if 'net_realized_unrealized_gain' in row_map else None
+    result['operating']['total_from_operations'] = parse_decimal(get_value(row_map.get('total_from_operations'))) if 'total_from_operations' in row_map else None
+    result['operating']['equalization'] = parse_decimal(get_value(row_map.get('equalization'))) if 'equalization' in row_map else None
+    result['operating']['nav_end'] = parse_decimal(get_value(row_map.get('nav_end'))) if 'nav_end' in row_map else None
+    result['operating']['total_return'] = parse_decimal(get_value(row_map.get('total_return')), pct=True) if 'total_return' in row_map else None
 
-    result['distribution']['dist_net_investment_income'] = _parse_decimal(get_value(row_map.get('dist_net_investment_income'))) if 'dist_net_investment_income' in row_map else None
-    result['distribution']['dist_realized_gains'] = _parse_decimal(get_value(row_map.get('dist_realized_gains'))) if 'dist_realized_gains' in row_map else None
-    result['distribution']['dist_return_of_capital'] = _parse_decimal(get_value(row_map.get('dist_return_of_capital'))) if 'dist_return_of_capital' in row_map else None
-    result['distribution']['dist_total'] = _parse_decimal(get_value(row_map.get('dist_total'))) if 'dist_total' in row_map else None
+    result['distribution']['dist_net_investment_income'] = parse_decimal(get_value(row_map.get('dist_net_investment_income'))) if 'dist_net_investment_income' in row_map else None
+    result['distribution']['dist_realized_gains'] = parse_decimal(get_value(row_map.get('dist_realized_gains'))) if 'dist_realized_gains' in row_map else None
+    result['distribution']['dist_return_of_capital'] = parse_decimal(get_value(row_map.get('dist_return_of_capital'))) if 'dist_return_of_capital' in row_map else None
+    result['distribution']['dist_total'] = parse_decimal(get_value(row_map.get('dist_total'))) if 'dist_total' in row_map else None
 
-    result['ratios']['expense_ratio'] = _parse_decimal(get_value(row_map.get('expense_ratio'))) if 'expense_ratio' in row_map else None
-    result['ratios']['portfolio_turnover'] = _parse_decimal(get_value(row_map.get('portfolio_turnover'))) if 'portfolio_turnover' in row_map else None
+    result['ratios']['expense_ratio'] = parse_decimal(get_value(row_map.get('expense_ratio')), pct=True) if 'expense_ratio' in row_map else None
+    result['ratios']['portfolio_turnover'] = parse_decimal(get_value(row_map.get('portfolio_turnover')), pct=True) if 'portfolio_turnover' in row_map else None
 
     # Net assets may be in millions, need to convert
     net_assets_text = get_value(row_map.get('net_assets_end')) if 'net_assets_end' in row_map else None
     if net_assets_text:
-        net_assets_value = _parse_decimal(net_assets_text)
+        net_assets_value = parse_decimal(net_assets_text)
         if net_assets_value and 'million' in get_row_label(row_map.get('net_assets_end', 0)).lower():
             net_assets_value = net_assets_value * 1_000_000
         result['ratios']['net_assets_end'] = net_assets_value

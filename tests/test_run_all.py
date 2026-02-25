@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, patch
 from click.testing import CliRunner
 
 from etf_pipeline.cli import (
-    PARSER_FORM_MAP,
+    PARSERS,
     check_sec_filing_dates,
     get_all_ciks,
     get_processing_log,
@@ -520,71 +520,98 @@ def test_check_sec_filing_dates_handles_exception(mock_company_class):
     assert had_error is True
 
 
-@patch("etf_pipeline.parsers.nport.parse_nport")
-def test_run_parser_for_cik_nport(mock_parse_nport):
+def test_run_parser_for_cik_nport():
     """Test run_parser_for_cik dispatches to nport parser."""
+    import etf_pipeline.cli as cli
     from etf_pipeline.cli import run_parser_for_cik
 
-    run_parser_for_cik("0000001234", "nport")
+    mock_fn = MagicMock()
+    original = cli.PARSERS["nport"]
+    cli.PARSERS["nport"] = (mock_fn, original[1])
+    try:
+        run_parser_for_cik("0000001234", "nport")
+        mock_fn.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
+    finally:
+        cli.PARSERS["nport"] = original
 
-    mock_parse_nport.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
 
-
-@patch("etf_pipeline.parsers.ncsr.parse_ncsr")
-def test_run_parser_for_cik_ncsr(mock_parse_ncsr):
+def test_run_parser_for_cik_ncsr():
     """Test run_parser_for_cik dispatches to ncsr parser."""
+    import etf_pipeline.cli as cli
     from etf_pipeline.cli import run_parser_for_cik
 
-    run_parser_for_cik("0000001234", "ncsr")
+    mock_fn = MagicMock()
+    original = cli.PARSERS["ncsr"]
+    cli.PARSERS["ncsr"] = (mock_fn, original[1])
+    try:
+        run_parser_for_cik("0000001234", "ncsr")
+        mock_fn.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
+    finally:
+        cli.PARSERS["ncsr"] = original
 
-    mock_parse_ncsr.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
 
-
-@patch("etf_pipeline.parsers.prospectus.parse_prospectus")
-def test_run_parser_for_cik_prospectus(mock_parse_prospectus):
+def test_run_parser_for_cik_prospectus():
     """Test run_parser_for_cik dispatches to prospectus parser."""
+    import etf_pipeline.cli as cli
     from etf_pipeline.cli import run_parser_for_cik
 
-    run_parser_for_cik("0000001234", "prospectus")
+    mock_fn = MagicMock()
+    original = cli.PARSERS["prospectus"]
+    cli.PARSERS["prospectus"] = (mock_fn, original[1])
+    try:
+        run_parser_for_cik("0000001234", "prospectus")
+        mock_fn.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
+    finally:
+        cli.PARSERS["prospectus"] = original
 
-    mock_parse_prospectus.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
 
-
-@patch("etf_pipeline.parsers.finhigh.parse_finhigh")
-def test_run_parser_for_cik_finhigh(mock_parse_finhigh):
+def test_run_parser_for_cik_finhigh():
     """Test run_parser_for_cik dispatches to finhigh parser."""
+    import etf_pipeline.cli as cli
     from etf_pipeline.cli import run_parser_for_cik
 
-    run_parser_for_cik("0000001234", "finhigh")
+    mock_fn = MagicMock()
+    original = cli.PARSERS["finhigh"]
+    cli.PARSERS["finhigh"] = (mock_fn, original[1])
+    try:
+        run_parser_for_cik("0000001234", "finhigh")
+        mock_fn.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
+    finally:
+        cli.PARSERS["finhigh"] = original
 
-    mock_parse_finhigh.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
 
-
-@patch("etf_pipeline.parsers.flows.parse_flows")
-def test_run_parser_for_cik_flows(mock_parse_flows):
+def test_run_parser_for_cik_flows():
     """Test run_parser_for_cik dispatches to flows parser."""
+    import etf_pipeline.cli as cli
     from etf_pipeline.cli import run_parser_for_cik
 
-    run_parser_for_cik("0000001234", "flows")
-
-    mock_parse_flows.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
-
-
-def test_parser_form_map_consistency():
-    """Test PARSER_FORM_MAP has correct mappings."""
-    assert PARSER_FORM_MAP == {
-        "nport": "NPORT-P",
-        "ncsr": "N-CSR",
-        "prospectus": "485BPOS",
-        "finhigh": "N-CSR",
-        "flows": "24F-2NT",
-    }
+    mock_fn = MagicMock()
+    original = cli.PARSERS["flows"]
+    cli.PARSERS["flows"] = (mock_fn, original[1])
+    try:
+        run_parser_for_cik("0000001234", "flows")
+        mock_fn.assert_called_once_with(ciks=["0000001234"], clear_cache=True)
+    finally:
+        cli.PARSERS["flows"] = original
 
 
-def test_parser_form_map_ncsr_finhigh_share_form():
+def test_parsers_dict_consistency():
+    """Test PARSERS dict has valid (callable, string) entries."""
+    assert set(PARSERS.keys()) == {"nport", "ncsr", "prospectus", "finhigh", "flows"}
+    for name, (fn, form_type) in PARSERS.items():
+        assert callable(fn), f"PARSERS[{name!r}] function is not callable"
+        assert isinstance(form_type, str), f"PARSERS[{name!r}] form_type is not a string"
+    assert PARSERS["nport"][1] == "NPORT-P"
+    assert PARSERS["ncsr"][1] == "N-CSR"
+    assert PARSERS["prospectus"][1] == "485BPOS"
+    assert PARSERS["finhigh"][1] == "N-CSR"
+    assert PARSERS["flows"][1] == "24F-2NT"
+
+
+def test_parsers_dict_ncsr_finhigh_share_form():
     """Test that ncsr and finhigh both map to N-CSR."""
-    assert PARSER_FORM_MAP["ncsr"] == "N-CSR"
-    assert PARSER_FORM_MAP["finhigh"] == "N-CSR"
+    assert PARSERS["ncsr"][1] == "N-CSR"
+    assert PARSERS["finhigh"][1] == "N-CSR"
 
 
 def test_get_stale_parsers_check_failed_never_processed(session):

@@ -29,7 +29,6 @@ def load_etfs(cik: Optional[str] = None, limit: Optional[int] = None) -> None:
     """
     if not TICKERS_FILE.exists():
         logger.error(f"File not found: {TICKERS_FILE}")
-        print(f"Error: {TICKERS_FILE} does not exist. Run 'discover' command first.")
         return
 
     with open(TICKERS_FILE) as f:
@@ -45,7 +44,6 @@ def load_etfs(cik: Optional[str] = None, limit: Optional[int] = None) -> None:
         cik_int = int(cik)
         if cik_int not in by_cik:
             logger.warning(f"CIK {cik} not found in etf_tickers.json")
-            print(f"CIK {cik} not found in etf_tickers.json")
             return
         ciks = [cik_int]
         logger.info(f"Processing single CIK: {cik}")
@@ -68,7 +66,6 @@ def load_etfs(cik: Optional[str] = None, limit: Optional[int] = None) -> None:
             failed += 1
             logger.warning(f"Failed to process CIK {cik_int:010d}: {e}")
 
-    print(f"\nSummary: {succeeded} CIKs succeeded, {failed} CIKs failed")
     logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
 
 

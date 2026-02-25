@@ -74,24 +74,7 @@ def extract_liquidity_classification(invst_or_sec_element: ET.Element) -> Option
 
 
 def extract_borrower_name(invst_or_sec_element: ET.Element) -> Optional[str]:
-    """Extract borrower name for repurchase agreement holdings.
-
-    Note: In the NPORT-P XML schema, borrower information is stored at the
-    fund level (<fundInfo><borrowers><borrower name="..." lei="..."/></borrowers>),
-    not at the individual holding level. This function is a placeholder for
-    potential future enhancement or alternative schema versions.
-
-    Per the official NPORT XML schema (version 1.7), there is no borrower field
-    within the invstOrSec element structure. This will always return None unless
-    the schema changes or we find an undocumented field.
-
-    Args:
-        invst_or_sec_element: XML element for a single investment/security
-
-    Returns:
-        None (borrower data not available at holding level in current schema)
-    """
-    # Borrower information is at fund level, not holding level in NPORT schema
+    # Borrower data not available at holding level in NPORT schema
     return None
 
 
