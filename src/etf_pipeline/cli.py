@@ -8,7 +8,9 @@ from datetime import date, datetime
 from pathlib import Path
 
 import click
+from sqlalchemy import select
 
+from etf_pipeline.models import ProcessingLog
 from etf_pipeline.parsers.nport import parse_nport
 from etf_pipeline.parsers.ncsr import parse_ncsr
 from etf_pipeline.parsers.prospectus import parse_prospectus
@@ -162,7 +164,6 @@ PARSER_ORDER = ["nport", "ncsr", "prospectus", "finhigh", "flows"]
 
 def get_all_ciks(session, limit):
     """Get list of CIKs from database, alphabetically sorted, with optional limit."""
-    from sqlalchemy import select
     from etf_pipeline.models import ETF
 
     stmt = select(ETF.cik).distinct().order_by(ETF.cik)
@@ -210,9 +211,6 @@ def get_processing_log(session, cik, parser_type):
 
     Returns ProcessingLog instance or None.
     """
-    from sqlalchemy import select
-    from etf_pipeline.models import ProcessingLog
-
     stmt = select(ProcessingLog).where(
         ProcessingLog.cik == cik,
         ProcessingLog.parser_type == parser_type
@@ -227,11 +225,15 @@ def get_stale_parsers(session, cik, latest_sec_filings):
     - Never processed before (no processing_log entry)
     - New filing available (SEC latest date > log's latest_filing_date_seen)
     """
-    needed = []
+    rows = session.execute(
+        select(ProcessingLog).where(ProcessingLog.cik == cik)
+    ).scalars().all()
+    log_by_parser = {row.parser_type: row for row in rows}
 
+    needed = []
     for parser_type, (_, form_type) in PARSERS.items():
         sec_latest_date = latest_sec_filings.get(form_type)
-        log_entry = get_processing_log(session, cik, parser_type)
+        log_entry = log_by_parser.get(parser_type)
         if log_entry is None:
             needed.append(parser_type)
         elif sec_latest_date is not None and sec_latest_date > log_entry.latest_filing_date_seen:
@@ -326,17 +328,9 @@ def run_all(limit):
                     click.echo(f"  Warning: SEC filing date check failed for CIK {cik}, will attempt unprocessed parsers")
 
                 stale_parsers = get_stale_parsers(session, cik, latest_sec_filings)
-                from sqlalchemy import select
-                from etf_pipeline.models import ProcessingLog
-                any_log = session.execute(
-                    select(ProcessingLog.cik).where(ProcessingLog.cik == cik).limit(1)
-                ).scalar_one_or_none()
 
             if not stale_parsers:
-                if any_log is None:
-                    click.echo(f"  No known filings for CIK {cik} (never processed), skipping")
-                else:
-                    click.echo(f"  Already up-to-date for CIK {cik}, skipping")
+                click.echo(f"  Already up-to-date for CIK {cik}, skipping")
                 skipped += 1
                 continue
 
