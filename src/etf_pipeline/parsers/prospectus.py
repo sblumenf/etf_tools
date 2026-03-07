@@ -338,320 +338,314 @@ def parse_date_tag(
     return None
 
 
-def _process_cik_prospectus(session, cik: str) -> bool:
-    """Process 485BPOS filing for a single CIK.
+def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optional[str] = None):
+    """Factory that returns a _process_cik_prospectus function with optional date range for backfill."""
+    from etf_pipeline.parser_utils import build_filing_date_filter
+    backfill_mode = from_date is not None or to_date is not None
+    filing_date_filter = build_filing_date_filter(from_date, to_date)
 
-    Extracts fee schedules, shareholder fees, expense examples, and narrative text
-    from the most recent 485BPOS filing for this CIK.
+    def _process_cik_prospectus(session, cik: str) -> bool:
+        from edgar import Company
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parser_utils import ensure_date, update_processing_log, upsert_record
+        from sqlalchemy import select
 
-    Args:
-        session: SQLAlchemy session
-        cik: CIK string (zero-padded to 10 digits)
+        try:
+            stmt = select(ETF).where(ETF.cik == cik)
+            etfs = session.execute(stmt).scalars().all()
 
-    Returns:
-        True if successful, False otherwise
-    """
-    from edgar import Company
-    from etf_pipeline.models import ETF, FeeExpense
-    from etf_pipeline.parser_utils import ensure_date, update_processing_log, upsert_record
-    from sqlalchemy import select
+            class_id_to_etf = {}
+            series_id_to_etfs = {}
+            for etf in etfs:
+                if etf.class_id:
+                    class_id_to_etf[etf.class_id] = etf
+                if etf.series_id:
+                    if etf.series_id not in series_id_to_etfs:
+                        series_id_to_etfs[etf.series_id] = []
+                    series_id_to_etfs[etf.series_id].append(etf)
 
-    try:
-        # Build class_id -> ETF and series_id -> list[ETF] mappings from database
-        stmt = select(ETF).where(ETF.cik == cik)
-        etfs = session.execute(stmt).scalars().all()
+            if not class_id_to_etf:
+                logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
+                return True
 
-        class_id_to_etf = {}
-        series_id_to_etfs = {}  # Map series_id to list of ETFs (multiple classes can share one series)
-        for etf in etfs:
-            if etf.class_id:
-                class_id_to_etf[etf.class_id] = etf
-            if etf.series_id:
-                if etf.series_id not in series_id_to_etfs:
-                    series_id_to_etfs[etf.series_id] = []
-                series_id_to_etfs[etf.series_id].append(etf)
+            needed_class_ids = set(class_id_to_etf.keys())
+            satisfied = set()
+            latest_filing_date = None
 
-        if not class_id_to_etf:
-            logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
-            return True
+            company = Company(cik)
+            get_filings_kwargs = {'form': '485BPOS'}
+            if filing_date_filter is not None:
+                get_filings_kwargs['filing_date'] = filing_date_filter
+            filings = company.get_filings(**get_filings_kwargs)
 
-        needed_class_ids = set(class_id_to_etf.keys())
-        satisfied = set()
-        latest_filing_date = None
+            if not filings or (hasattr(filings, 'empty') and filings.empty):
+                logger.info(f"CIK {cik}: No 485BPOS filings found")
+                return True
 
-        # Fetch 485BPOS filings
-        company = Company(cik)
-        filings = company.get_filings(form='485BPOS')
-
-        if not filings or (hasattr(filings, 'empty') and filings.empty):
-            logger.info(f"CIK {cik}: No 485BPOS filings found")
-            return True  # Not an error, just no data
-
-        # Get most recent filing date and filter to 18-month window
-        most_recent_filing = filings[0]
-        most_recent_date = most_recent_filing.filing_date if hasattr(most_recent_filing, 'filing_date') else date.today()
-
-        # Calculate cutoff date
-        cutoff_date = most_recent_date - timedelta(days=LOOKBACK_DAYS)
-
-        # Iterate through filings in reverse chronological order
-        for filing_idx in range(len(filings)):
-            # Stop if all class_ids satisfied
-            if not (needed_class_ids - satisfied):
-                logger.debug(f"CIK {cik}: All class_ids satisfied after {filing_idx} filing(s)")
-                break
-
-            filing = filings[filing_idx]
-            filing_date = ensure_date(filing.filing_date)
-
-            # Track the latest filing date
-            if latest_filing_date is None or filing_date > latest_filing_date:
-                latest_filing_date = filing_date
-
-            # Stop if filing is outside 18-month window
-            if filing_date < cutoff_date:
-                logger.debug(f"CIK {cik}: Filing {filing_idx} outside 18-month window, stopping")
-                break
-
-            filing_url = filing.document.url if hasattr(filing, 'document') else None
-
-            # Get HTML content
-            try:
-                old_handler = signal.signal(signal.SIGALRM, _html_timeout_handler)
-                signal.alarm(120)  # 120 second timeout
-                html = filing.html()
-                signal.alarm(0)  # Cancel alarm
-                signal.signal(signal.SIGALRM, old_handler)  # Restore handler
-                if not html:
-                    logger.warning(f"CIK {cik}: Filing {filing_idx} returned empty HTML, skipping")
-                    continue
-            except (HtmlFetchTimeout, Exception) as e:
-                signal.alarm(0)  # Cancel alarm on error
-                signal.signal(signal.SIGALRM, old_handler)
-                logger.warning(f"CIK {cik}: Filing {filing_idx} HTML fetch failed: {e}, skipping")
-                continue
-
-            # Parse iXBRL
-            soup = BeautifulSoup(html, 'lxml')
-
-            # Extract contexts
-            context_map = parse_contexts(soup)
-
-            # Detect which namespace prefix is in use (rr: or oef:)
-            rr_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('rr:'))
-            oef_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('oef:'))
-
-            if rr_tags:
-                tag_prefix = 'rr'
-            elif oef_tags:
-                tag_prefix = 'oef'
+            if not backfill_mode:
+                most_recent_filing = filings[0]
+                most_recent_date = most_recent_filing.filing_date if hasattr(most_recent_filing, 'filing_date') else date.today()
+                cutoff_date = most_recent_date - timedelta(days=LOOKBACK_DAYS)
             else:
-                logger.warning(f"CIK {cik}: Filing {filing_idx} has no RR or OEF iXBRL tags, skipping")
-                del rr_tags, oef_tags, soup, html
-                gc.collect()
-                continue
+                cutoff_date = None
 
-            del rr_tags, oef_tags
+            total_filings = len(filings)
 
-            # Build tag index for O(1) lookups (performance optimization)
-            tag_index = build_tag_index(soup)
-
-            # Find the base context (no dimensions) for effective_date
-            base_context_id = None
-            for ctx_id, ctx_data in context_map.items():
-                if ctx_data['series_id'] is None and ctx_data['class_id'] is None:
-                    base_context_id = ctx_id
+            for filing_idx in range(total_filings):
+                # In normal mode: stop if all class_ids satisfied
+                if not backfill_mode and not (needed_class_ids - satisfied):
+                    logger.debug(f"CIK {cik}: All class_ids satisfied after {filing_idx} filing(s)")
                     break
 
-            # If no base context, try to find one with just CIK
-            if not base_context_id and context_map:
-                base_context_id = list(context_map.keys())[0]
+                filing = filings[filing_idx]
+                filing_date = ensure_date(filing.filing_date)
 
-            # Extract effective_date from DocumentPeriodEndDate
-            effective_date = None
-            if base_context_id:
-                effective_date = parse_date_tag(tag_index, 'dei:DocumentPeriodEndDate', base_context_id)
+                if latest_filing_date is None or filing_date > latest_filing_date:
+                    latest_filing_date = filing_date
 
-            if not effective_date:
-                logger.warning(f"CIK {cik}: Filing {filing_idx} has no effective_date, using filing date")
-                effective_date = filing_date
+                # In normal mode: stop if filing is outside 18-month window
+                if not backfill_mode and cutoff_date and filing_date < cutoff_date:
+                    logger.debug(f"CIK {cik}: Filing {filing_idx} outside 18-month window, stopping")
+                    break
 
-            # Track which ETFs had data extracted in this filing
-            etfs_with_data_this_filing = set()
+                if backfill_mode:
+                    logger.info(f"CIK {cik}: Processing filing {filing_idx + 1}/{total_filings}")
 
-            # Process each context that has a class_id
-            for context_id, context_data in context_map.items():
-                class_id = context_data.get('class_id')
-                if not class_id:
+                filing_url = filing.document.url if hasattr(filing, 'document') else None
+
+                # Get HTML content
+                try:
+                    old_handler = signal.signal(signal.SIGALRM, _html_timeout_handler)
+                    signal.alarm(120)  # 120 second timeout
+                    html = filing.html()
+                    signal.alarm(0)  # Cancel alarm
+                    signal.signal(signal.SIGALRM, old_handler)  # Restore handler
+                    if not html:
+                        logger.warning(f"CIK {cik}: Filing {filing_idx} returned empty HTML, skipping")
+                        continue
+                except (HtmlFetchTimeout, Exception) as e:
+                    signal.alarm(0)  # Cancel alarm on error
+                    signal.signal(signal.SIGALRM, old_handler)
+                    logger.warning(f"CIK {cik}: Filing {filing_idx} HTML fetch failed: {e}, skipping")
                     continue
 
-                # Skip if already satisfied
-                if class_id in satisfied:
-                    logger.debug(f"CIK {cik}: class_id {class_id} already satisfied, skipping")
+                # Parse iXBRL
+                soup = BeautifulSoup(html, 'lxml')
+
+                # Extract contexts
+                context_map = parse_contexts(soup)
+
+                # Detect which namespace prefix is in use (rr: or oef:)
+                rr_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('rr:'))
+                oef_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('oef:'))
+
+                if rr_tags:
+                    tag_prefix = 'rr'
+                elif oef_tags:
+                    tag_prefix = 'oef'
+                else:
+                    logger.warning(f"CIK {cik}: Filing {filing_idx} has no RR or OEF iXBRL tags, skipping")
+                    del rr_tags, oef_tags, soup, html
+                    gc.collect()
                     continue
 
-                # Match class_id to ETF
-                etf = class_id_to_etf.get(class_id)
-                if not etf:
-                    logger.debug(f"CIK {cik}: class_id {class_id} not found in database, skipping")
-                    continue
+                del rr_tags, oef_tags
 
-                # Extract fee data
-                fee_data = {
-                    'etf_id': etf.id,
-                    'effective_date': effective_date,
-                    'filing_date': filing_date,
-                    'management_fee': extract_tag_value(tag_index, f'{tag_prefix}:ManagementFeesOverAssets', context_id),
-                    'distribution_12b1': extract_tag_value(tag_index, f'{tag_prefix}:DistributionAndService12b1FeesOverAssets', context_id),
-                    'other_expenses': extract_tag_value(tag_index, f'{tag_prefix}:OtherExpensesOverAssets', context_id),
-                    'total_expense_gross': extract_tag_value(tag_index, f'{tag_prefix}:ExpensesOverAssets', context_id),
-                    'fee_waiver': extract_tag_value(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssets', context_id, negate_to_positive=True),
-                    'total_expense_net': extract_tag_value(tag_index, f'{tag_prefix}:NetExpensesOverAssets', context_id),
-                    'acquired_fund_fees': extract_tag_value(tag_index, f'{tag_prefix}:AcquiredFundFeesAndExpensesOverAssets', context_id),
-                    'fee_waiver_expiration_date': parse_date_tag(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssetsDateOfTermination', context_id),
-                }
+                # Build tag index for O(1) lookups (performance optimization)
+                tag_index = build_tag_index(soup)
 
-                # Fallback logic: if NetExpensesOverAssets tag is missing, calculate net from gross
-                if fee_data['total_expense_net'] is None and fee_data['total_expense_gross'] is not None:
-                    if fee_data['fee_waiver'] is None or fee_data['fee_waiver'] == 0:
-                        # No fee waiver: net = gross
-                        fee_data['total_expense_net'] = fee_data['total_expense_gross']
-                    else:
-                        # Fee waiver exists: net = gross - waiver
-                        fee_data['total_expense_net'] = fee_data['total_expense_gross'] - fee_data['fee_waiver']
+                # Find the base context (no dimensions) for effective_date
+                base_context_id = None
+                for ctx_id, ctx_data in context_map.items():
+                    if ctx_data['series_id'] is None and ctx_data['class_id'] is None:
+                        base_context_id = ctx_id
+                        break
 
-                # Upsert FeeExpense (if any data present)
-                if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date', 'filing_date')):
-                    upsert_record(
-                        session,
-                        FeeExpense,
-                        filter_kwargs={
-                            'etf_id': etf.id,
-                            'effective_date': effective_date,
-                            'filing_date': filing_date,
-                        },
-                        data_kwargs={k: v for k, v in fee_data.items() if k not in ('etf_id', 'effective_date', 'filing_date')},
-                    )
-                    logger.debug(f"CIK {cik}: Upserted fee data for {etf.ticker}")
+                # If no base context, try to find one with just CIK
+                if not base_context_id and context_map:
+                    base_context_id = list(context_map.keys())[0]
 
-                    etfs_with_data_this_filing.add(etf.id)
+                # Extract effective_date from DocumentPeriodEndDate
+                effective_date = None
+                if base_context_id:
+                    effective_date = parse_date_tag(tag_index, 'dei:DocumentPeriodEndDate', base_context_id)
 
-                # Mark this class_id as satisfied
-                satisfied.add(class_id)
+                if not effective_date:
+                    logger.warning(f"CIK {cik}: Filing {filing_idx} has no effective_date, using filing date")
+                    effective_date = filing_date
 
-            # Extract narrative text (series-level, not class-level)
-            all_nonnumeric = soup.find_all('ix:nonnumeric')
+                # Track which ETFs had data extracted in this filing
+                etfs_with_data_this_filing = set()
 
-            # Build series_id -> context_id mapping (plain series contexts only, no class dimension)
-            series_context_map = {}
-            for ctx_id, ctx_data in context_map.items():
-                sid = ctx_data.get('series_id')
-                cid = ctx_data.get('class_id')
-                if sid and not cid and sid not in series_context_map:
-                    series_context_map[sid] = ctx_id
+                # Process each context that has a class_id
+                for context_id, context_data in context_map.items():
+                    class_id = context_data.get('class_id')
+                    if not class_id:
+                        continue
 
-            # For series with no series-only context, use a class-level context
-            for ctx_id, ctx_data in context_map.items():
-                sid = ctx_data.get('series_id')
-                if sid and sid not in series_context_map:
-                    series_context_map[sid] = ctx_id
+                    # In normal mode: skip if already satisfied (avoid overwriting with older data)
+                    if not backfill_mode and class_id in satisfied:
+                        logger.debug(f"CIK {cik}: class_id {class_id} already satisfied, skipping")
+                        continue
 
-            # Build reverse mapping: context_id -> series_id (for all contexts with a series)
-            context_to_series = {}
-            for ctx_id, ctx_data in context_map.items():
-                sid = ctx_data.get('series_id')
-                if sid:
-                    context_to_series[ctx_id] = sid
+                    # Match class_id to ETF
+                    etf = class_id_to_etf.get(class_id)
+                    if not etf:
+                        logger.debug(f"CIK {cik}: class_id {class_id} not found in database, skipping")
+                        continue
 
-            # Iterate known series from the database to avoid redundant RiskAxis-dimensioned iterations
-            for series_id, etf_list in series_id_to_etfs.items():
-                context_id = series_context_map.get(series_id)
+                    # Extract fee data
+                    fee_data = {
+                        'etf_id': etf.id,
+                        'effective_date': effective_date,
+                        'filing_date': filing_date,
+                        'management_fee': extract_tag_value(tag_index, f'{tag_prefix}:ManagementFeesOverAssets', context_id),
+                        'distribution_12b1': extract_tag_value(tag_index, f'{tag_prefix}:DistributionAndService12b1FeesOverAssets', context_id),
+                        'other_expenses': extract_tag_value(tag_index, f'{tag_prefix}:OtherExpensesOverAssets', context_id),
+                        'total_expense_gross': extract_tag_value(tag_index, f'{tag_prefix}:ExpensesOverAssets', context_id),
+                        'fee_waiver': extract_tag_value(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssets', context_id, negate_to_positive=True),
+                        'total_expense_net': extract_tag_value(tag_index, f'{tag_prefix}:NetExpensesOverAssets', context_id),
+                        'acquired_fund_fees': extract_tag_value(tag_index, f'{tag_prefix}:AcquiredFundFeesAndExpensesOverAssets', context_id),
+                        'fee_waiver_expiration_date': parse_date_tag(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssetsDateOfTermination', context_id),
+                    }
 
-                # Extract objective and strategy text using tag_index (needs context_id)
-                objective_text = None
-                strategy_text = None
-                if context_id:
-                    objective_text = extract_tag_value(tag_index, f'{tag_prefix}:ObjectivePrimaryTextBlock', context_id)
-                    strategy_text = extract_tag_value(tag_index, f'{tag_prefix}:StrategyNarrativeTextBlock', context_id)
-
-                # Extract principal risks - use direct search to capture ALL RiskTextBlock elements
-                # The RR taxonomy uses multiple RiskTextBlock elements per series, each dimensioned
-                # by a RiskAxis member (e.g., RiskLoseMoneyMember, PerformanceRiskMember, etc.)
-                risk_blocks = []
-
-                # Search for all ix:nonnumeric elements with name containing RiskTextBlock
-                for element in all_nonnumeric:
-                    tag_name = element.get('name', '')
-                    element_context_ref = element.get('contextref', '')
-
-                    # Match RiskTextBlock tags (case-insensitive) for this series
-                    if ('risktextblock' in tag_name.lower() or 'risknarrativetextblock' in tag_name.lower()) and context_to_series.get(element_context_ref) == series_id:
-                        # Extract and strip HTML from the risk block
-                        escape_attr = element.get('escape')
-                        if escape_attr == 'true':
-                            inner_html = element.decode_contents()
-                            risk_text = strip_html_to_text(inner_html)
+                    # Fallback logic: if NetExpensesOverAssets tag is missing, calculate net from gross
+                    if fee_data['total_expense_net'] is None and fee_data['total_expense_gross'] is not None:
+                        if fee_data['fee_waiver'] is None or fee_data['fee_waiver'] == 0:
+                            fee_data['total_expense_net'] = fee_data['total_expense_gross']
                         else:
-                            risk_text = element.get_text().strip()
+                            fee_data['total_expense_net'] = fee_data['total_expense_gross'] - fee_data['fee_waiver']
 
-                        if risk_text:
-                            risk_blocks.append(risk_text)
+                    # Upsert FeeExpense (if any data present)
+                    if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date', 'filing_date')):
+                        upsert_record(
+                            session,
+                            FeeExpense,
+                            filter_kwargs={
+                                'etf_id': etf.id,
+                                'effective_date': effective_date,
+                                'filing_date': filing_date,
+                            },
+                            data_kwargs={k: v for k, v in fee_data.items() if k not in ('etf_id', 'effective_date', 'filing_date')},
+                        )
+                        logger.debug(f"CIK {cik}: Upserted fee data for {etf.ticker}")
 
-                principal_risks = '\n\n'.join(risk_blocks) if risk_blocks else None
+                        etfs_with_data_this_filing.add(etf.id)
 
-                if not etf_list:
-                    logger.debug(f"CIK {cik}: series_id {series_id} not found in database, skipping narrative text")
-                    continue
+                    # Mark this class_id as satisfied (used in normal mode for early exit)
+                    satisfied.add(class_id)
 
-                # Update all ETFs with this series_id (multiple share classes can belong to same series)
-                for etf in etf_list:
-                    if objective_text:
-                        etf.objective_text = objective_text
-                        logger.debug(f"CIK {cik}: Updated objective_text for {etf.ticker}")
+                # Extract narrative text (series-level, not class-level)
+                all_nonnumeric = soup.find_all('ix:nonnumeric')
 
-                    if strategy_text:
-                        etf.strategy_text = strategy_text
-                        logger.debug(f"CIK {cik}: Updated strategy_text for {etf.ticker}")
+                # Build series_id -> context_id mapping (plain series contexts only, no class dimension)
+                series_context_map = {}
+                for ctx_id, ctx_data in context_map.items():
+                    sid = ctx_data.get('series_id')
+                    cid = ctx_data.get('class_id')
+                    if sid and not cid and sid not in series_context_map:
+                        series_context_map[sid] = ctx_id
 
-                    if principal_risks:
-                        etf.principal_risks = principal_risks
-                        logger.debug(f"CIK {cik}: Updated principal_risks for {etf.ticker} ({len(risk_blocks)} risk blocks)")
+                # For series with no series-only context, use a class-level context
+                for ctx_id, ctx_data in context_map.items():
+                    sid = ctx_data.get('series_id')
+                    if sid and sid not in series_context_map:
+                        series_context_map[sid] = ctx_id
 
-            # Update filing_url for ETFs processed in this filing
-            if filing_url:
-                for etf_id in etfs_with_data_this_filing:
-                    etf = session.get(ETF, etf_id)
-                    if etf:
-                        etf.filing_url = filing_url
-                        logger.debug(f"CIK {cik}: Updated filing_url for {etf.ticker}")
+                # Build reverse mapping: context_id -> series_id (for all contexts with a series)
+                context_to_series = {}
+                for ctx_id, ctx_data in context_map.items():
+                    sid = ctx_data.get('series_id')
+                    if sid:
+                        context_to_series[ctx_id] = sid
 
-            del all_nonnumeric, soup, html
-            gc.collect()
+                # Iterate known series from the database to avoid redundant RiskAxis-dimensioned iterations
+                for series_id, etf_list in series_id_to_etfs.items():
+                    context_id = series_context_map.get(series_id)
+
+                    objective_text = None
+                    strategy_text = None
+                    if context_id:
+                        objective_text = extract_tag_value(tag_index, f'{tag_prefix}:ObjectivePrimaryTextBlock', context_id)
+                        strategy_text = extract_tag_value(tag_index, f'{tag_prefix}:StrategyNarrativeTextBlock', context_id)
+
+                    risk_blocks = []
+
+                    for element in all_nonnumeric:
+                        tag_name = element.get('name', '')
+                        element_context_ref = element.get('contextref', '')
+
+                        if ('risktextblock' in tag_name.lower() or 'risknarrativetextblock' in tag_name.lower()) and context_to_series.get(element_context_ref) == series_id:
+                            escape_attr = element.get('escape')
+                            if escape_attr == 'true':
+                                inner_html = element.decode_contents()
+                                risk_text = strip_html_to_text(inner_html)
+                            else:
+                                risk_text = element.get_text().strip()
+
+                            if risk_text:
+                                risk_blocks.append(risk_text)
+
+                    principal_risks = '\n\n'.join(risk_blocks) if risk_blocks else None
+
+                    if not etf_list:
+                        logger.debug(f"CIK {cik}: series_id {series_id} not found in database, skipping narrative text")
+                        continue
+
+                    for etf in etf_list:
+                        if objective_text:
+                            etf.objective_text = objective_text
+                            logger.debug(f"CIK {cik}: Updated objective_text for {etf.ticker}")
+
+                        if strategy_text:
+                            etf.strategy_text = strategy_text
+                            logger.debug(f"CIK {cik}: Updated strategy_text for {etf.ticker}")
+
+                        if principal_risks:
+                            etf.principal_risks = principal_risks
+                            logger.debug(f"CIK {cik}: Updated principal_risks for {etf.ticker} ({len(risk_blocks)} risk blocks)")
+
+                # Update filing_url for ETFs processed in this filing
+                if filing_url:
+                    for etf_id in etfs_with_data_this_filing:
+                        etf = session.get(ETF, etf_id)
+                        if etf:
+                            etf.filing_url = filing_url
+                            logger.debug(f"CIK {cik}: Updated filing_url for {etf.ticker}")
+
+                del all_nonnumeric, soup, html
+                gc.collect()
+                session.commit()
+                session.expunge_all()
+                class_id_to_etf = {
+                    cid: session.merge(etf_obj)
+                    for cid, etf_obj in class_id_to_etf.items()
+                }
+                series_id_to_etfs = {
+                    sid: [session.merge(etf_obj) for etf_obj in etf_list]
+                    for sid, etf_list in series_id_to_etfs.items()
+                }
+                logger.debug(f"CIK {cik}: Committed data for filing {filing_idx}")
+
+            # Update processing log after successful processing
+            if latest_filing_date is not None:
+                latest_filing_date = ensure_date(latest_filing_date)
+                update_processing_log(session, cik, "prospectus", latest_filing_date)
+
             session.commit()
-            session.expunge_all()
-            class_id_to_etf = {
-                cid: session.merge(etf_obj)
-                for cid, etf_obj in class_id_to_etf.items()
-            }
-            series_id_to_etfs = {
-                sid: [session.merge(etf_obj) for etf_obj in etf_list]
-                for sid, etf_list in series_id_to_etfs.items()
-            }
-            logger.debug(f"CIK {cik}: Committed data for filing {filing_idx}")
+            logger.info(f"CIK {cik}: Successfully processed 485BPOS filing")
+            return True
 
-        # Update processing log after successful processing
-        if latest_filing_date is not None:
-            latest_filing_date = ensure_date(latest_filing_date)
-            update_processing_log(session, cik, "prospectus", latest_filing_date)
+        except Exception as e:
+            logger.error(f"CIK {cik}: Error processing 485BPOS filing: {e}")
+            session.rollback()
+            return False
 
-        session.commit()
-        logger.info(f"CIK {cik}: Successfully processed 485BPOS filing")
-        return True
+    return _process_cik_prospectus
 
-    except Exception as e:
-        logger.error(f"CIK {cik}: Error processing 485BPOS filing: {e}")
-        session.rollback()
-        return False
+
+# Default (normal mode) processor — used by run_parser_loop and existing tests
+_process_cik_prospectus = _make_process_cik_prospectus()
 
 
 def parse_prospectus(
@@ -659,15 +653,10 @@ def parse_prospectus(
     ciks: Optional[list[str]] = None,
     limit: Optional[int] = None,
     clear_cache: bool = True,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
 ) -> None:
-    """Parse 485BPOS filings for fee schedules and strategy.
-
-    Args:
-        cik: Optional CIK to process (all others will be skipped)
-        ciks: Optional list of CIKs to process (overrides cik param)
-        limit: Optional limit on number of CIKs to process
-        clear_cache: Whether to clear edgartools HTTP cache after processing
-    """
+    """Parse 485BPOS filings for fee schedules and strategy."""
     from etf_pipeline.db import get_engine
     from etf_pipeline.parser_utils import clear_and_log_cache, resolve_cik_list, run_parser_loop
     from sqlalchemy.orm import sessionmaker
@@ -680,7 +669,8 @@ def parse_prospectus(
         if not cik_list:
             return
 
-    run_parser_loop(cik_list, session_factory, _process_cik_prospectus, "prospectus")
+    process_fn = _make_process_cik_prospectus(from_date=from_date, to_date=to_date)
+    run_parser_loop(cik_list, session_factory, process_fn, "prospectus")
 
     if clear_cache:
         clear_and_log_cache()

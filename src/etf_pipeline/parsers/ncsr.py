@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from etf_pipeline.db import get_engine
 from etf_pipeline.models import ETF, Performance
 from etf_pipeline.parser_utils import (
+    build_filing_date_filter,
     clear_and_log_cache,
     ensure_date,
     parse_date,
@@ -125,134 +126,191 @@ def _map_return_period(period_start: date, period_end: date) -> Optional[str]:
         return "return_since_inception"
 
 
+def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[str] = None):
+    """Return a per-CIK processor for the parser loop."""
+    date_filter = build_filing_date_filter(from_date, to_date)
+    backfill_mode = date_filter is not None
 
-def _process_cik_ncsr(session: Session, cik: str) -> bool:
-    """Process N-CSR filings for a single CIK.
+    def _process_cik_ncsr(session: Session, cik: str) -> bool:
+        MAX_FILINGS = 10  # Limit scan to 10 most recent filings per CIK
 
-    Iterates through multiple recent filings to cover all fund series
-    under this CIK (e.g., Vanguard files separate N-CSRs per fund series).
+        try:
+            # Build class_id -> ETF mapping from database first
+            stmt = select(ETF).where(ETF.cik == cik)
+            etfs = session.execute(stmt).scalars().all()
 
-    Args:
-        session: SQLAlchemy session
-        cik: CIK string (zero-padded to 10 digits)
+            class_id_to_etf = {}
+            for etf in etfs:
+                if etf.class_id:
+                    class_id_to_etf[etf.class_id] = etf
 
-    Returns:
-        True if successful, False otherwise
-    """
-    MAX_FILINGS = 10  # Limit scan to 10 most recent filings per CIK
+            if not class_id_to_etf:
+                logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
+                return True
 
-    try:
-        # Build class_id -> ETF mapping from database first
-        stmt = select(ETF).where(ETF.cik == cik)
-        etfs = session.execute(stmt).scalars().all()
+            needed_class_ids = set(class_id_to_etf.keys())
+            # Track (class_id, fiscal_year_end) pairs already processed -- first match wins
+            satisfied = set()
 
-        class_id_to_etf = {}
-        for etf in etfs:
-            if etf.class_id:
-                class_id_to_etf[etf.class_id] = etf
+            company = Company(cik)
+            kwargs = {"form": "N-CSR"}
+            if date_filter is not None:
+                kwargs["filing_date"] = date_filter
+            filings = company.get_filings(**kwargs)
 
-        if not class_id_to_etf:
-            logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
-            return True
+            if not filings or (hasattr(filings, 'empty') and filings.empty):
+                logger.info(f"CIK {cik}: No N-CSR filings found")
+                return True  # Not an error, just no data
 
-        needed_class_ids = set(class_id_to_etf.keys())
-        # Track (class_id, fiscal_year_end) pairs already processed -- first match wins
-        satisfied = set()
+            processed_etfs = 0
+            skipped_etfs = 0
+            latest_filing_date = None
 
-        company = Company(cik)
-        filings = company.get_filings(form="N-CSR")
+            num_filings = len(filings) if backfill_mode else min(len(filings), MAX_FILINGS)
+            for filing_idx in range(num_filings):
+                # In normal mode, stop early if all class_ids have been satisfied
+                if not backfill_mode and not (needed_class_ids - {cid for cid, _ in satisfied}):
+                    logger.debug(f"CIK {cik}: All class_ids satisfied after {filing_idx} filing(s)")
+                    break
 
-        if not filings or (hasattr(filings, 'empty') and filings.empty):
-            logger.info(f"CIK {cik}: No N-CSR filings found")
-            return True  # Not an error, just no data
+                filing = filings[filing_idx]
+                filing_date = ensure_date(filing.filing_date)
 
-        processed_etfs = 0
-        skipped_etfs = 0
-        latest_filing_date = None
+                # Track the latest filing date
+                if latest_filing_date is None or filing_date > latest_filing_date:
+                    latest_filing_date = filing_date
 
-        num_filings = min(len(filings), MAX_FILINGS)
-        for filing_idx in range(num_filings):
-            # Stop early if all class_ids have been satisfied
-            if not (needed_class_ids - {cid for cid, _ in satisfied}):
-                logger.debug(f"CIK {cik}: All class_ids satisfied after {filing_idx} filing(s)")
-                break
-
-            filing = filings[filing_idx]
-            filing_date = ensure_date(filing.filing_date)
-
-            # Track the latest filing date
-            if latest_filing_date is None or filing_date > latest_filing_date:
-                latest_filing_date = filing_date
-
-            # Check if it's inline XBRL
-            if not filing.is_inline_xbrl:
-                logger.warning(f"CIK {cik}: Filing {filing_idx} is not inline XBRL, skipping")
-                continue
-
-            # Get XBRL data
-            try:
-                xbrl_obj = filing.xbrl()
-                if xbrl_obj is None:
-                    logger.warning(f"CIK {cik}: Filing {filing_idx} failed to parse XBRL, skipping")
+                # Check if it's inline XBRL
+                if not filing.is_inline_xbrl:
+                    logger.warning(f"CIK {cik}: Filing {filing_idx} is not inline XBRL, skipping")
                     continue
 
-                df = xbrl_obj.facts.to_dataframe()
-            except Exception as e:
-                logger.warning(f"CIK {cik}: Filing {filing_idx} XBRL extraction failed: {e}")
-                continue
+                # Get XBRL data
+                try:
+                    xbrl_obj = filing.xbrl()
+                    if xbrl_obj is None:
+                        logger.warning(f"CIK {cik}: Filing {filing_idx} failed to parse XBRL, skipping")
+                        continue
 
-            if df.empty:
-                logger.debug(f"CIK {cik}: Filing {filing_idx} XBRL DataFrame is empty")
-                continue
+                    df = xbrl_obj.facts.to_dataframe()
+                except Exception as e:
+                    logger.warning(f"CIK {cik}: Filing {filing_idx} XBRL extraction failed: {e}")
+                    continue
 
-            # Filter for OEF concepts we care about
-            target_concepts = [
-                "oef:AvgAnnlRtrPct",
-                "oef:ExpenseRatioPct",
-                "us-gaap:InvestmentCompanyPortfolioTurnover"
-            ]
+                if df.empty:
+                    logger.debug(f"CIK {cik}: Filing {filing_idx} XBRL DataFrame is empty")
+                    continue
 
-            df_filtered = df[df['concept'].isin(target_concepts)].copy()
+                # Filter for OEF concepts we care about
+                target_concepts = [
+                    "oef:AvgAnnlRtrPct",
+                    "oef:ExpenseRatioPct",
+                    "us-gaap:InvestmentCompanyPortfolioTurnover"
+                ]
 
-            if df_filtered.empty:
-                logger.debug(f"CIK {cik}: Filing {filing_idx} has no OEF performance concepts")
-                continue
+                df_filtered = df[df['concept'].isin(target_concepts)].copy()
 
-            if 'dim_oef_ClassAxis' not in df_filtered.columns:
-                logger.warning(f"CIK {cik}: Filing {filing_idx} has no ClassAxis dimension")
-                continue
+                if df_filtered.empty:
+                    logger.debug(f"CIK {cik}: Filing {filing_idx} has no OEF performance concepts")
+                    continue
 
-            # Extract benchmark data BEFORE per-class loop (benchmarks never have ClassAxis)
-            benchmark_name = None
-            benchmark_returns = {}
+                if 'dim_oef_ClassAxis' not in df_filtered.columns:
+                    logger.warning(f"CIK {cik}: Filing {filing_idx} has no ClassAxis dimension")
+                    continue
 
-            has_benchmark_axis = 'dim_oef_BroadBasedIndexAxis' in df_filtered.columns
-            if has_benchmark_axis:
-                # Filter for benchmark facts: BroadBasedIndexAxis is not null AND ClassAxis is null
-                benchmark_facts = df_filtered[
-                    (df_filtered['dim_oef_BroadBasedIndexAxis'].notna()) &
-                    (df_filtered['dim_oef_ClassAxis'].isna())
-                ].copy()
+                # Extract benchmark data BEFORE per-class loop (benchmarks never have ClassAxis)
+                benchmark_name = None
+                benchmark_returns = {}
 
-                if not benchmark_facts.empty:
-                    # Deduplicate benchmark facts by (concept, period_start, period_end, numeric_value)
-                    # Keep first occurrence when multiple benchmark member IDs have identical values
-                    benchmark_facts_deduped = benchmark_facts.drop_duplicates(
-                        subset=['concept', 'period_start', 'period_end', 'numeric_value'],
-                        keep='first'
-                    )
+                has_benchmark_axis = 'dim_oef_BroadBasedIndexAxis' in df_filtered.columns
+                if has_benchmark_axis:
+                    # Filter for benchmark facts: BroadBasedIndexAxis is not null AND ClassAxis is null
+                    benchmark_facts = df_filtered[
+                        (df_filtered['dim_oef_BroadBasedIndexAxis'].notna()) &
+                        (df_filtered['dim_oef_ClassAxis'].isna())
+                    ].copy()
 
-                    # Extract benchmark name from the first benchmark
-                    benchmark_axis_values = benchmark_facts_deduped['dim_oef_BroadBasedIndexAxis'].dropna().unique()
-                    if len(benchmark_axis_values) > 0:
-                        benchmark_name = _extract_benchmark_name(benchmark_axis_values[0])
+                    if not benchmark_facts.empty:
+                        # Deduplicate benchmark facts by (concept, period_start, period_end, numeric_value)
+                        # Keep first occurrence when multiple benchmark member IDs have identical values
+                        benchmark_facts_deduped = benchmark_facts.drop_duplicates(
+                            subset=['concept', 'period_start', 'period_end', 'numeric_value'],
+                            keep='first'
+                        )
 
-                    # Extract benchmark returns
-                    for _, row in benchmark_facts_deduped.iterrows():
+                        # Extract benchmark name from the first benchmark
+                        benchmark_axis_values = benchmark_facts_deduped['dim_oef_BroadBasedIndexAxis'].dropna().unique()
+                        if len(benchmark_axis_values) > 0:
+                            benchmark_name = _extract_benchmark_name(benchmark_axis_values[0])
+
+                        # Extract benchmark returns
+                        for _, row in benchmark_facts_deduped.iterrows():
+                            concept = row['concept']
+                            numeric_value = row.get('numeric_value')
+
+                            if concept == 'oef:AvgAnnlRtrPct':
+                                period_start = row.get('period_start')
+                                period_end = row.get('period_end')
+
+                                if period_start and period_end:
+                                    period_start = parse_date(period_start)
+                                    period_end = parse_date(period_end)
+
+                                    field_name = _map_return_period(period_start, period_end)
+                                    if field_name:
+                                        # Map to benchmark field name
+                                        benchmark_field = field_name.replace('return_', 'benchmark_return_')
+                                        if benchmark_field in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
+                                            benchmark_returns[benchmark_field] = parse_decimal(numeric_value)
+
+                        logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark: {benchmark_name}, returns: {benchmark_returns}")
+
+                # Process each unique class_id in this filing's XBRL data
+                for class_axis_value in df_filtered['dim_oef_ClassAxis'].dropna().unique():
+                    class_id = _extract_class_id(class_axis_value)
+                    if not class_id:
+                        continue
+
+                    # Look up ETF by class_id
+                    etf = class_id_to_etf.get(class_id)
+                    if not etf:
+                        logger.debug(f"CIK {cik}: class_id {class_id} not found in database, skipping")
+                        skipped_etfs += 1
+                        continue
+
+                    # Get all facts for this class (fund facts only - no benchmark axis)
+                    class_facts = df_filtered[df_filtered['dim_oef_ClassAxis'] == class_axis_value].copy()
+                    fund_facts = class_facts[class_facts['dim_oef_BroadBasedIndexAxis'].isna()].copy() if has_benchmark_axis else class_facts
+
+                    # Extract fiscal_year_end from period_end (use the first one we find)
+                    fiscal_year_end = None
+                    if 'period_end' in fund_facts.columns:
+                        period_ends = fund_facts['period_end'].dropna()
+                        if not period_ends.empty:
+                            fiscal_year_end = parse_date(period_ends.iloc[0])
+
+                    if not fiscal_year_end:
+                        logger.warning(f"CIK {cik}: No fiscal_year_end found for class_id {class_id}")
+                        skipped_etfs += 1
+                        continue
+
+                    # Skip if this (class_id, fiscal_year_end) was already processed
+                    key = (class_id, fiscal_year_end)
+                    if key in satisfied:
+                        logger.debug(f"CIK {cik}: class_id {class_id} fiscal_year_end {fiscal_year_end} already processed, skipping")
+                        continue
+
+                    # Extract fund returns by period
+                    returns_data = {}
+                    expense_ratio = None
+                    portfolio_turnover = None
+
+                    for _, row in fund_facts.iterrows():
                         concept = row['concept']
                         numeric_value = row.get('numeric_value')
 
                         if concept == 'oef:AvgAnnlRtrPct':
+                            # Map period to field name
                             period_start = row.get('period_start')
                             period_end = row.get('period_end')
 
@@ -262,111 +320,57 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
 
                                 field_name = _map_return_period(period_start, period_end)
                                 if field_name:
-                                    # Map to benchmark field name
-                                    benchmark_field = field_name.replace('return_', 'benchmark_return_')
-                                    if benchmark_field in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
-                                        benchmark_returns[benchmark_field] = parse_decimal(numeric_value)
+                                    returns_data[field_name] = parse_decimal(numeric_value)
 
-                    logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark: {benchmark_name}, returns: {benchmark_returns}")
+                        elif concept == 'oef:ExpenseRatioPct':
+                            expense_ratio = parse_decimal(numeric_value)
 
-            # Process each unique class_id in this filing's XBRL data
-            for class_axis_value in df_filtered['dim_oef_ClassAxis'].dropna().unique():
-                class_id = _extract_class_id(class_axis_value)
-                if not class_id:
-                    continue
+                        elif concept == 'us-gaap:InvestmentCompanyPortfolioTurnover':
+                            portfolio_turnover = parse_decimal(numeric_value)
 
-                # Look up ETF by class_id
-                etf = class_id_to_etf.get(class_id)
-                if not etf:
-                    logger.debug(f"CIK {cik}: class_id {class_id} not found in database, skipping")
-                    skipped_etfs += 1
-                    continue
+                    # Upsert Performance record
+                    upsert_record(
+                        session,
+                        Performance,
+                        filter_kwargs={
+                            "etf_id": etf.id,
+                            "fiscal_year_end": fiscal_year_end,
+                            "filing_date": filing_date,
+                        },
+                        data_kwargs={
+                            **returns_data,
+                            "expense_ratio_actual": expense_ratio,
+                            "portfolio_turnover": portfolio_turnover,
+                            "benchmark_name": benchmark_name,
+                            **benchmark_returns,
+                        },
+                    )
+                    logger.debug(f"CIK {cik}: Upserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
 
-                # Get all facts for this class (fund facts only - no benchmark axis)
-                class_facts = df_filtered[df_filtered['dim_oef_ClassAxis'] == class_axis_value].copy()
-                fund_facts = class_facts[class_facts['dim_oef_BroadBasedIndexAxis'].isna()].copy() if has_benchmark_axis else class_facts
+                    satisfied.add(key)
+                    processed_etfs += 1
 
-                # Extract fiscal_year_end from period_end (use the first one we find)
-                fiscal_year_end = None
-                if 'period_end' in fund_facts.columns:
-                    period_ends = fund_facts['period_end'].dropna()
-                    if not period_ends.empty:
-                        fiscal_year_end = parse_date(period_ends.iloc[0])
+                # In backfill mode, commit after each filing
+                if backfill_mode:
+                    update_processing_log(session, cik, "ncsr", filing_date)
+                    session.commit()
+                    logger.info(f"CIK {cik}: Processed filing {filing_idx + 1}/{num_filings} (filing_date={filing_date})")
 
-                if not fiscal_year_end:
-                    logger.warning(f"CIK {cik}: No fiscal_year_end found for class_id {class_id}")
-                    skipped_etfs += 1
-                    continue
+            # Update processing log after successful processing (normal mode)
+            if not backfill_mode and latest_filing_date is not None:
+                latest_filing_date = ensure_date(latest_filing_date)
+                update_processing_log(session, cik, "ncsr", latest_filing_date)
 
-                # Skip if this (class_id, fiscal_year_end) was already processed
-                key = (class_id, fiscal_year_end)
-                if key in satisfied:
-                    logger.debug(f"CIK {cik}: class_id {class_id} fiscal_year_end {fiscal_year_end} already processed, skipping")
-                    continue
+            session.commit()
+            logger.info(f"CIK {cik}: Processed {processed_etfs} ETF(s), skipped {skipped_etfs}")
+            return True
 
-                # Extract fund returns by period
-                returns_data = {}
-                expense_ratio = None
-                portfolio_turnover = None
+        except Exception as e:
+            logger.error(f"CIK {cik}: Error processing N-CSR filing: {e}")
+            session.rollback()
+            return False
 
-                for _, row in fund_facts.iterrows():
-                    concept = row['concept']
-                    numeric_value = row.get('numeric_value')
-
-                    if concept == 'oef:AvgAnnlRtrPct':
-                        # Map period to field name
-                        period_start = row.get('period_start')
-                        period_end = row.get('period_end')
-
-                        if period_start and period_end:
-                            period_start = parse_date(period_start)
-                            period_end = parse_date(period_end)
-
-                            field_name = _map_return_period(period_start, period_end)
-                            if field_name:
-                                returns_data[field_name] = parse_decimal(numeric_value)
-
-                    elif concept == 'oef:ExpenseRatioPct':
-                        expense_ratio = parse_decimal(numeric_value)
-
-                    elif concept == 'us-gaap:InvestmentCompanyPortfolioTurnover':
-                        portfolio_turnover = parse_decimal(numeric_value)
-
-                # Upsert Performance record
-                upsert_record(
-                    session,
-                    Performance,
-                    filter_kwargs={
-                        "etf_id": etf.id,
-                        "fiscal_year_end": fiscal_year_end,
-                        "filing_date": filing_date,
-                    },
-                    data_kwargs={
-                        **returns_data,
-                        "expense_ratio_actual": expense_ratio,
-                        "portfolio_turnover": portfolio_turnover,
-                        "benchmark_name": benchmark_name,
-                        **benchmark_returns,
-                    },
-                )
-                logger.debug(f"CIK {cik}: Upserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
-
-                satisfied.add(key)
-                processed_etfs += 1
-
-        # Update processing log after successful processing
-        if latest_filing_date is not None:
-            latest_filing_date = ensure_date(latest_filing_date)
-            update_processing_log(session, cik, "ncsr", latest_filing_date)
-
-        session.commit()
-        logger.info(f"CIK {cik}: Processed {processed_etfs} ETF(s), skipped {skipped_etfs}")
-        return True
-
-    except Exception as e:
-        logger.error(f"CIK {cik}: Error processing N-CSR filing: {e}")
-        session.rollback()
-        return False
+    return _process_cik_ncsr
 
 
 def parse_ncsr(
@@ -374,6 +378,8 @@ def parse_ncsr(
     ciks: Optional[list[str]] = None,
     limit: Optional[int] = None,
     clear_cache: bool = True,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
 ) -> None:
     """Parse N-CSR filings for performance data.
 
@@ -382,6 +388,8 @@ def parse_ncsr(
         ciks: Optional list of CIKs to process (overrides cik param)
         limit: Optional limit on number of CIKs to process
         clear_cache: Whether to clear edgartools HTTP cache after processing
+        from_date: Optional start date for backfill (YYYY-MM-DD). Requires to_date.
+        to_date: Optional end date for backfill (YYYY-MM-DD). Requires from_date.
     """
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
@@ -392,7 +400,8 @@ def parse_ncsr(
     if not cik_list:
         return
 
-    run_parser_loop(cik_list, session_factory, _process_cik_ncsr, "ncsr")
+    process_fn = _make_process_cik_ncsr(from_date, to_date)
+    run_parser_loop(cik_list, session_factory, process_fn, "ncsr")
 
     if clear_cache:
         clear_and_log_cache()

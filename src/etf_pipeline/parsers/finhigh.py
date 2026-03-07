@@ -25,6 +25,7 @@ from etf_pipeline.models import (
     PerShareRatios,
 )
 from etf_pipeline.parser_utils import (
+    build_filing_date_filter,
     clear_and_log_cache,
     ensure_date,
     parse_date,
@@ -37,7 +38,6 @@ from etf_pipeline.parser_utils import (
 from etf_pipeline.sgml import parse_series_class_info
 
 logger = logging.getLogger(__name__)
-
 
 
 def _find_table_context(table) -> tuple[Optional[str], Optional[str]]:
@@ -286,263 +286,274 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
     return result
 
 
-def _process_cik_finhigh(session: Session, cik: str) -> bool:
-    """Process N-CSR filings for Financial Highlights data for a single CIK.
+def _make_process_cik_finhigh(from_date: Optional[str] = None, to_date: Optional[str] = None):
+    """Return a per-CIK processor for the parser loop."""
+    date_filter = build_filing_date_filter(from_date, to_date)
+    backfill_mode = date_filter is not None
 
-    Iterates through multiple recent filings to cover all fund series
-    under this CIK.
+    def _process_cik_finhigh(session: Session, cik: str) -> bool:
+        MAX_FILINGS = 10  # Limit scan to 10 most recent filings per CIK
 
-    Args:
-        session: SQLAlchemy session
-        cik: CIK string (zero-padded to 10 digits)
+        try:
+            # Build class_id -> ETF mapping from database first
+            stmt = select(ETF).where(ETF.cik == cik)
+            etfs = session.execute(stmt).scalars().all()
 
-    Returns:
-        True if successful, False otherwise
-    """
-    MAX_FILINGS = 10  # Limit scan to 10 most recent filings per CIK
+            class_id_to_etf = {}
+            for etf in etfs:
+                if etf.class_id:
+                    class_id_to_etf[etf.class_id] = etf
 
-    try:
-        # Build class_id -> ETF mapping from database first
-        stmt = select(ETF).where(ETF.cik == cik)
-        etfs = session.execute(stmt).scalars().all()
+            if not class_id_to_etf:
+                logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
+                return True
 
-        class_id_to_etf = {}
-        for etf in etfs:
-            if etf.class_id:
-                class_id_to_etf[etf.class_id] = etf
+            needed_class_ids = set(class_id_to_etf.keys())
+            # Track (class_id, fiscal_year_end) pairs already processed
+            satisfied = set()
+            latest_filing_date = None
 
-        if not class_id_to_etf:
-            logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
-            return True
+            company = Company(cik)
+            kwargs = {"form": "N-CSR"}
+            if date_filter is not None:
+                kwargs["filing_date"] = date_filter
+            filings = company.get_filings(**kwargs)
 
-        needed_class_ids = set(class_id_to_etf.keys())
-        # Track (class_id, fiscal_year_end) pairs already processed
-        satisfied = set()
-        latest_filing_date = None
+            if not filings or (hasattr(filings, "empty") and filings.empty):
+                logger.info(f"CIK {cik}: No N-CSR filings found")
+                return True
 
-        company = Company(cik)
-        filings = company.get_filings(form="N-CSR")
+            processed_etfs = 0
+            skipped_etfs = 0
 
-        if not filings or (hasattr(filings, "empty") and filings.empty):
-            logger.info(f"CIK {cik}: No N-CSR filings found")
-            return True
-
-        processed_etfs = 0
-        skipped_etfs = 0
-
-        num_filings = min(len(filings), MAX_FILINGS)
-        consecutive_misses = 0
-        for filing_idx in range(num_filings):
-            # Stop early if all class_ids have been satisfied
-            if not (needed_class_ids - {cid for cid, _ in satisfied}):
-                logger.debug(
-                    f"CIK {cik}: All class_ids satisfied after {filing_idx} filing(s)"
-                )
-                break
-
-            filing = filings[filing_idx]
-            filing_date = ensure_date(filing.filing_date)
-            satisfied_before_this_filing = len(satisfied)
-
-            # Track the latest filing date
-            if latest_filing_date is None or filing_date > latest_filing_date:
-                latest_filing_date = filing_date
-
-            # Get HTML from filing
-            try:
-                html = filing.html()
-                if not html:
-                    logger.warning(
-                        f"CIK {cik}: Filing {filing_idx} has no HTML, skipping"
+            num_filings = len(filings) if backfill_mode else min(len(filings), MAX_FILINGS)
+            consecutive_misses = 0
+            for filing_idx in range(num_filings):
+                # In normal mode, stop early if all class_ids have been satisfied
+                if not backfill_mode and not (needed_class_ids - {cid for cid, _ in satisfied}):
+                    logger.debug(
+                        f"CIK {cik}: All class_ids satisfied after {filing_idx} filing(s)"
                     )
-                    continue
-            except Exception as e:
-                logger.warning(
-                    f"CIK {cik}: Filing {filing_idx} HTML fetch failed: {e}"
-                )
-                continue
-
-            # Parse SGML header to build series/class mapping
-            try:
-                header_text = filing.header.text if hasattr(filing, 'header') and hasattr(filing.header, 'text') else ""
-                series_class_mapping = parse_series_class_info(header_text)
-            except Exception as e:
-                logger.warning(f"CIK {cik}: Failed to parse SGML header: {e}")
-                series_class_mapping = {'classes': {}, 'tickers': {}}
-
-            if not re.search(r'financial\s+highlights', html, re.IGNORECASE):
-                logger.debug(f"CIK {cik}: Filing {filing_idx} has no Financial Highlights content, skipping")
-                consecutive_misses += 1
-                if consecutive_misses >= 2:
-                    logger.debug(f"CIK {cik}: No new matches in 2 consecutive filings, stopping early")
-                    del html
-                    gc.collect()
                     break
-                continue
 
-            # Parse HTML to find Financial Highlights tables
-            soup = BeautifulSoup(html, 'lxml')
+                filing = filings[filing_idx]
+                filing_date = ensure_date(filing.filing_date)
+                satisfied_before_this_filing = len(satisfied)
 
-            # Strategy: Find tables that contain Financial Highlights data
-            # by looking for characteristic row patterns (Net Asset Value, etc.)
-            tables = soup.find_all('table')
-            fh_tables = []
+                # Track the latest filing date
+                if latest_filing_date is None or filing_date > latest_filing_date:
+                    latest_filing_date = filing_date
 
-            for table in tables:
-                table_text = table.get_text().lower()
-                if 'net asset value' in table_text and 'investment operations' in table_text:
-                    fh_tables.append(table)
-
-            logger.info(f"CIK {cik}: Found {len(fh_tables)} Financial Highlights tables in filing {filing_idx}")
-
-            # Collect context and serialized HTML for each table while soup is alive,
-            # then release the large DOM tree before entering the inner parsing loop.
-            table_tuples = []
-            for table in fh_tables:
-                fund_name, class_name = _find_table_context(table)
-                table_tuples.append((fund_name, class_name, str(table)))
-
-            del soup
-            del html
-            del fh_tables
-            gc.collect()
-
-            for fund_name, class_name, table_html_str in table_tuples:
+                # Get HTML from filing
                 try:
-                    if not fund_name or not class_name:
-                        logger.debug(
-                            f"CIK {cik}: Could not extract context from table (fund={fund_name}, class={class_name})"
+                    html = filing.html()
+                    if not html:
+                        logger.warning(
+                            f"CIK {cik}: Filing {filing_idx} has no HTML, skipping"
                         )
                         continue
+                except Exception as e:
+                    logger.warning(
+                        f"CIK {cik}: Filing {filing_idx} HTML fetch failed: {e}"
+                    )
+                    continue
 
-                    # Match to class_id using SGML mapping
-                    matched_class_id = None
+                # Parse SGML header to build series/class mapping
+                try:
+                    header_text = filing.header.text if hasattr(filing, 'header') and hasattr(filing.header, 'text') else ""
+                    series_class_mapping = parse_series_class_info(header_text)
+                except Exception as e:
+                    logger.warning(f"CIK {cik}: Failed to parse SGML header: {e}")
+                    series_class_mapping = {'classes': {}, 'tickers': {}}
 
-                    # Normalize for matching
-                    fund_name_norm = fund_name.lower()
-                    class_name_norm = class_name.lower()
-
-                    # Try substring match (bidirectional: HTML may truncate or SGML may prefix)
-                    for (series_norm, class_norm), class_id in series_class_mapping['classes'].items():
-                        series_match = series_norm in fund_name_norm or fund_name_norm in series_norm
-                        class_match = class_norm in class_name_norm or class_name_norm in class_norm
-                        if series_match and class_match:
-                            matched_class_id = class_id
+                if not re.search(r'financial\s+highlights', html, re.IGNORECASE):
+                    logger.debug(f"CIK {cik}: Filing {filing_idx} has no Financial Highlights content, skipping")
+                    # In normal mode only, use consecutive_misses early exit
+                    if not backfill_mode:
+                        consecutive_misses += 1
+                        if consecutive_misses >= 2:
+                            logger.debug(f"CIK {cik}: No new matches in 2 consecutive filings, stopping early")
+                            del html
+                            gc.collect()
                             break
+                    continue
 
-                    # If no match by name, try ticker fallback (extract from context)
-                    if not matched_class_id:
-                        for ticker, class_id in series_class_mapping['tickers'].items():
-                            if ticker.lower() in fund_name_norm or ticker.lower() in class_name_norm:
+                # Parse HTML to find Financial Highlights tables
+                soup = BeautifulSoup(html, 'lxml')
+
+                # Strategy: Find tables that contain Financial Highlights data
+                # by looking for characteristic row patterns (Net Asset Value, etc.)
+                tables = soup.find_all('table')
+                fh_tables = []
+
+                for table in tables:
+                    table_text = table.get_text().lower()
+                    if 'net asset value' in table_text and 'investment operations' in table_text:
+                        fh_tables.append(table)
+
+                logger.info(f"CIK {cik}: Found {len(fh_tables)} Financial Highlights tables in filing {filing_idx}")
+
+                # Collect context and serialized HTML for each table while soup is alive,
+                # then release the large DOM tree before entering the inner parsing loop.
+                table_tuples = []
+                for table in fh_tables:
+                    fund_name, class_name = _find_table_context(table)
+                    table_tuples.append((fund_name, class_name, str(table)))
+
+                del soup
+                del html
+                del fh_tables
+                gc.collect()
+
+                for fund_name, class_name, table_html_str in table_tuples:
+                    try:
+                        if not fund_name or not class_name:
+                            logger.debug(
+                                f"CIK {cik}: Could not extract context from table (fund={fund_name}, class={class_name})"
+                            )
+                            continue
+
+                        # Match to class_id using SGML mapping
+                        matched_class_id = None
+
+                        # Normalize for matching
+                        fund_name_norm = fund_name.lower()
+                        class_name_norm = class_name.lower()
+
+                        # Try substring match (bidirectional: HTML may truncate or SGML may prefix)
+                        for (series_norm, class_norm), class_id in series_class_mapping['classes'].items():
+                            series_match = series_norm in fund_name_norm or fund_name_norm in series_norm
+                            class_match = class_norm in class_name_norm or class_name_norm in class_norm
+                            if series_match and class_match:
                                 matched_class_id = class_id
                                 break
 
-                    if not matched_class_id:
-                        logger.debug(
-                            f"CIK {cik}: Could not match table to class_id (fund='{fund_name}', class='{class_name}')"
+                        # If no match by name, try ticker fallback (extract from context)
+                        if not matched_class_id:
+                            for ticker, class_id in series_class_mapping['tickers'].items():
+                                if ticker.lower() in fund_name_norm or ticker.lower() in class_name_norm:
+                                    matched_class_id = class_id
+                                    break
+
+                        if not matched_class_id:
+                            logger.debug(
+                                f"CIK {cik}: Could not match table to class_id (fund='{fund_name}', class='{class_name}')"
+                            )
+                            continue
+
+                        # Look up ETF by class_id
+                        matched_etf = class_id_to_etf.get(matched_class_id)
+                        if not matched_etf:
+                            logger.debug(
+                                f"CIK {cik}: class_id {matched_class_id} not found in database"
+                            )
+                            continue
+
+                        logger.info(
+                            f"CIK {cik}: Matched table to {matched_etf.ticker} (fund='{fund_name}', class='{class_name}', class_id={matched_class_id})"
                         )
-                        continue
 
-                    # Look up ETF by class_id
-                    matched_etf = class_id_to_etf.get(matched_class_id)
-                    if not matched_etf:
-                        logger.debug(
-                            f"CIK {cik}: class_id {matched_class_id} not found in database"
+                        # Parse the table
+                        table_data = parse_financial_highlights_table(table_html_str)
+
+                        if not table_data.get('fiscal_year_end'):
+                            logger.warning(
+                                f"CIK {cik}: Could not extract fiscal_year_end from table for {matched_etf.ticker}"
+                            )
+                            skipped_etfs += 1
+                            continue
+
+                        # Ensure fiscal_year_end is a date object
+                        if isinstance(table_data['fiscal_year_end'], datetime):
+                            table_data['fiscal_year_end'] = table_data['fiscal_year_end'].date()
+
+                        # Check if already processed
+                        if (matched_etf.class_id, table_data['fiscal_year_end']) in satisfied:
+                            logger.debug(
+                                f"CIK {cik}: Already processed {matched_etf.ticker} FY {table_data['fiscal_year_end']}"
+                            )
+                            continue
+
+                        # Upsert PerShareOperating
+                        filter_keys = {
+                            'etf_id': matched_etf.id,
+                            'fiscal_year_end': table_data['fiscal_year_end'],
+                            'filing_date': filing_date,
+                        }
+                        upsert_record(
+                            session, PerShareOperating, filter_keys,
+                            {**table_data['operating'], 'math_validated': table_data.get('math_validated', False)},
                         )
-                        continue
 
-                    logger.info(
-                        f"CIK {cik}: Matched table to {matched_etf.ticker} (fund='{fund_name}', class='{class_name}', class_id={matched_class_id})"
-                    )
+                        # Upsert PerShareDistribution
+                        upsert_record(session, PerShareDistribution, filter_keys, table_data['distribution'])
 
-                    # Parse the table
-                    table_data = parse_financial_highlights_table(table_html_str)
+                        # Upsert PerShareRatios
+                        upsert_record(session, PerShareRatios, filter_keys, table_data['ratios'])
 
-                    if not table_data.get('fiscal_year_end'):
-                        logger.warning(
-                            f"CIK {cik}: Could not extract fiscal_year_end from table for {matched_etf.ticker}"
+                        session.flush()
+
+                        # Track as satisfied
+                        satisfied.add((matched_etf.class_id, table_data['fiscal_year_end']))
+                        processed_etfs += 1
+
+                        logger.info(
+                            f"CIK {cik}: Processed {matched_etf.ticker} FY {table_data['fiscal_year_end']}, "
+                            f"math_validated={table_data['math_validated']}"
                         )
+
+                    except Exception as e:
+                        logger.warning(f"CIK {cik}: Failed to parse table: {e}")
                         skipped_etfs += 1
                         continue
 
-                    # Ensure fiscal_year_end is a date object
-                    if isinstance(table_data['fiscal_year_end'], datetime):
-                        table_data['fiscal_year_end'] = table_data['fiscal_year_end'].date()
+                # In normal mode, track consecutive misses for early exit
+                if not backfill_mode:
+                    if len(satisfied) > satisfied_before_this_filing:
+                        consecutive_misses = 0
+                    else:
+                        consecutive_misses += 1
+                        if consecutive_misses >= 2:
+                            logger.debug(f"CIK {cik}: No new matches in 2 consecutive filings, stopping early")
+                            del table_tuples
+                            gc.collect()
+                            break
 
-                    # Check if already processed
-                    if (matched_etf.class_id, table_data['fiscal_year_end']) in satisfied:
-                        logger.debug(
-                            f"CIK {cik}: Already processed {matched_etf.ticker} FY {table_data['fiscal_year_end']}"
-                        )
-                        continue
+                del table_tuples
+                gc.collect()
+                session.commit()
+                session.expunge_all()
+                class_id_to_etf = {
+                    cid: session.merge(etf_obj)
+                    for cid, etf_obj in class_id_to_etf.items()
+                }
 
-                    # Upsert PerShareOperating
-                    filter_keys = {
-                        'etf_id': matched_etf.id,
-                        'fiscal_year_end': table_data['fiscal_year_end'],
-                        'filing_date': filing_date,
-                    }
-                    upsert_record(
-                        session, PerShareOperating, filter_keys,
-                        {**table_data['operating'], 'math_validated': table_data.get('math_validated', False)},
-                    )
+                if backfill_mode:
+                    update_processing_log(session, cik, "finhigh", filing_date)
+                    session.commit()
+                    logger.info(f"CIK {cik}: Processed filing {filing_idx + 1}/{num_filings} (filing_date={filing_date})")
+                else:
+                    logger.debug(f"CIK {cik}: Committed data for filing {filing_idx}")
 
-                    # Upsert PerShareDistribution
-                    upsert_record(session, PerShareDistribution, filter_keys, table_data['distribution'])
+            # Update processing log after successful processing (normal mode)
+            if not backfill_mode and latest_filing_date is not None:
+                latest_filing_date = ensure_date(latest_filing_date)
+                update_processing_log(session, cik, "finhigh", latest_filing_date)
 
-                    # Upsert PerShareRatios
-                    upsert_record(session, PerShareRatios, filter_keys, table_data['ratios'])
-
-                    session.flush()
-
-                    # Track as satisfied
-                    satisfied.add((matched_etf.class_id, table_data['fiscal_year_end']))
-                    processed_etfs += 1
-
-                    logger.info(
-                        f"CIK {cik}: Processed {matched_etf.ticker} FY {table_data['fiscal_year_end']}, "
-                        f"math_validated={table_data['math_validated']}"
-                    )
-
-                except Exception as e:
-                    logger.warning(f"CIK {cik}: Failed to parse table: {e}")
-                    skipped_etfs += 1
-                    continue
-
-            # Exit early if no new matches for 2 consecutive filings
-            if len(satisfied) > satisfied_before_this_filing:
-                consecutive_misses = 0
-            else:
-                consecutive_misses += 1
-                if consecutive_misses >= 2:
-                    logger.debug(f"CIK {cik}: No new matches in 2 consecutive filings, stopping early")
-                    del table_tuples
-                    gc.collect()
-                    break
-
-            del table_tuples
-            gc.collect()
             session.commit()
-            session.expunge_all()
-            class_id_to_etf = {
-                cid: session.merge(etf_obj)
-                for cid, etf_obj in class_id_to_etf.items()
-            }
-            logger.debug(f"CIK {cik}: Committed data for filing {filing_idx}")
+            logger.info(f"CIK {cik}: Processed {processed_etfs} ETF(s), skipped {skipped_etfs}")
+            return True
 
-        # Update processing log after successful processing
-        if latest_filing_date is not None:
-            latest_filing_date = ensure_date(latest_filing_date)
-            update_processing_log(session, cik, "finhigh", latest_filing_date)
+        except Exception as e:
+            logger.error(f"CIK {cik}: Error processing Financial Highlights: {e}")
+            session.rollback()
+            return False
 
-        session.commit()
-        logger.info(f"CIK {cik}: Processed {processed_etfs} ETF(s), skipped {skipped_etfs}")
-        return True
+    return _process_cik_finhigh
 
-    except Exception as e:
-        logger.error(f"CIK {cik}: Error processing Financial Highlights: {e}")
-        session.rollback()
-        return False
+
+# Module-level alias for backward compatibility (used by tests)
+_process_cik_finhigh = _make_process_cik_finhigh()
 
 
 def parse_finhigh(
@@ -550,6 +561,8 @@ def parse_finhigh(
     ciks: Optional[list[str]] = None,
     limit: Optional[int] = None,
     clear_cache: bool = True,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
 ) -> None:
     """Parse Financial Highlights from N-CSR filings.
 
@@ -558,6 +571,8 @@ def parse_finhigh(
         ciks: Optional list of CIKs to process (overrides cik param)
         limit: Optional limit on number of CIKs to process
         clear_cache: Whether to clear edgartools HTTP cache after processing
+        from_date: Optional start date for backfill (YYYY-MM-DD). Requires to_date.
+        to_date: Optional end date for backfill (YYYY-MM-DD). Requires from_date.
     """
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
@@ -568,7 +583,8 @@ def parse_finhigh(
     if not cik_list:
         return
 
-    run_parser_loop(cik_list, session_factory, _process_cik_finhigh, "finhigh")
+    process_fn = _make_process_cik_finhigh(from_date, to_date)
+    run_parser_loop(cik_list, session_factory, process_fn, "finhigh")
 
     if clear_cache:
         clear_and_log_cache()

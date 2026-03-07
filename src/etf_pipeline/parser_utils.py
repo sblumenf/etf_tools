@@ -8,6 +8,8 @@ from dateutil.parser import parse as _du_parse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from typing import Optional
+
 from etf_pipeline.models import ETF, ProcessingLog
 
 logger = logging.getLogger(__name__)
@@ -86,6 +88,19 @@ def ensure_date(value) -> date:
     raise TypeError(f"ensure_date expected date or datetime, got {type(value)}")
 
 
+def build_filing_date_filter(from_date: Optional[str], to_date: Optional[str]) -> Optional[tuple]:
+    """Convert from_date/to_date to edgartools filing_date tuple.
+
+    Returns None if no dates provided, or ("YYYY-MM-DD", "YYYY-MM-DD") tuple.
+    Raises ValueError if only one date is provided.
+    """
+    if from_date is None and to_date is None:
+        return None
+    if from_date is None or to_date is None:
+        raise ValueError("Both from_date and to_date must be provided together")
+    return (from_date, to_date)
+
+
 def resolve_cik_list(session, cik=None, ciks=None, limit=None):
     if ciks is not None:
         cik_list = ciks
@@ -149,7 +164,7 @@ def update_processing_log(session: Session, cik: str, parser_type: str, filing_d
     existing = session.query(ProcessingLog).filter_by(cik=cik, parser_type=parser_type).first()
     if existing:
         existing.last_run_at = datetime.now()
-        existing.latest_filing_date_seen = filing_date
+        existing.latest_filing_date_seen = max(existing.latest_filing_date_seen, filing_date)
     else:
         session.add(ProcessingLog(
             cik=cik,

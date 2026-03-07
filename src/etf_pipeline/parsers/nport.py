@@ -30,6 +30,7 @@ from etf_pipeline.models import (
     SecurityLending,
 )
 from etf_pipeline.parser_utils import (
+    build_filing_date_filter,
     clean_str,
     clear_and_log_cache,
     ensure_date,
@@ -50,6 +51,8 @@ def parse_nport(
     ciks: Optional[list[str]] = None,
     limit: Optional[int] = None,
     clear_cache: bool = True,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
 ) -> None:
     """Parse NPORT-P filings for all ETFs and extract holdings and derivatives.
 
@@ -58,6 +61,8 @@ def parse_nport(
         ciks: Optional list of CIKs to process (overrides cik parameter)
         limit: Optional limit on number of CIKs to process (alphabetical order)
         clear_cache: Whether to clear edgartools HTTP cache after processing
+        from_date: Optional start date for backfill (YYYY-MM-DD)
+        to_date: Optional end date for backfill (YYYY-MM-DD)
     """
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
@@ -100,10 +105,11 @@ def parse_nport(
 
     succeeded = 0
     failed = 0
+    process_cik = _make_process_cik(from_date, to_date)
 
     for cik_str in ciks_to_process:
         try:
-            _process_cik(session_factory, cik_str, len(by_cik[cik_str]))
+            process_cik(session_factory, cik_str, len(by_cik[cik_str]))
             succeeded += 1
         except Exception as e:
             failed += 1
@@ -113,6 +119,42 @@ def parse_nport(
 
     if clear_cache:
         clear_and_log_cache()
+
+
+def _get_all_filings_per_series(filings):
+    """Get all filings per series_id for backfill mode.
+
+    Args:
+        filings: EntityFilings collection from edgartools
+
+    Returns:
+        dict: Mapping of series_id -> list of (filing, fund_report, report_date, filing_date)
+    """
+    if not filings or (hasattr(filings, 'empty') and filings.empty):
+        return {}
+
+    series_map = {}
+    for filing in filings:
+        try:
+            fund_report = FundReport.from_filing(filing)
+            series_id = fund_report.general_info.series_id
+
+            if not series_id:
+                logger.warning(f"Filing has no series_id, skipping (filing_date={filing.filing_date})")
+                continue
+
+            report_date = fund_report.reporting_period
+            if isinstance(report_date, str):
+                report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+
+            filing_date = ensure_date(filing.filing_date)
+            series_map.setdefault(series_id, []).append((filing, fund_report, report_date, filing_date))
+
+        except Exception as e:
+            logger.warning(f"Failed to parse filing: {e} (filing_date={filing.filing_date})")
+            continue
+
+    return series_map
 
 
 def _get_latest_filings_per_series(filings):
@@ -161,72 +203,128 @@ def _get_latest_filings_per_series(filings):
     return series_map
 
 
-def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> None:
-    """Process a single CIK: fetch NPORT-P filings and extract holdings and derivatives by series_id."""
-    logger.info(f"Processing CIK {cik}: {etf_count} ETF(s)")
+def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = None):
+    """Factory: return a _process_cik function with optional backfill date range."""
+    backfill_mode = from_date is not None and to_date is not None
+    date_filter = build_filing_date_filter(from_date, to_date)
 
-    company = Company(cik)
-    filings = company.get_filings(form="NPORT-P")
+    def _process_cik(session_factory: sessionmaker, cik: str, etf_count: int) -> None:
+        """Process a single CIK: fetch NPORT-P filings and extract holdings and derivatives by series_id."""
+        logger.info(f"Processing CIK {cik}: {etf_count} ETF(s)")
 
-    if not filings or (hasattr(filings, 'empty') and filings.empty):
-        logger.warning(f"CIK {cik}: No NPORT-P filings found")
-        return
+        company = Company(cik)
+        kwargs = {"form": "NPORT-P"}
+        if date_filter is not None:
+            kwargs["filing_date"] = date_filter
+        filings = company.get_filings(**kwargs)
 
-    logger.info(f"CIK {cik}: Found {len(filings)} NPORT-P filing(s)")
+        if not filings or (hasattr(filings, 'empty') and filings.empty):
+            logger.warning(f"CIK {cik}: No NPORT-P filings found")
+            return
 
-    # Get latest filings grouped by series_id
-    series_map = _get_latest_filings_per_series(filings)
+        logger.info(f"CIK {cik}: Found {len(filings)} NPORT-P filing(s)")
 
-    if not series_map:
-        logger.warning(f"CIK {cik}: No valid series found in filings")
-        return
+        if backfill_mode:
+            # Backfill: process all filings per series
+            series_all = _get_all_filings_per_series(filings)
+            if not series_all:
+                logger.warning(f"CIK {cik}: No valid series found in filings")
+                return
 
-    logger.info(f"CIK {cik}: Parsed {len(series_map)} series from filings")
+            with session_factory() as session:
+                stmt = select(ETF).where(ETF.cik == cik)
+                etfs = session.execute(stmt).scalars().all()
 
-    # Track the latest filing date seen across all filings processed
-    latest_filing_date = max(filing_date for _, _, _, filing_date in series_map.values()) if series_map else None
+                latest_filing_date = None
+                processed = 0
+                total = sum(len(v) for v in series_all.values())
 
-    with session_factory() as session:
-        stmt = select(ETF).where(ETF.cik == cik)
-        etfs = session.execute(stmt).scalars().all()
+                for etf in etfs:
+                    if etf.series_id not in series_all:
+                        logger.warning(f"ETF {etf.ticker} (series_id={etf.series_id}): No matching NPORT-P filing found")
+                        continue
+                    filings_for_series = series_all[etf.series_id]
+                    for i, (filing, fund_report, report_date, filing_date) in enumerate(filings_for_series):
+                        # Per-filing dedup check
+                        stmt_existing = select(Holding.etf_id).where(
+                            Holding.etf_id == etf.id,
+                            Holding.report_date == report_date,
+                        ).limit(1)
+                        already_exists = session.execute(stmt_existing).scalar_one_or_none()
+                        if already_exists is not None:
+                            logger.info(f"ETF {etf.ticker}: Holdings already exist for {report_date}, skipping")
+                            continue
+                        _process_etf(session, etf, filing, fund_report, report_date, filing_date)
+                        session.commit()
+                        processed += 1
+                        logger.info(f"CIK {cik}: Processed {processed}/{total} filings (ETF {etf.ticker}, {report_date})")
+                        if latest_filing_date is None or filing_date > latest_filing_date:
+                            latest_filing_date = filing_date
 
-        # Collect etf_ids and report_dates that need checking
-        etf_report_pairs = []
-        for etf in etfs:
-            if etf.series_id in series_map:
-                _, _, report_date, _ = series_map[etf.series_id]
-                etf_report_pairs.append((etf.id, report_date))
+                if latest_filing_date is not None:
+                    update_processing_log(session, cik, "nport", latest_filing_date)
+                    session.commit()
 
-        # Batch query: find ETFs that already have holdings for their report_date
-        existing_etf_ids = set()
-        if etf_report_pairs:
-            conditions = [
-                and_(Holding.etf_id == eid, Holding.report_date == rd)
-                for eid, rd in etf_report_pairs
-            ]
-            stmt_existing = select(Holding.etf_id).where(or_(*conditions)).distinct()
-            existing_etf_ids = set(session.execute(stmt_existing).scalars().all())
+            logger.info(f"CIK {cik}: Backfill complete — {processed} filing(s) processed")
+        else:
+            # Normal mode: latest filing per series only
+            series_map = _get_latest_filings_per_series(filings)
 
-        processed = 0
-        for etf in etfs:
-            if etf.series_id not in series_map:
-                logger.warning(f"ETF {etf.ticker} (series_id={etf.series_id}): No matching NPORT-P filing found")
-                continue
-            if etf.id in existing_etf_ids:
-                logger.info(f"ETF {etf.ticker}: Holdings already exist, skipping")
-                continue
-            filing, fund_report, report_date, filing_date = series_map[etf.series_id]
-            _process_etf(session, etf, filing, fund_report, report_date, filing_date)
-            processed += 1
+            if not series_map:
+                logger.warning(f"CIK {cik}: No valid series found in filings")
+                return
 
-        # Update processing log after successful processing
-        if latest_filing_date is not None:
-            latest_filing_date = ensure_date(latest_filing_date)
-            update_processing_log(session, cik, "nport", latest_filing_date)
+            logger.info(f"CIK {cik}: Parsed {len(series_map)} series from filings")
 
-        session.commit()
+            latest_filing_date = max(filing_date for _, _, _, filing_date in series_map.values()) if series_map else None
 
-    logger.info(f"CIK {cik}: Processed {processed}/{etf_count} ETF(s)")
+            with session_factory() as session:
+                stmt = select(ETF).where(ETF.cik == cik)
+                etfs = session.execute(stmt).scalars().all()
+
+                # Collect etf_ids and report_dates that need checking
+                etf_report_pairs = []
+                for etf in etfs:
+                    if etf.series_id in series_map:
+                        _, _, report_date, _ = series_map[etf.series_id]
+                        etf_report_pairs.append((etf.id, report_date))
+
+                # Batch query: find ETFs that already have holdings for their report_date
+                existing_etf_ids = set()
+                if etf_report_pairs:
+                    conditions = [
+                        and_(Holding.etf_id == eid, Holding.report_date == rd)
+                        for eid, rd in etf_report_pairs
+                    ]
+                    stmt_existing = select(Holding.etf_id).where(or_(*conditions)).distinct()
+                    existing_etf_ids = set(session.execute(stmt_existing).scalars().all())
+
+                processed = 0
+                for etf in etfs:
+                    if etf.series_id not in series_map:
+                        logger.warning(f"ETF {etf.ticker} (series_id={etf.series_id}): No matching NPORT-P filing found")
+                        continue
+                    if etf.id in existing_etf_ids:
+                        logger.info(f"ETF {etf.ticker}: Holdings already exist, skipping")
+                        continue
+                    filing, fund_report, report_date, filing_date = series_map[etf.series_id]
+                    _process_etf(session, etf, filing, fund_report, report_date, filing_date)
+                    processed += 1
+
+                # Update processing log after successful processing
+                if latest_filing_date is not None:
+                    latest_filing_date = ensure_date(latest_filing_date)
+                    update_processing_log(session, cik, "nport", latest_filing_date)
+
+                session.commit()
+
+            logger.info(f"CIK {cik}: Processed {processed}/{etf_count} ETF(s)")
+
+    return _process_cik
+
+
+# Default (normal mode) process_cik for backward compatibility
+_process_cik = _make_process_cik()
 
 
 def _extract_fund_snapshot(

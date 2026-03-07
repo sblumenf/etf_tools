@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from etf_pipeline.db import get_engine
 from etf_pipeline.models import FlowData
 from etf_pipeline.parser_utils import (
+    build_filing_date_filter,
     clear_and_log_cache,
     ensure_date,
     parse_date,
@@ -90,62 +91,70 @@ def _extract_flow_data_from_xml(xml_content: str, cik: str) -> Optional[dict]:
     }
 
 
-def _process_cik_flows(session: Session, cik: str) -> bool:
-    """Process 24F-2NT filing for a single CIK.
+def _process_single_filing(session: Session, cik: str, filing) -> bool:
+    """Process a single 24F-2NT filing for a CIK. Returns True on success."""
+    filing_date = ensure_date(filing.filing_date)
 
-    Args:
-        session: SQLAlchemy session
-        cik: CIK string (zero-padded to 10 digits)
-
-    Returns:
-        True if successful, False otherwise
-    """
-    try:
-        company = Company(cik)
-        filings = company.get_filings(form="24F-2NT")
-
-        if not filings or (hasattr(filings, 'empty') and filings.empty):
-            logger.info(f"CIK {cik}: No 24F-2NT filings found")
-            return True  # Not an error, just no data
-
-        # Get the latest filing
-        filing = filings[0]
-        filing_date = ensure_date(filing.filing_date)
-
-        # Get XML content
-        xml_content = filing.xml()
-        if xml_content is None:
-            logger.warning(f"CIK {cik}: Filing has no XML content")
-            return False
-
-        # Extract flow data
-        flow_data = _extract_flow_data_from_xml(xml_content, cik)
-        if flow_data is None:
-            return False
-
-        # Upsert into database
-        upsert_record(
-            session,
-            FlowData,
-            filter_kwargs={"cik": cik, "fiscal_year_end": flow_data["fiscal_year_end"], "filing_date": filing_date},
-            data_kwargs={
-                "sales_value": flow_data["sales_value"],
-                "redemptions_value": flow_data["redemptions_value"],
-                "net_sales": flow_data["net_sales"],
-            },
-        )
-        logger.info(f"CIK {cik}: Upserted flow data for fiscal year {flow_data['fiscal_year_end']}, filing_date {filing_date}")
-
-        # Update processing log after successful processing
-        update_processing_log(session, cik, "flows", filing_date)
-
-        session.commit()
-        return True
-
-    except Exception as e:
-        logger.error(f"CIK {cik}: Error processing filing: {e}")
-        session.rollback()
+    xml_content = filing.xml()
+    if xml_content is None:
+        logger.warning(f"CIK {cik}: Filing has no XML content")
         return False
+
+    flow_data = _extract_flow_data_from_xml(xml_content, cik)
+    if flow_data is None:
+        return False
+
+    upsert_record(
+        session,
+        FlowData,
+        filter_kwargs={"cik": cik, "fiscal_year_end": flow_data["fiscal_year_end"], "filing_date": filing_date},
+        data_kwargs={
+            "sales_value": flow_data["sales_value"],
+            "redemptions_value": flow_data["redemptions_value"],
+            "net_sales": flow_data["net_sales"],
+        },
+    )
+    logger.info(f"CIK {cik}: Upserted flow data for fiscal year {flow_data['fiscal_year_end']}, filing_date {filing_date}")
+    update_processing_log(session, cik, "flows", filing_date)
+    session.commit()
+    return True
+
+
+def _make_process_cik_flows(from_date: Optional[str] = None, to_date: Optional[str] = None):
+    """Return a per-CIK processor for the parser loop."""
+    date_filter = build_filing_date_filter(from_date, to_date)
+    backfill_mode = date_filter is not None
+
+    def _process_cik_flows(session: Session, cik: str) -> bool:
+        try:
+            company = Company(cik)
+            kwargs = {"form": "24F-2NT"}
+            if date_filter is not None:
+                kwargs["filing_date"] = date_filter
+            filings = company.get_filings(**kwargs)
+
+            if not filings or (hasattr(filings, 'empty') and filings.empty):
+                logger.info(f"CIK {cik}: No 24F-2NT filings found")
+                return True
+
+            if backfill_mode:
+                total = len(filings)
+                success = True
+                for i, filing in enumerate(filings):
+                    ok = _process_single_filing(session, cik, filing)
+                    if not ok:
+                        success = False
+                    logger.info(f"CIK {cik}: Processed {i + 1}/{total} filings")
+                return success
+            else:
+                return _process_single_filing(session, cik, filings[0])
+
+        except Exception as e:
+            logger.error(f"CIK {cik}: Error processing filing: {e}")
+            session.rollback()
+            return False
+
+    return _process_cik_flows
 
 
 def parse_flows(
@@ -153,6 +162,8 @@ def parse_flows(
     ciks: Optional[list[str]] = None,
     limit: Optional[int] = None,
     clear_cache: bool = True,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
 ) -> None:
     """Parse 24F-2NT filings for trust-level flow data.
 
@@ -161,6 +172,8 @@ def parse_flows(
         ciks: Optional list of CIKs to process (overrides cik param)
         limit: Optional limit on number of CIKs to process
         clear_cache: Whether to clear edgartools HTTP cache after processing
+        from_date: Optional start date for backfill (YYYY-MM-DD). Requires to_date.
+        to_date: Optional end date for backfill (YYYY-MM-DD). Requires from_date.
     """
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
@@ -171,7 +184,8 @@ def parse_flows(
     if not cik_list:
         return
 
-    run_parser_loop(cik_list, session_factory, _process_cik_flows, "flows")
+    process_fn = _make_process_cik_flows(from_date, to_date)
+    run_parser_loop(cik_list, session_factory, process_fn, "flows")
 
     if clear_cache:
         clear_and_log_cache()

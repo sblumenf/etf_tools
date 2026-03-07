@@ -273,6 +273,86 @@ def _worker_process_parser(result_queue, log_queue, cik, parser_type):
 
 
 @main.command()
+@click.option("--from-date", required=True, help="Start of date range (YYYY-MM-DD)")
+@click.option("--to-date", required=True, help="End of date range (YYYY-MM-DD)")
+@click.option("--cik", type=str, help="Process only this CIK")
+@click.option("--limit", type=int, help="Process only the first N CIKs")
+@click.option(
+    "--parser",
+    "parsers",
+    multiple=True,
+    type=click.Choice(["nport", "ncsr", "prospectus", "finhigh", "flows"]),
+    help="Run only specific parser(s); may be repeated",
+)
+def backfill(from_date, to_date, cik, limit, parsers):
+    """Backfill historical filings over a date range."""
+    from datetime import datetime
+    from pathlib import Path
+    from sqlalchemy.orm import sessionmaker
+
+    from etf_pipeline.db import get_engine
+
+    _configure_logging()
+
+    engine = get_engine()
+    session_factory = sessionmaker(bind=engine)
+
+    from etf_pipeline.parser_utils import resolve_cik_list
+
+    with session_factory() as session:
+        cik_list = resolve_cik_list(session, cik=cik, limit=limit)
+
+    if not cik_list:
+        click.echo("No ETFs found in database. Run `discover` and `load-etfs` first.")
+        return
+
+    parsers_to_run = list(parsers) if parsers else PARSER_ORDER
+
+    click.echo(
+        f"Backfilling {len(cik_list)} CIK(s) with parser(s) {parsers_to_run} "
+        f"from {from_date} to {to_date}"
+    )
+
+    parse_fns = {name: fn for name, (fn, _) in PARSERS.items()}
+
+    total_attempted = 0
+    total_failed = 0
+    failures = []
+
+    for parser_name in parsers_to_run:
+        parse_fn = parse_fns[parser_name]
+        click.echo(f"\n--- Running {parser_name} ---")
+        try:
+            parse_fn(
+                ciks=cik_list,
+                from_date=from_date,
+                to_date=to_date,
+                clear_cache=False,
+            )
+            total_attempted += 1
+        except Exception as e:
+            msg = f"{parser_name}: {e}"
+            logger.error("Backfill parser %s failed: %s", parser_name, e)
+            failures.append(msg)
+            total_failed += 1
+            total_attempted += 1
+
+    click.echo("\n--- Backfill complete ---")
+    click.echo(f"Parsers run: {total_attempted}, failed: {total_failed}")
+
+    if failures:
+        log_dir = Path(__file__).resolve().parent.parent.parent / "logs"
+        log_dir.mkdir(exist_ok=True)
+        error_log = log_dir / f"backfill-errors-{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.log"
+        with open(error_log, "w", encoding="utf-8") as f:
+            for line in failures:
+                f.write(line + "\n")
+        click.echo(f"Failures written to: {error_log}")
+        for line in failures:
+            click.echo(f"  FAILED: {line}")
+
+
+@main.command()
 @click.option("--limit", type=int, help="Process only the first N CIKs")
 def run_all(limit):
     """Run the full pipeline with per-CIK orchestration and freshness detection."""
