@@ -4,7 +4,7 @@ import logging
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Optional
 
 from edgar import Company
@@ -42,6 +42,7 @@ from etf_pipeline.parsers.nport_xml import parse_nport_investments_xml
 
 logger = logging.getLogger(__name__)
 
+NPORT_NS = {'nport': 'http://www.sec.gov/edgar/nport'}
 
 
 def parse_nport(
@@ -279,11 +280,11 @@ def _extract_fund_snapshot(
     logger.info(f"Created fund snapshot for CIK {cik} on {report_date}")
 
 
-def _extract_monthly_returns(xml_text, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyReturn]:
+def _extract_monthly_returns(root, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyReturn]:
     """Extract monthly return data from NPORT-P filing XML.
 
     Args:
-        xml_text: Raw XML string from filing
+        root: Parsed XML root Element
         etf_id: ETF ID to associate returns with
         report_date: Report date for the filing
         filing_date: Filing date
@@ -294,39 +295,25 @@ def _extract_monthly_returns(xml_text, etf_id: int, report_date, filing_date) ->
     monthly_returns = []
 
     try:
-        if not xml_text:
-            logger.debug(f"No XML content found in filing for etf_id={etf_id}")
-            return monthly_returns
-
-        # Parse XML
-        root = ET.fromstring(xml_text)
-
         # Find monthlyTotReturns element
         # Path: /edgarSubmission/formData/fundInfo/returnInfo/monthlyTotReturns
-        ns = {'nport': 'http://www.sec.gov/edgar/nport'}
-
-        # Find with namespace
-        monthly_tot_returns = root.find('.//nport:monthlyTotReturns', ns)
+        monthly_tot_returns = root.find('.//nport:monthlyTotReturns', NPORT_NS)
 
         if monthly_tot_returns is None:
             logger.debug(f"No monthlyTotReturns element found in NPORT XML for etf_id={etf_id}")
             return monthly_returns
 
         # Extract each monthlyTotReturn child element
-        for monthly_return_elem in monthly_tot_returns.findall('nport:monthlyTotReturn', ns):
+        for monthly_return_elem in monthly_tot_returns.findall('nport:monthlyTotReturn', NPORT_NS):
             # Extract attributes
             rtn1 = monthly_return_elem.get('rtn1')
             rtn2 = monthly_return_elem.get('rtn2')
             rtn3 = monthly_return_elem.get('rtn3')
             class_id = monthly_return_elem.get('classId')
 
-            # Convert "N/A" to None, otherwise convert to Decimal
-            def parse_return(val):
-                return parse_decimal(val)
-
-            month_1 = parse_return(rtn1)
-            month_2 = parse_return(rtn2)
-            month_3 = parse_return(rtn3)
+            month_1 = parse_decimal(rtn1)
+            month_2 = parse_decimal(rtn2)
+            month_3 = parse_decimal(rtn3)
 
             # Create NPORTMonthlyReturn object
             monthly_return = NPORTMonthlyReturn(
@@ -349,11 +336,11 @@ def _extract_monthly_returns(xml_text, etf_id: int, report_date, filing_date) ->
     return monthly_returns
 
 
-def _extract_monthly_flows(xml_text, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyFlow]:
+def _extract_monthly_flows(root, etf_id: int, report_date, filing_date) -> list[NPORTMonthlyFlow]:
     """Extract monthly flow data from NPORT-P filing XML.
 
     Args:
-        xml_text: Raw XML string from filing
+        root: Parsed XML root Element
         etf_id: ETF ID to associate flows with
         report_date: Report date for the filing
         filing_date: Filing date
@@ -364,50 +351,36 @@ def _extract_monthly_flows(xml_text, etf_id: int, report_date, filing_date) -> l
     monthly_flows = []
 
     try:
-        if not xml_text:
-            logger.debug(f"No XML content found in filing for etf_id={etf_id}")
-            return monthly_flows
-
-        # Parse XML
-        root = ET.fromstring(xml_text)
-
         # Find fundInfo element which contains monthly flow data
         # Path: /edgarSubmission/formData/fundInfo
-        ns = {'nport': 'http://www.sec.gov/edgar/nport'}
-
-        # Find fundInfo element
-        fund_info = root.find('.//nport:fundInfo', ns)
+        fund_info = root.find('.//nport:fundInfo', NPORT_NS)
 
         if fund_info is None:
             logger.debug(f"No fundInfo element found in NPORT XML for etf_id={etf_id}")
             return monthly_flows
 
         # Extract flow data from three separate elements: mon1Flow, mon2Flow, mon3Flow
-        mon1_flow = fund_info.find('nport:mon1Flow', ns)
-        mon2_flow = fund_info.find('nport:mon2Flow', ns)
-        mon3_flow = fund_info.find('nport:mon3Flow', ns)
+        mon1_flow = fund_info.find('nport:mon1Flow', NPORT_NS)
+        mon2_flow = fund_info.find('nport:mon2Flow', NPORT_NS)
+        mon3_flow = fund_info.find('nport:mon3Flow', NPORT_NS)
 
         # If no flow elements found, return empty list
         if mon1_flow is None and mon2_flow is None and mon3_flow is None:
             logger.debug(f"No monthly flow elements found in NPORT XML for etf_id={etf_id}")
             return monthly_flows
 
-        # Convert "N/A" to None, otherwise convert to Decimal
-        def parse_flow(val):
-            return parse_decimal(val)
-
         # Extract flow data from attributes
-        month_1_sales = parse_flow(mon1_flow.get('sales')) if mon1_flow is not None else None
-        month_1_redemptions = parse_flow(mon1_flow.get('redemption')) if mon1_flow is not None else None
-        month_1_reinvestments = parse_flow(mon1_flow.get('reinvestment')) if mon1_flow is not None else None
+        month_1_sales = parse_decimal(mon1_flow.get('sales')) if mon1_flow is not None else None
+        month_1_redemptions = parse_decimal(mon1_flow.get('redemption')) if mon1_flow is not None else None
+        month_1_reinvestments = parse_decimal(mon1_flow.get('reinvestment')) if mon1_flow is not None else None
 
-        month_2_sales = parse_flow(mon2_flow.get('sales')) if mon2_flow is not None else None
-        month_2_redemptions = parse_flow(mon2_flow.get('redemption')) if mon2_flow is not None else None
-        month_2_reinvestments = parse_flow(mon2_flow.get('reinvestment')) if mon2_flow is not None else None
+        month_2_sales = parse_decimal(mon2_flow.get('sales')) if mon2_flow is not None else None
+        month_2_redemptions = parse_decimal(mon2_flow.get('redemption')) if mon2_flow is not None else None
+        month_2_reinvestments = parse_decimal(mon2_flow.get('reinvestment')) if mon2_flow is not None else None
 
-        month_3_sales = parse_flow(mon3_flow.get('sales')) if mon3_flow is not None else None
-        month_3_redemptions = parse_flow(mon3_flow.get('redemption')) if mon3_flow is not None else None
-        month_3_reinvestments = parse_flow(mon3_flow.get('reinvestment')) if mon3_flow is not None else None
+        month_3_sales = parse_decimal(mon3_flow.get('sales')) if mon3_flow is not None else None
+        month_3_redemptions = parse_decimal(mon3_flow.get('redemption')) if mon3_flow is not None else None
+        month_3_reinvestments = parse_decimal(mon3_flow.get('reinvestment')) if mon3_flow is not None else None
 
         # Create single NPORTMonthlyFlow object with data from all three months
         # Monthly flows are fund-level per NPORT XSD (mon1Flow/mon2Flow/mon3Flow), not class-level
@@ -437,11 +410,24 @@ def _extract_monthly_flows(xml_text, etf_id: int, report_date, filing_date) -> l
     return monthly_flows
 
 
-def _extract_interest_rate_risk(xml_text, etf_id: int, report_date, filing_date) -> list[InterestRateRisk]:
+def _parse_risk_metrics(elem):
+    """Extract 5 period metrics from a risk element using attributes, or return 5 Nones."""
+    if elem is None:
+        return None, None, None, None, None
+    return (
+        parse_decimal(elem.get('period3Mon')),
+        parse_decimal(elem.get('period1Yr')),
+        parse_decimal(elem.get('period5Yr')),
+        parse_decimal(elem.get('period10Yr')),
+        parse_decimal(elem.get('period30Yr')),
+    )
+
+
+def _extract_interest_rate_risk(root, etf_id: int, report_date, filing_date) -> list[InterestRateRisk]:
     """Extract interest rate risk data from NPORT-P filing XML.
 
     Args:
-        xml_text: Raw XML string from filing
+        root: Parsed XML root Element
         etf_id: ETF ID to associate interest rate risk data with
         report_date: Report date for the filing
         filing_date: Filing date
@@ -452,62 +438,30 @@ def _extract_interest_rate_risk(xml_text, etf_id: int, report_date, filing_date)
     interest_rate_risks = []
 
     try:
-        if not xml_text:
-            logger.debug(f"No XML content found in filing for etf_id={etf_id}")
-            return interest_rate_risks
-
-        # Parse XML
-        root = ET.fromstring(xml_text)
-
         # Find curMetrics element
         # Path: /edgarSubmission/formData/fundinfo/curMetrics
-        ns = {'nport': 'http://www.sec.gov/edgar/nport'}
-
-        cur_metrics = root.find('.//nport:curMetrics', ns)
+        cur_metrics = root.find('.//nport:curMetrics', NPORT_NS)
 
         if cur_metrics is None:
             logger.debug(f"No curMetrics element found in NPORT XML for etf_id={etf_id}")
             return interest_rate_risks
 
         # Extract each curMetric child element
-        for cur_metric_elem in cur_metrics.findall('nport:curMetric', ns):
+        for cur_metric_elem in cur_metrics.findall('nport:curMetric', NPORT_NS):
             # Extract currency code
-            cur_cd_elem = cur_metric_elem.find('nport:curCd', ns)
+            cur_cd_elem = cur_metric_elem.find('nport:curCd', NPORT_NS)
             if cur_cd_elem is None or not cur_cd_elem.text:
                 logger.warning(f"curMetric missing currency code for etf_id={etf_id}, skipping")
                 continue
 
             currency_code = cur_cd_elem.text.strip()
 
-            # Extract DV01 risk metrics
-            dv01_elem = cur_metric_elem.find('nport:intrstRtRiskdv01', ns)
-            dv01_3m = None
-            dv01_1y = None
-            dv01_5y = None
-            dv01_10y = None
-            dv01_30y = None
+            # Extract DV01 and DV100 risk metrics
+            dv01_elem = cur_metric_elem.find('nport:intrstRtRiskdv01', NPORT_NS)
+            dv01_3m, dv01_1y, dv01_5y, dv01_10y, dv01_30y = _parse_risk_metrics(dv01_elem)
 
-            if dv01_elem is not None:
-                dv01_3m = parse_decimal(dv01_elem.get('period3Mon'))
-                dv01_1y = parse_decimal(dv01_elem.get('period1Yr'))
-                dv01_5y = parse_decimal(dv01_elem.get('period5Yr'))
-                dv01_10y = parse_decimal(dv01_elem.get('period10Yr'))
-                dv01_30y = parse_decimal(dv01_elem.get('period30Yr'))
-
-            # Extract DV100 risk metrics
-            dv100_elem = cur_metric_elem.find('nport:intrstRtRiskdv100', ns)
-            dv100_3m = None
-            dv100_1y = None
-            dv100_5y = None
-            dv100_10y = None
-            dv100_30y = None
-
-            if dv100_elem is not None:
-                dv100_3m = parse_decimal(dv100_elem.get('period3Mon'))
-                dv100_1y = parse_decimal(dv100_elem.get('period1Yr'))
-                dv100_5y = parse_decimal(dv100_elem.get('period5Yr'))
-                dv100_10y = parse_decimal(dv100_elem.get('period10Yr'))
-                dv100_30y = parse_decimal(dv100_elem.get('period30Yr'))
+            dv100_elem = cur_metric_elem.find('nport:intrstRtRiskdv100', NPORT_NS)
+            dv100_3m, dv100_1y, dv100_5y, dv100_10y, dv100_30y = _parse_risk_metrics(dv100_elem)
 
             # Create InterestRateRisk object
             interest_rate_risk = InterestRateRisk(
@@ -537,11 +491,11 @@ def _extract_interest_rate_risk(xml_text, etf_id: int, report_date, filing_date)
     return interest_rate_risks
 
 
-def _extract_credit_spread_risk(xml_text, etf_id: int, report_date, filing_date) -> Optional[CreditSpreadRisk]:
+def _extract_credit_spread_risk(root, etf_id: int, report_date, filing_date) -> Optional[CreditSpreadRisk]:
     """Extract credit spread risk data from NPORT-P filing XML.
 
     Args:
-        xml_text: Raw XML string from filing
+        root: Parsed XML root Element
         etf_id: ETF ID to associate credit spread risk data with
         report_date: Report date for the filing
         filing_date: Filing date
@@ -550,52 +504,19 @@ def _extract_credit_spread_risk(xml_text, etf_id: int, report_date, filing_date)
         CreditSpreadRisk object if data found, None otherwise
     """
     try:
-        if not xml_text:
-            logger.debug(f"No XML content found in filing for etf_id={etf_id}")
-            return None
-
-        # Parse XML
-        root = ET.fromstring(xml_text)
-
         # Find credit spread risk elements
         # Path: /edgarSubmission/formData/fundInfo/creditSprdRiskInvstGrade and creditSprdRiskNonInvstGrade
-        ns = {'nport': 'http://www.sec.gov/edgar/nport'}
-
-        invst_grade_elem = root.find('.//nport:creditSprdRiskInvstGrade', ns)
-        non_invst_grade_elem = root.find('.//nport:creditSprdRiskNonInvstGrade', ns)
+        invst_grade_elem = root.find('.//nport:creditSprdRiskInvstGrade', NPORT_NS)
+        non_invst_grade_elem = root.find('.//nport:creditSprdRiskNonInvstGrade', NPORT_NS)
 
         # If neither element is found, return None
         if invst_grade_elem is None and non_invst_grade_elem is None:
             logger.debug(f"No credit spread risk elements found in NPORT XML for etf_id={etf_id}")
             return None
 
-        # Extract investment grade metrics
-        invst_grade_3m = None
-        invst_grade_1y = None
-        invst_grade_5y = None
-        invst_grade_10y = None
-        invst_grade_30y = None
-
-        if invst_grade_elem is not None:
-            invst_grade_3m = parse_decimal(invst_grade_elem.get('period3Mon'))
-            invst_grade_1y = parse_decimal(invst_grade_elem.get('period1Yr'))
-            invst_grade_5y = parse_decimal(invst_grade_elem.get('period5Yr'))
-            invst_grade_10y = parse_decimal(invst_grade_elem.get('period10Yr'))
-            invst_grade_30y = parse_decimal(invst_grade_elem.get('period30Yr'))
-
-        # Extract non-investment grade metrics
-        non_invst_grade_3m = None
-        non_invst_grade_1y = None
-        non_invst_grade_5y = None
-        non_invst_grade_10y = None
-        non_invst_grade_30y = None
-
-        if non_invst_grade_elem is not None:
-            non_invst_grade_3m = parse_decimal(non_invst_grade_elem.get('period3Mon'))
-            non_invst_grade_1y = parse_decimal(non_invst_grade_elem.get('period1Yr'))
-            non_invst_grade_5y = parse_decimal(non_invst_grade_elem.get('period5Yr'))
-            non_invst_grade_10y = parse_decimal(non_invst_grade_elem.get('period10Yr'))
-            non_invst_grade_30y = parse_decimal(non_invst_grade_elem.get('period30Yr'))
+        # Extract investment grade and non-investment grade metrics
+        invst_grade_3m, invst_grade_1y, invst_grade_5y, invst_grade_10y, invst_grade_30y = _parse_risk_metrics(invst_grade_elem)
+        non_invst_grade_3m, non_invst_grade_1y, non_invst_grade_5y, non_invst_grade_10y, non_invst_grade_30y = _parse_risk_metrics(non_invst_grade_elem)
 
         # Create CreditSpreadRisk object
         credit_spread_risk = CreditSpreadRisk(
@@ -792,23 +713,31 @@ def _process_etf(
 
     xml_text = filing.xml()
 
+    # Parse XML once and reuse root for all extraction functions
+    root = None
+    if xml_text:
+        try:
+            root = ET.fromstring(xml_text)
+        except (ET.ParseError, TypeError) as e:
+            logger.warning(f"ETF {etf.ticker}: Failed to parse XML: {e}")
+
     # Extract monthly returns
-    monthly_returns = _extract_monthly_returns(xml_text, etf.id, report_date, filing_date)
+    monthly_returns = _extract_monthly_returns(root, etf.id, report_date, filing_date) if root is not None else []
     for monthly_return in monthly_returns:
         session.add(monthly_return)
 
     # Extract monthly flows
-    monthly_flows = _extract_monthly_flows(xml_text, etf.id, report_date, filing_date)
+    monthly_flows = _extract_monthly_flows(root, etf.id, report_date, filing_date) if root is not None else []
     for monthly_flow in monthly_flows:
         session.add(monthly_flow)
 
     # Extract interest rate risk
-    interest_rate_risks = _extract_interest_rate_risk(xml_text, etf.id, report_date, filing_date)
+    interest_rate_risks = _extract_interest_rate_risk(root, etf.id, report_date, filing_date) if root is not None else []
     for interest_rate_risk in interest_rate_risks:
         session.add(interest_rate_risk)
 
     # Extract credit spread risk
-    credit_spread_risk = _extract_credit_spread_risk(xml_text, etf.id, report_date, filing_date)
+    credit_spread_risk = _extract_credit_spread_risk(root, etf.id, report_date, filing_date) if root is not None else None
     if credit_spread_risk:
         session.add(credit_spread_risk)
 
@@ -1076,7 +1005,7 @@ def _map_investment_to_derivative(
         underlying_cusip = opt.reference_entity_cusip
         if opt.share_number:
             notional_value = opt.share_number
-        delta = _parse_delta(opt.delta)
+        delta = parse_decimal(opt.delta)
         expiration_date = parse_date(opt.expiration_date)
         # New field for written options
         if opt.written_or_purchased == "W" and opt.share_number:
@@ -1151,18 +1080,6 @@ def _map_investment_to_derivative(
         payoff_profile=payoff_profile,
     )
 
-
-
-def _parse_delta(delta_value) -> Optional[Decimal]:
-    """Parse delta value which can be Decimal, str, or None."""
-    if delta_value is None:
-        return None
-    if isinstance(delta_value, Decimal):
-        return delta_value
-    try:
-        return Decimal(str(delta_value))
-    except (ValueError, TypeError, InvalidOperation):
-        return None
 
 
 def _map_debt_security_detail(investment) -> Optional[DebtSecurityDetail]:

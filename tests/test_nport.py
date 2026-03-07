@@ -23,13 +23,14 @@ from etf_pipeline.models import (
     InterestRateRisk,
     SecurityLending,
 )
-from etf_pipeline.parsers.nport import _parse_delta, parse_nport
+from etf_pipeline.parser_utils import parse_decimal
+from etf_pipeline.parsers.nport import parse_nport
 
 from tests.conftest import _add_mock_fund_info
 
 
-def test_parse_delta_invalid_string_returns_none():
-    assert _parse_delta("XXXX") is None
+def test_parse_decimal_invalid_string_returns_none():
+    assert parse_decimal("XXXX") is None
 
 
 @pytest.fixture
@@ -577,8 +578,8 @@ def test_parse_nport_does_not_deduplicate_holdings_with_different_liquidity(
     # different liquidity bucket so the composite dedup key differs.
     CUSIP = "037833100"
     xml_fields = {
-        f"Apple Inc HLI|{CUSIP}|": {"liquidity_classification": "HLI", "borrower_name": None},
-        f"Apple Inc LLI|{CUSIP}|": {"liquidity_classification": "LLI", "borrower_name": None},
+        f"Apple Inc HLI|{CUSIP}|": {"liquidity_classification": "HLI"},
+        f"Apple Inc LLI|{CUSIP}|": {"liquidity_classification": "LLI"},
     }
 
     def create_report_with_different_liquidity(series_id):
