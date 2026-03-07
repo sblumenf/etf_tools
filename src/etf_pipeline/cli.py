@@ -328,9 +328,15 @@ def run_all(limit):
                     click.echo(f"  Warning: SEC filing date check failed for CIK {cik}, will attempt unprocessed parsers")
 
                 stale_parsers = get_stale_parsers(session, cik, latest_sec_filings)
+                has_any_log = session.execute(
+                    select(ProcessingLog).where(ProcessingLog.cik == cik).limit(1)
+                ).scalar_one_or_none() is not None
 
             if not stale_parsers:
-                click.echo(f"  Already up-to-date for CIK {cik}, skipping")
+                if not has_any_log:
+                    click.echo(f"  No known filings for CIK {cik} (never processed), skipping")
+                else:
+                    click.echo(f"  Already up-to-date for CIK {cik}, skipping")
                 skipped += 1
                 continue
 

@@ -353,7 +353,7 @@ def _process_cik_prospectus(session, cik: str) -> bool:
     """
     from edgar import Company
     from etf_pipeline.models import ETF, FeeExpense
-    from etf_pipeline.parser_utils import ensure_date, update_processing_log
+    from etf_pipeline.parser_utils import ensure_date, update_processing_log, upsert_record
     from sqlalchemy import select
 
     try:
@@ -522,7 +522,6 @@ def _process_cik_prospectus(session, cik: str) -> bool:
 
                 # Upsert FeeExpense (if any data present)
                 if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date', 'filing_date')):
-                    from etf_pipeline.parser_utils import upsert_record
                     upsert_record(
                         session,
                         FeeExpense,
