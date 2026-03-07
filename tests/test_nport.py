@@ -1321,17 +1321,15 @@ def test_parse_nport_option_derivative_index_name_fallback(session, engine, samp
 
 def test_parse_nport_clears_cache_when_flag_set(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that parse_nport calls clear_cache when clear_cache=True."""
-    with patch("etf_pipeline.parsers.nport.edgar_clear_cache") as mock_clear_cache:
-        mock_clear_cache.return_value = {"files_deleted": 10, "bytes_freed": 1024000}
-
+    with patch("etf_pipeline.parsers.nport.clear_and_log_cache") as mock_clear_cache:
         parse_nport(cik="36405", clear_cache=True)
 
-        mock_clear_cache.assert_called_once_with(dry_run=False)
+        mock_clear_cache.assert_called_once()
 
 
 def test_parse_nport_does_not_clear_cache_when_flag_disabled(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that parse_nport does not call clear_cache when clear_cache=False."""
-    with patch("etf_pipeline.parsers.nport.edgar_clear_cache") as mock_clear_cache:
+    with patch("etf_pipeline.parsers.nport.clear_and_log_cache") as mock_clear_cache:
         parse_nport(cik="36405", clear_cache=False)
 
         mock_clear_cache.assert_not_called()
@@ -1339,12 +1337,10 @@ def test_parse_nport_does_not_clear_cache_when_flag_disabled(session, engine, sa
 
 def test_parse_nport_clears_cache_by_default(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):
     """Test that parse_nport clears cache by default (clear_cache defaults to True)."""
-    with patch("etf_pipeline.parsers.nport.edgar_clear_cache") as mock_clear_cache:
-        mock_clear_cache.return_value = {"files_deleted": 10, "bytes_freed": 1024000}
-
+    with patch("etf_pipeline.parsers.nport.clear_and_log_cache") as mock_clear_cache:
         parse_nport(cik="36405")
 
-        mock_clear_cache.assert_called_once_with(dry_run=False)
+        mock_clear_cache.assert_called_once()
 
 
 def test_parse_nport_with_ciks_parameter(session, engine, sample_etfs, mock_edgar_company, mock_nport_db):

@@ -14,7 +14,6 @@ from typing import Optional
 
 from bs4 import BeautifulSoup
 from edgar import Company
-from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,7 +24,16 @@ from etf_pipeline.models import (
     PerShareOperating,
     PerShareRatios,
 )
-from etf_pipeline.parser_utils import ensure_date, parse_date, parse_decimal, update_processing_log
+from etf_pipeline.parser_utils import (
+    clear_and_log_cache,
+    ensure_date,
+    parse_date,
+    parse_decimal,
+    resolve_cik_list,
+    run_parser_loop,
+    update_processing_log,
+    upsert_record,
+)
 from etf_pipeline.sgml import parse_series_class_info
 
 logger = logging.getLogger(__name__)
@@ -122,9 +130,9 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
     }
 
     # Helper to extract first data value from a row (typically column 1, most recent year)
-    def get_value(row_idx: int, col_idx: int = 1) -> Optional[str]:
+    def get_value(row_idx: Optional[int], col_idx: int = 1) -> Optional[str]:
         """Get cell value from row at specified column index."""
-        if row_idx >= len(rows):
+        if row_idx is None or row_idx >= len(rows):
             return None
         row = rows[row_idx]
         cells = row.find_all(['td', 'th'])
@@ -224,24 +232,24 @@ def parse_financial_highlights_table(html_table_str: str) -> dict:
             row_map['portfolio_turnover'] = i
 
     # Extract values using mapped rows
-    result['operating']['nav_beginning'] = parse_decimal(get_value(row_map.get('nav_beginning'))) if 'nav_beginning' in row_map else None
-    result['operating']['net_investment_income'] = parse_decimal(get_value(row_map.get('net_investment_income'))) if 'net_investment_income' in row_map else None
-    result['operating']['net_realized_unrealized_gain'] = parse_decimal(get_value(row_map.get('net_realized_unrealized_gain'))) if 'net_realized_unrealized_gain' in row_map else None
-    result['operating']['total_from_operations'] = parse_decimal(get_value(row_map.get('total_from_operations'))) if 'total_from_operations' in row_map else None
-    result['operating']['equalization'] = parse_decimal(get_value(row_map.get('equalization'))) if 'equalization' in row_map else None
-    result['operating']['nav_end'] = parse_decimal(get_value(row_map.get('nav_end'))) if 'nav_end' in row_map else None
-    result['operating']['total_return'] = parse_decimal(get_value(row_map.get('total_return')), pct=True) if 'total_return' in row_map else None
+    result['operating']['nav_beginning'] = parse_decimal(get_value(row_map.get('nav_beginning')))
+    result['operating']['net_investment_income'] = parse_decimal(get_value(row_map.get('net_investment_income')))
+    result['operating']['net_realized_unrealized_gain'] = parse_decimal(get_value(row_map.get('net_realized_unrealized_gain')))
+    result['operating']['total_from_operations'] = parse_decimal(get_value(row_map.get('total_from_operations')))
+    result['operating']['equalization'] = parse_decimal(get_value(row_map.get('equalization')))
+    result['operating']['nav_end'] = parse_decimal(get_value(row_map.get('nav_end')))
+    result['operating']['total_return'] = parse_decimal(get_value(row_map.get('total_return')), pct=True)
 
-    result['distribution']['dist_net_investment_income'] = parse_decimal(get_value(row_map.get('dist_net_investment_income'))) if 'dist_net_investment_income' in row_map else None
-    result['distribution']['dist_realized_gains'] = parse_decimal(get_value(row_map.get('dist_realized_gains'))) if 'dist_realized_gains' in row_map else None
-    result['distribution']['dist_return_of_capital'] = parse_decimal(get_value(row_map.get('dist_return_of_capital'))) if 'dist_return_of_capital' in row_map else None
-    result['distribution']['dist_total'] = parse_decimal(get_value(row_map.get('dist_total'))) if 'dist_total' in row_map else None
+    result['distribution']['dist_net_investment_income'] = parse_decimal(get_value(row_map.get('dist_net_investment_income')))
+    result['distribution']['dist_realized_gains'] = parse_decimal(get_value(row_map.get('dist_realized_gains')))
+    result['distribution']['dist_return_of_capital'] = parse_decimal(get_value(row_map.get('dist_return_of_capital')))
+    result['distribution']['dist_total'] = parse_decimal(get_value(row_map.get('dist_total')))
 
-    result['ratios']['expense_ratio'] = parse_decimal(get_value(row_map.get('expense_ratio')), pct=True) if 'expense_ratio' in row_map else None
-    result['ratios']['portfolio_turnover'] = parse_decimal(get_value(row_map.get('portfolio_turnover')), pct=True) if 'portfolio_turnover' in row_map else None
+    result['ratios']['expense_ratio'] = parse_decimal(get_value(row_map.get('expense_ratio')), pct=True)
+    result['ratios']['portfolio_turnover'] = parse_decimal(get_value(row_map.get('portfolio_turnover')), pct=True)
 
     # Net assets may be in millions, need to convert
-    net_assets_text = get_value(row_map.get('net_assets_end')) if 'net_assets_end' in row_map else None
+    net_assets_text = get_value(row_map.get('net_assets_end'))
     if net_assets_text:
         net_assets_value = parse_decimal(net_assets_text)
         if net_assets_value and 'million' in get_row_label(row_map.get('net_assets_end', 0)).lower():
@@ -469,66 +477,21 @@ def _process_cik_finhigh(session: Session, cik: str) -> bool:
                         continue
 
                     # Upsert PerShareOperating
-                    # Query for existing record
-                    existing_operating = session.query(PerShareOperating).filter_by(
-                        etf_id=matched_etf.id,
-                        fiscal_year_end=table_data['fiscal_year_end'],
-                        filing_date=filing_date
-                    ).first()
-
-                    if existing_operating:
-                        # Update existing record
-                        for key, value in table_data['operating'].items():
-                            setattr(existing_operating, key, value)
-                        existing_operating.math_validated = table_data.get('math_validated', False)
-                    else:
-                        # Insert new record
-                        operating = PerShareOperating(
-                            etf_id=matched_etf.id,
-                            fiscal_year_end=table_data['fiscal_year_end'],
-                            filing_date=filing_date,
-                            math_validated=table_data.get('math_validated', False),
-                            **table_data['operating']
-                        )
-                        session.add(operating)
+                    filter_keys = {
+                        'etf_id': matched_etf.id,
+                        'fiscal_year_end': table_data['fiscal_year_end'],
+                        'filing_date': filing_date,
+                    }
+                    upsert_record(
+                        session, PerShareOperating, filter_keys,
+                        {**table_data['operating'], 'math_validated': table_data.get('math_validated', False)},
+                    )
 
                     # Upsert PerShareDistribution
-                    existing_distribution = session.query(PerShareDistribution).filter_by(
-                        etf_id=matched_etf.id,
-                        fiscal_year_end=table_data['fiscal_year_end'],
-                        filing_date=filing_date
-                    ).first()
-
-                    if existing_distribution:
-                        for key, value in table_data['distribution'].items():
-                            setattr(existing_distribution, key, value)
-                    else:
-                        distribution = PerShareDistribution(
-                            etf_id=matched_etf.id,
-                            fiscal_year_end=table_data['fiscal_year_end'],
-                            filing_date=filing_date,
-                            **table_data['distribution']
-                        )
-                        session.add(distribution)
+                    upsert_record(session, PerShareDistribution, filter_keys, table_data['distribution'])
 
                     # Upsert PerShareRatios
-                    existing_ratios = session.query(PerShareRatios).filter_by(
-                        etf_id=matched_etf.id,
-                        fiscal_year_end=table_data['fiscal_year_end'],
-                        filing_date=filing_date
-                    ).first()
-
-                    if existing_ratios:
-                        for key, value in table_data['ratios'].items():
-                            setattr(existing_ratios, key, value)
-                    else:
-                        ratios = PerShareRatios(
-                            etf_id=matched_etf.id,
-                            fiscal_year_end=table_data['fiscal_year_end'],
-                            filing_date=filing_date,
-                            **table_data['ratios']
-                        )
-                        session.add(ratios)
+                    upsert_record(session, PerShareRatios, filter_keys, table_data['ratios'])
 
                     session.flush()
 
@@ -599,42 +562,13 @@ def parse_finhigh(
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
 
-    # Determine which CIKs to process
     with session_factory() as session:
-        if ciks is not None:
-            cik_list = ciks
-        elif cik is not None:
-            cik_padded = f"{int(cik):010d}"
-            cik_list = [cik_padded]
-            logger.info(f"Processing single CIK: {cik_padded}")
-        else:
-            # Get all distinct CIKs from ETF table
-            stmt = select(ETF.cik).distinct().order_by(ETF.cik)
-            cik_list = [row[0] for row in session.execute(stmt).all()]
+        cik_list = resolve_cik_list(session, cik, ciks, limit)
 
-            if not cik_list:
-                logger.warning("No CIKs found in ETF table. Run 'load-etfs' first.")
-                return
+    if not cik_list:
+        return
 
-        if limit is not None:
-            cik_list = cik_list[:limit]
-            logger.info(f"Limiting to first {limit} CIKs")
-
-    succeeded = 0
-    failed = 0
-
-    for cik_str in cik_list:
-        with session_factory() as session:
-            if _process_cik_finhigh(session, cik_str):
-                succeeded += 1
-            else:
-                failed += 1
-
-    logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
+    run_parser_loop(cik_list, session_factory, _process_cik_finhigh, "finhigh")
 
     if clear_cache:
-        result = edgar_clear_cache(dry_run=False)
-        files_deleted = result.get("files_deleted", 0)
-        bytes_freed = result.get("bytes_freed", 0)
-        mb_freed = bytes_freed / (1024 * 1024)
-        logger.info(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
+        clear_and_log_cache()

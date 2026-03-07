@@ -386,22 +386,21 @@ def test_parse_flows_date_parsing(session, sample_etfs, mock_flows_db):
 def test_parse_flows_clears_cache_by_default(session, sample_etfs, mock_flows_db):
     """Test that cache is cleared by default."""
     with patch("etf_pipeline.parsers.flows.Company") as mock_company_class:
-        with patch("etf_pipeline.parsers.flows.edgar_clear_cache") as mock_clear:
+        with patch("etf_pipeline.parsers.flows.clear_and_log_cache") as mock_clear:
             mock_company = Mock()
             mock_filings = [create_mock_filing(SAMPLE_XML_VALID)]
             mock_company.get_filings.return_value = mock_filings
             mock_company_class.return_value = mock_company
-            mock_clear.return_value = {"files_deleted": 10, "bytes_freed": 1024 * 1024}
 
             parse_flows(cik="1100663", clear_cache=True)
 
-            mock_clear.assert_called_once_with(dry_run=False)
+            mock_clear.assert_called_once()
 
 
 def test_parse_flows_keeps_cache_when_flag_set(session, sample_etfs, mock_flows_db):
     """Test that cache is not cleared when keep_cache=True."""
     with patch("etf_pipeline.parsers.flows.Company") as mock_company_class:
-        with patch("etf_pipeline.parsers.flows.edgar_clear_cache") as mock_clear:
+        with patch("etf_pipeline.parsers.flows.clear_and_log_cache") as mock_clear:
             mock_company = Mock()
             mock_filings = [create_mock_filing(SAMPLE_XML_VALID)]
             mock_company.get_filings.return_value = mock_filings

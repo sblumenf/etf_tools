@@ -5,9 +5,10 @@ from decimal import Decimal, InvalidOperation
 
 from dateutil.parser import parse as _du_parse
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from etf_pipeline.models import ProcessingLog
+from etf_pipeline.models import ETF, ProcessingLog
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,64 @@ def ensure_date(value) -> date:
     if isinstance(value, date):
         return value
     raise TypeError(f"ensure_date expected date or datetime, got {type(value)}")
+
+
+def resolve_cik_list(session, cik=None, ciks=None, limit=None):
+    if ciks is not None:
+        cik_list = ciks
+    elif cik is not None:
+        cik_padded = f"{int(cik):010d}"
+        cik_list = [cik_padded]
+    else:
+        stmt = select(ETF.cik).distinct().order_by(ETF.cik)
+        cik_list = [row[0] for row in session.execute(stmt).all()]
+        if not cik_list:
+            logger.warning("No CIKs found in ETF table. Run 'load-etfs' first.")
+            return []
+
+    if limit is not None:
+        cik_list = cik_list[:limit]
+
+    return cik_list
+
+
+def run_parser_loop(cik_list, session_factory, process_fn, parser_name):
+    succeeded = 0
+    failed = 0
+
+    for cik_str in cik_list:
+        with session_factory() as session:
+            if process_fn(session, cik_str):
+                succeeded += 1
+            else:
+                failed += 1
+
+    logger.info(f"{parser_name} summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
+
+
+def clear_and_log_cache():
+    from edgar import clear_cache as edgar_clear_cache
+    result = edgar_clear_cache(dry_run=False)
+    files_deleted = result.get('files_deleted', 0)
+    bytes_freed = result.get('bytes_freed', 0)
+    mb_freed = bytes_freed / (1024 * 1024)
+    logger.info(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
+
+
+def upsert_record(session, model_class, filter_kwargs, data_kwargs):
+    stmt = select(model_class).where(
+        *(getattr(model_class, k) == v for k, v in filter_kwargs.items())
+    )
+    record = session.execute(stmt).scalar_one_or_none()
+
+    if record is not None:
+        for k, v in data_kwargs.items():
+            setattr(record, k, v)
+    else:
+        record = model_class(**filter_kwargs, **data_kwargs)
+        session.add(record)
+
+    return record
 
 
 def update_processing_log(session: Session, cik: str, parser_type: str, filing_date: date) -> None:

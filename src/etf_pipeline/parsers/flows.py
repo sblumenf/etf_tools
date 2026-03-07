@@ -6,13 +6,20 @@ from datetime import date
 from typing import Optional
 
 from edgar import Company
-from edgar.storage_management import clear_cache as edgar_clear_cache
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
-from etf_pipeline.models import ETF, FlowData
-from etf_pipeline.parser_utils import ensure_date, parse_date, parse_decimal, update_processing_log
+from etf_pipeline.models import FlowData
+from etf_pipeline.parser_utils import (
+    clear_and_log_cache,
+    ensure_date,
+    parse_date,
+    parse_decimal,
+    resolve_cik_list,
+    run_parser_loop,
+    update_processing_log,
+    upsert_record,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -117,31 +124,17 @@ def _process_cik_flows(session: Session, cik: str) -> bool:
             return False
 
         # Upsert into database
-        stmt = select(FlowData).where(
-            FlowData.cik == cik,
-            FlowData.fiscal_year_end == flow_data["fiscal_year_end"],
-            FlowData.filing_date == filing_date
+        upsert_record(
+            session,
+            FlowData,
+            filter_kwargs={"cik": cik, "fiscal_year_end": flow_data["fiscal_year_end"], "filing_date": filing_date},
+            data_kwargs={
+                "sales_value": flow_data["sales_value"],
+                "redemptions_value": flow_data["redemptions_value"],
+                "net_sales": flow_data["net_sales"],
+            },
         )
-        existing = session.execute(stmt).scalar_one_or_none()
-
-        if existing:
-            # Update existing record
-            existing.sales_value = flow_data["sales_value"]
-            existing.redemptions_value = flow_data["redemptions_value"]
-            existing.net_sales = flow_data["net_sales"]
-            logger.info(f"CIK {cik}: Updated flow data for fiscal year {flow_data['fiscal_year_end']}, filing_date {filing_date}")
-        else:
-            # Insert new record
-            new_flow = FlowData(
-                cik=cik,
-                fiscal_year_end=flow_data["fiscal_year_end"],
-                filing_date=filing_date,
-                sales_value=flow_data["sales_value"],
-                redemptions_value=flow_data["redemptions_value"],
-                net_sales=flow_data["net_sales"],
-            )
-            session.add(new_flow)
-            logger.info(f"CIK {cik}: Inserted flow data for fiscal year {flow_data['fiscal_year_end']}, filing_date {filing_date}")
+        logger.info(f"CIK {cik}: Upserted flow data for fiscal year {flow_data['fiscal_year_end']}, filing_date {filing_date}")
 
         # Update processing log after successful processing
         update_processing_log(session, cik, "flows", filing_date)
@@ -172,44 +165,13 @@ def parse_flows(
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
 
-    # Determine which CIKs to process
     with session_factory() as session:
-        if ciks is not None:
-            # Use provided list of CIKs (already padded)
-            cik_list = ciks
-        elif cik is not None:
-            # Single CIK provided
-            cik_padded = f"{int(cik):010d}"
-            cik_list = [cik_padded]
-            logger.info(f"Processing single CIK: {cik_padded}")
-        else:
-            # Get all distinct CIKs from ETF table
-            stmt = select(ETF.cik).distinct().order_by(ETF.cik)
-            cik_list = [row[0] for row in session.execute(stmt).all()]
+        cik_list = resolve_cik_list(session, cik, ciks, limit)
 
-            if not cik_list:
-                logger.warning("No CIKs found in ETF table. Run 'load-etfs' first.")
-                return
+    if not cik_list:
+        return
 
-        if limit is not None:
-            cik_list = cik_list[:limit]
-            logger.info(f"Limiting to first {limit} CIKs")
-
-    succeeded = 0
-    failed = 0
-
-    for cik_str in cik_list:
-        with session_factory() as session:
-            if _process_cik_flows(session, cik_str):
-                succeeded += 1
-            else:
-                failed += 1
-
-    logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
+    run_parser_loop(cik_list, session_factory, _process_cik_flows, "flows")
 
     if clear_cache:
-        result = edgar_clear_cache(dry_run=False)
-        files_deleted = result.get('files_deleted', 0)
-        bytes_freed = result.get('bytes_freed', 0)
-        mb_freed = bytes_freed / (1024 * 1024)
-        logger.info(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
+        clear_and_log_cache()

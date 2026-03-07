@@ -1,17 +1,25 @@
 """Parse N-CSR filings for performance data."""
 
 import logging
-from datetime import date, datetime
+from datetime import date
 from typing import Optional
 
 from edgar import Company
-from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
 from etf_pipeline.models import ETF, Performance
-from etf_pipeline.parser_utils import ensure_date, parse_decimal, update_processing_log
+from etf_pipeline.parser_utils import (
+    clear_and_log_cache,
+    ensure_date,
+    parse_date,
+    parse_decimal,
+    resolve_cik_list,
+    run_parser_loop,
+    update_processing_log,
+    upsert_record,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -249,20 +257,8 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                             period_end = row.get('period_end')
 
                             if period_start and period_end:
-                                # Convert to date objects if needed
-                                if isinstance(period_start, str):
-                                    period_start = datetime.strptime(period_start, "%Y-%m-%d").date()
-                                elif isinstance(period_start, datetime):
-                                    period_start = period_start.date()
-                                elif hasattr(period_start, 'date'):
-                                    period_start = period_start.date()
-
-                                if isinstance(period_end, str):
-                                    period_end = datetime.strptime(period_end, "%Y-%m-%d").date()
-                                elif isinstance(period_end, datetime):
-                                    period_end = period_end.date()
-                                elif hasattr(period_end, 'date'):
-                                    period_end = period_end.date()
+                                period_start = parse_date(period_start)
+                                period_end = parse_date(period_end)
 
                                 field_name = _map_return_period(period_start, period_end)
                                 if field_name:
@@ -295,24 +291,12 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                 if 'period_end' in fund_facts.columns:
                     period_ends = fund_facts['period_end'].dropna()
                     if not period_ends.empty:
-                        first_period_end = period_ends.iloc[0]
-                        if isinstance(first_period_end, str):
-                            fiscal_year_end = datetime.strptime(first_period_end, "%Y-%m-%d").date()
-                        elif isinstance(first_period_end, datetime):
-                            fiscal_year_end = first_period_end.date()
-                        elif hasattr(first_period_end, 'date'):
-                            fiscal_year_end = first_period_end.date()
-                        else:
-                            fiscal_year_end = first_period_end
+                        fiscal_year_end = parse_date(period_ends.iloc[0])
 
                 if not fiscal_year_end:
                     logger.warning(f"CIK {cik}: No fiscal_year_end found for class_id {class_id}")
                     skipped_etfs += 1
                     continue
-
-                # Final sanity check: ensure fiscal_year_end is a date object
-                if isinstance(fiscal_year_end, datetime):
-                    fiscal_year_end = fiscal_year_end.date()
 
                 # Skip if this (class_id, fiscal_year_end) was already processed
                 key = (class_id, fiscal_year_end)
@@ -335,20 +319,8 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                         period_end = row.get('period_end')
 
                         if period_start and period_end:
-                            # Convert to date objects if needed
-                            if isinstance(period_start, str):
-                                period_start = datetime.strptime(period_start, "%Y-%m-%d").date()
-                            elif isinstance(period_start, datetime):
-                                period_start = period_start.date()
-                            elif hasattr(period_start, 'date'):
-                                period_start = period_start.date()
-
-                            if isinstance(period_end, str):
-                                period_end = datetime.strptime(period_end, "%Y-%m-%d").date()
-                            elif isinstance(period_end, datetime):
-                                period_end = period_end.date()
-                            elif hasattr(period_end, 'date'):
-                                period_end = period_end.date()
+                            period_start = parse_date(period_start)
+                            period_end = parse_date(period_end)
 
                             field_name = _map_return_period(period_start, period_end)
                             if field_name:
@@ -361,42 +333,23 @@ def _process_cik_ncsr(session: Session, cik: str) -> bool:
                         portfolio_turnover = parse_decimal(numeric_value)
 
                 # Upsert Performance record
-                stmt = select(Performance).where(
-                    Performance.etf_id == etf.id,
-                    Performance.fiscal_year_end == fiscal_year_end,
-                    Performance.filing_date == filing_date
+                upsert_record(
+                    session,
+                    Performance,
+                    filter_kwargs={
+                        "etf_id": etf.id,
+                        "fiscal_year_end": fiscal_year_end,
+                        "filing_date": filing_date,
+                    },
+                    data_kwargs={
+                        **returns_data,
+                        "expense_ratio_actual": expense_ratio,
+                        "portfolio_turnover": portfolio_turnover,
+                        "benchmark_name": benchmark_name,
+                        **benchmark_returns,
+                    },
                 )
-                existing = session.execute(stmt).scalar_one_or_none()
-
-                if existing:
-                    # Update existing record
-                    for field, value in returns_data.items():
-                        setattr(existing, field, value)
-                    existing.expense_ratio_actual = expense_ratio
-                    existing.portfolio_turnover = portfolio_turnover
-                    existing.benchmark_name = benchmark_name
-                    for field, value in benchmark_returns.items():
-                        setattr(existing, field, value)
-                    logger.debug(f"CIK {cik}: Updated performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
-                else:
-                    # Insert new record
-                    new_perf = Performance(
-                        etf_id=etf.id,
-                        fiscal_year_end=fiscal_year_end,
-                        filing_date=filing_date,
-                        return_1yr=returns_data.get('return_1yr'),
-                        return_5yr=returns_data.get('return_5yr'),
-                        return_10yr=returns_data.get('return_10yr'),
-                        return_since_inception=returns_data.get('return_since_inception'),
-                        expense_ratio_actual=expense_ratio,
-                        portfolio_turnover=portfolio_turnover,
-                        benchmark_name=benchmark_name,
-                        benchmark_return_1yr=benchmark_returns.get('benchmark_return_1yr'),
-                        benchmark_return_5yr=benchmark_returns.get('benchmark_return_5yr'),
-                        benchmark_return_10yr=benchmark_returns.get('benchmark_return_10yr'),
-                    )
-                    session.add(new_perf)
-                    logger.debug(f"CIK {cik}: Inserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
+                logger.debug(f"CIK {cik}: Upserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
 
                 satisfied.add(key)
                 processed_etfs += 1
@@ -433,44 +386,13 @@ def parse_ncsr(
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
 
-    # Determine which CIKs to process
     with session_factory() as session:
-        if ciks is not None:
-            # Use provided list of CIKs (already padded)
-            cik_list = ciks
-        elif cik is not None:
-            # Single CIK provided
-            cik_padded = f"{int(cik):010d}"
-            cik_list = [cik_padded]
-            logger.info(f"Processing single CIK: {cik_padded}")
-        else:
-            # Get all distinct CIKs from ETF table
-            stmt = select(ETF.cik).distinct().order_by(ETF.cik)
-            cik_list = [row[0] for row in session.execute(stmt).all()]
+        cik_list = resolve_cik_list(session, cik=cik, ciks=ciks, limit=limit)
 
-            if not cik_list:
-                logger.warning("No CIKs found in ETF table. Run 'load-etfs' first.")
-                return
+    if not cik_list:
+        return
 
-        if limit is not None:
-            cik_list = cik_list[:limit]
-            logger.info(f"Limiting to first {limit} CIKs")
-
-    succeeded = 0
-    failed = 0
-
-    for cik_str in cik_list:
-        with session_factory() as session:
-            if _process_cik_ncsr(session, cik_str):
-                succeeded += 1
-            else:
-                failed += 1
-
-    logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
+    run_parser_loop(cik_list, session_factory, _process_cik_ncsr, "ncsr")
 
     if clear_cache:
-        result = edgar_clear_cache(dry_run=False)
-        files_deleted = result.get('files_deleted', 0)
-        bytes_freed = result.get('bytes_freed', 0)
-        mb_freed = bytes_freed / (1024 * 1024)
-        logger.info(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
+        clear_and_log_cache()

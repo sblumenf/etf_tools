@@ -522,24 +522,18 @@ def _process_cik_prospectus(session, cik: str) -> bool:
 
                 # Upsert FeeExpense (if any data present)
                 if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date', 'filing_date')):
-                    stmt = select(FeeExpense).where(
-                        FeeExpense.etf_id == etf.id,
-                        FeeExpense.effective_date == effective_date,
-                        FeeExpense.filing_date == filing_date
+                    from etf_pipeline.parser_utils import upsert_record
+                    upsert_record(
+                        session,
+                        FeeExpense,
+                        filter_kwargs={
+                            'etf_id': etf.id,
+                            'effective_date': effective_date,
+                            'filing_date': filing_date,
+                        },
+                        data_kwargs={k: v for k, v in fee_data.items() if k not in ('etf_id', 'effective_date', 'filing_date')},
                     )
-                    existing = session.execute(stmt).scalar_one_or_none()
-
-                    if existing:
-                        # Update existing record
-                        for field, value in fee_data.items():
-                            if field not in ('etf_id', 'effective_date', 'filing_date') and value is not None:
-                                setattr(existing, field, value)
-                        logger.debug(f"CIK {cik}: Updated fee data for {etf.ticker}")
-                    else:
-                        # Insert new record
-                        new_fee = FeeExpense(**fee_data)
-                        session.add(new_fee)
-                        logger.debug(f"CIK {cik}: Inserted fee data for {etf.ticker}")
+                    logger.debug(f"CIK {cik}: Upserted fee data for {etf.ticker}")
 
                     etfs_with_data_this_filing.add(etf.id)
 
@@ -675,54 +669,19 @@ def parse_prospectus(
         limit: Optional limit on number of CIKs to process
         clear_cache: Whether to clear edgartools HTTP cache after processing
     """
-    from edgar import clear_cache as edgar_clear_cache
     from etf_pipeline.db import get_engine
-    from etf_pipeline.models import ETF
-    from sqlalchemy import select
+    from etf_pipeline.parser_utils import clear_and_log_cache, resolve_cik_list, run_parser_loop
     from sqlalchemy.orm import sessionmaker
 
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
 
-    # Determine which CIKs to process
     with session_factory() as session:
-        if ciks is not None:
-            # List of CIKs provided
-            cik_list = [f"{int(c):010d}" for c in ciks]
-            logger.info(f"Processing {len(cik_list)} CIK(s) from ciks parameter")
-        elif cik is not None:
-            # Single CIK provided
-            cik_padded = f"{int(cik):010d}"
-            cik_list = [cik_padded]
-            logger.info(f"Processing single CIK: {cik_padded}")
-        else:
-            # Get all distinct CIKs from ETF table
-            stmt = select(ETF.cik).distinct().order_by(ETF.cik)
-            cik_list = [row[0] for row in session.execute(stmt).all()]
+        cik_list = resolve_cik_list(session, cik=cik, ciks=ciks, limit=limit)
+        if not cik_list:
+            return
 
-            if not cik_list:
-                logger.warning("No CIKs found in ETF table. Run 'load-etfs' first.")
-                return
-
-        if limit is not None and ciks is None:
-            cik_list = cik_list[:limit]
-            logger.info(f"Limiting to first {limit} CIKs")
-
-    succeeded = 0
-    failed = 0
-
-    for cik_str in cik_list:
-        with session_factory() as session:
-            if _process_cik_prospectus(session, cik_str):
-                succeeded += 1
-            else:
-                failed += 1
-
-    logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
+    run_parser_loop(cik_list, session_factory, _process_cik_prospectus, "prospectus")
 
     if clear_cache:
-        result = edgar_clear_cache(dry_run=False)
-        files_deleted = result.get('files_deleted', 0)
-        bytes_freed = result.get('bytes_freed', 0)
-        mb_freed = bytes_freed / (1024 * 1024)
-        logger.info(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
+        clear_and_log_cache()

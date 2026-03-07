@@ -9,7 +9,6 @@ from typing import Optional
 
 from edgar import Company
 from edgar.funds.reports import FundReport
-from edgar.storage_management import clear_cache as edgar_clear_cache
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -32,6 +31,7 @@ from etf_pipeline.models import (
 )
 from etf_pipeline.parser_utils import (
     clean_str,
+    clear_and_log_cache,
     ensure_date,
     get_clean,
     parse_date,
@@ -111,11 +111,7 @@ def parse_nport(
     logger.info(f"Summary: {succeeded} CIKs succeeded, {failed} CIKs failed")
 
     if clear_cache:
-        result = edgar_clear_cache(dry_run=False)
-        files_deleted = result.get('files_deleted', 0)
-        bytes_freed = result.get('bytes_freed', 0)
-        mb_freed = bytes_freed / (1024 * 1024)
-        logger.info(f"Cache cleared: {files_deleted} files deleted, {mb_freed:.2f} MB freed")
+        clear_and_log_cache()
 
 
 def _get_latest_filings_per_series(filings):
