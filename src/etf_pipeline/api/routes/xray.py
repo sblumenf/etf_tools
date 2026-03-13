@@ -56,7 +56,7 @@ def _country_name(code: str) -> str:
 
 
 @router.get("/{ticker}", response_model=XRayResponse)
-def get_xray(ticker: str, db: Session = Depends(get_db)):
+def get_xray(ticker: str, n: int = 10, db: Session = Depends(get_db)):
     etf = service.get_etf(db, ticker)
     if not etf:
         raise HTTPException(status_code=404, detail="ETF not found")
@@ -76,9 +76,10 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
     if holdings:
         sorted_holdings = sorted(holdings, key=lambda h: (h.pct_val or 0), reverse=True)
         total_count = len(sorted_holdings)
-        n = 10
-        top_n = sorted_holdings[:n]
-        other_pct = sum((h.pct_val or 0) for h in sorted_holdings[n:]) if total_count > n else None
+        # n=0 means "All"
+        effective_n = total_count if n <= 0 else min(n, total_count)
+        top_n = sorted_holdings[:effective_n]
+        other_pct = sum((h.pct_val or 0) for h in sorted_holdings[effective_n:]) if total_count > effective_n else None
 
         holdings_data = HoldingsData(
             total_count=total_count,

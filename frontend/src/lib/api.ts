@@ -6,8 +6,8 @@ export async function searchETFs(q: string): Promise<Array<{ ticker: string; nam
   return res.json();
 }
 
-export async function getXRay(ticker: string): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/v1/xray/${ticker}`);
+export async function getXRay(ticker: string, n: number = 10): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/v1/xray/${ticker}?n=${n}`);
   if (res.status === 404) throw new Error("ETF not found");
   if (!res.ok) throw new Error("Failed to load ETF data");
   return res.json();
