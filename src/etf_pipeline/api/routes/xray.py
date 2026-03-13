@@ -291,10 +291,20 @@ def get_xray(ticker: str, n: int = 10, db: Session = Depends(get_db)):
         concentration=concentration_data is not None,
     )
 
+    # Derive filing_date from the most recent data source available
+    filing_date_val = None
+    if holdings:
+        h0 = holdings[0]
+        filing_date_val = str(h0.filing_date or h0.report_date or "") or None
+    if not filing_date_val and fees and fees.effective_date:
+        filing_date_val = str(fees.effective_date)
+    if not filing_date_val and snapshot and snapshot.report_date:
+        filing_date_val = str(snapshot.report_date)
+
     return XRayResponse(
         ticker=etf.ticker,
         name=etf.fund_name or "",
-        filing_date=None,
+        filing_date=filing_date_val,
         data_completeness=completeness,
         holdings=holdings_data,
         asset_allocation=asset_allocation_data,

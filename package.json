@@ -1,0 +1,29 @@
+{
+  "name": "etf_tools",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npx playwright test",
+    "test:e2e": "npx playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sblumenf/etf_tools.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/sblumenf/etf_tools/issues"
+  },
+  "homepage": "https://github.com/sblumenf/etf_tools#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}
