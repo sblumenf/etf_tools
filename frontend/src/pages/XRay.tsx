@@ -4,6 +4,7 @@ import { useXRayData } from "../hooks/useXRayData";
 import { HoldingsCard } from "../components/cards/HoldingsCard";
 import { AssetAllocationCard } from "../components/cards/AssetAllocationCard";
 import { GeographicCard } from "../components/cards/GeographicCard";
+import { LiquidityCard } from "../components/cards/LiquidityCard";
 import { PlaceholderCard } from "../components/cards/PlaceholderCard";
 
 export function XRay() {
@@ -54,7 +55,7 @@ export function XRay() {
         <HoldingsCard data={data.holdings} onNChange={setHoldingsN} />
         <AssetAllocationCard data={data.asset_allocation} />
         <GeographicCard data={data.geographic} />
-        <PlaceholderCard title="Liquidity Profile" available={c.liquidity} />
+        <LiquidityCard data={data.liquidity} />
         <PlaceholderCard title="Fee Structure" available={c.fees} />
         <PlaceholderCard title="Performance vs. Benchmark" available={c.performance} />
         <PlaceholderCard title="Fund Health" available={c.fund_health} />

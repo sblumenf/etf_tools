@@ -50,7 +50,7 @@
 - [ ] HoldingsCard with configurable N dropdown
 - [x] AssetAllocationCard with donut chart (Recharts) — donut chart + legend + summary table, "No data available" state
 - [x] GeographicCard with bar chart + choropleth — horizontal bar chart (Recharts) + choropleth world map (react-simple-maps v3), ISO alpha-2 to numeric mapping, hover tooltip, spans full width
-- [ ] LiquidityCard with stacked bar chart
+- [x] LiquidityCard with stacked bar chart (Recharts) — horizontal stacked bar + legend list, color-coded HLI/MLI/LLI/ILI, "No data available" state
 - [ ] FeeCard with fee breakdown + waiver highlight
 - [ ] PerformanceCard with returns comparison
 - [ ] FundHealthCard with AUM, leverage, cash metrics
@@ -82,4 +82,4 @@ The scope-lock.json was too restrictive — it blocked editing files created by 
   - HoldingsCard shows ranked table with Other row when data is truncated
 
 ## Next task
-Phase 2: Implement LiquidityCard with stacked bar chart (Recharts).
+Phase 2: Implement FeeCard with fee breakdown table and waiver highlight.
