@@ -5,7 +5,7 @@ import { formatPct1 as fmtPct } from "../../lib/format";
 interface TreemapEntry {
   name: string;
   ticker: string | null;
-  weight: number;
+  pct_val: number | null;
 }
 
 interface ConcentrationData {
@@ -85,7 +85,7 @@ interface TreemapCell {
   size: number;
   fill: string;
   ticker?: string | null;
-  weight: number;
+  pct_val: number | null;
   [key: string]: unknown;
 }
 
@@ -95,10 +95,10 @@ function buildTreemapData(entries: TreemapEntry[]): TreemapCell[] {
     const fill = isOther ? "#94a3b8" : (BLUE_PALETTE[idx] ?? "#93c5fd");
     return {
       name: entry.ticker && !isOther ? entry.ticker : entry.name,
-      size: entry.weight,
+      size: entry.pct_val ?? 0,
       fill,
       ticker: entry.ticker,
-      weight: entry.weight,
+      pct_val: entry.pct_val,
     };
   });
 }
@@ -114,7 +114,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   return (
     <div className="rounded border bg-white shadow text-sm px-3 py-2">
       <p className="font-semibold">{d.name}</p>
-      <p className="text-muted-foreground">{fmtPct(d.weight)}</p>
+      <p className="text-muted-foreground">{fmtPct(d.pct_val)}</p>
     </div>
   );
 }

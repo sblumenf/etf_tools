@@ -24,17 +24,13 @@ from etf_pipeline.api.schemas.xray import (
 )
 from etf_pipeline.xray import service
 from etf_pipeline.xray.calculations import compute_hhi, compute_top_n_weight
-from etf_pipeline.xray.service import ASSET_CATEGORY_MAP, COUNTRY_NAMES, LIQUIDITY_MAP
+from etf_pipeline.xray.service import ASSET_CATEGORY_MAP, LIQUIDITY_MAP, resolve_country_name
 
 router = APIRouter(prefix="/api/v1/xray", tags=["xray"])
 
 
-def _country_name(code: str) -> str:
-    return COUNTRY_NAMES.get(code.upper(), code)
-
-
 @router.get("/{ticker}", response_model=XRayResponse)
-def get_xray(ticker: str, n: int = 10, db: Session = Depends(get_db)):
+def get_xray(ticker: str, db: Session = Depends(get_db)):
     etf = service.get_etf(db, ticker)
     if not etf:
         raise HTTPException(status_code=404, detail="ETF not found")
@@ -53,10 +49,6 @@ def get_xray(ticker: str, n: int = 10, db: Session = Depends(get_db)):
 
     if holdings:
         total_count = len(holdings)
-        # n=0 means "All"
-        effective_n = total_count if n <= 0 else min(n, total_count)
-        top_n = holdings[:effective_n]
-        other_pct = sum((h.pct_val or 0) for h in holdings[effective_n:]) if total_count > effective_n else None
 
         holdings_data = HoldingsData(
             total_count=total_count,
@@ -67,9 +59,8 @@ def get_xray(ticker: str, n: int = 10, db: Session = Depends(get_db)):
                     value_usd=float(h.value_usd) if h.value_usd is not None else None,
                     pct_val=float(h.pct_val) if h.pct_val is not None else None,
                 )
-                for h in top_n
+                for h in holdings
             ],
-            other_pct=float(other_pct) if other_pct is not None else None,
         )
 
         # asset allocation
@@ -99,7 +90,7 @@ def get_xray(ticker: str, n: int = 10, db: Session = Depends(get_db)):
             country_items = [
                 CountryItem(
                     country_code=code,
-                    country_name=_country_name(code),
+                    country_name=resolve_country_name(code),
                     pct=round(pct, 4),
                 )
                 for code, pct in sorted(country_groups.items(), key=lambda x: -x[1])[:20]
@@ -142,13 +133,12 @@ def get_xray(ticker: str, n: int = 10, db: Session = Depends(get_db)):
                 ticker=h.ticker,
                 value_usd=float(h.value_usd) if h.value_usd is not None else None,
                 pct_val=float(h.pct_val) if h.pct_val is not None else None,
-                weight=float(h.pct_val) if h.pct_val is not None else None,
             )
             for h in treemap_rows
         ]
         if other_treemap_pct:
             treemap_data.append(
-                HoldingItem(name="Other", ticker=None, value_usd=None, pct_val=other_treemap_pct, weight=other_treemap_pct)
+                HoldingItem(name="Other", ticker=None, value_usd=None, pct_val=other_treemap_pct)
             )
         concentration_data = ConcentrationData(
             hhi=hhi,

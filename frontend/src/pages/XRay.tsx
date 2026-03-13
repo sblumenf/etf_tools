@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useXRayData } from "../hooks/useXRayData";
 import { HoldingsCard } from "../components/cards/HoldingsCard";
@@ -12,8 +11,7 @@ import { ConcentrationCard } from "../components/cards/ConcentrationCard";
 
 export function XRay() {
   const { ticker } = useParams<{ ticker: string }>();
-  const [holdingsN, setHoldingsN] = useState(10);
-  const { data, loading, error } = useXRayData(ticker, holdingsN);
+  const { data, loading, error } = useXRayData(ticker);
 
   if (loading) {
     return (
@@ -72,7 +70,7 @@ export function XRay() {
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <HoldingsCard data={data.holdings} onNChange={setHoldingsN} />
+        <HoldingsCard data={data.holdings} onNChange={() => {}} />
         <AssetAllocationCard data={data.asset_allocation} />
         <GeographicCard data={data.geographic} />
         <LiquidityCard data={data.liquidity} />

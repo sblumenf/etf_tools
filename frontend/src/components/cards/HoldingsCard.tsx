@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatUSD, formatPct } from "../../lib/format";
 
 interface HoldingItem {
@@ -26,6 +27,8 @@ const N_OPTIONS = [
 ];
 
 export function HoldingsCard({ data, onNChange }: HoldingsCardProps) {
+  const [n, setN] = useState(10);
+
   if (!data) {
     return (
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
@@ -37,10 +40,17 @@ export function HoldingsCard({ data, onNChange }: HoldingsCardProps) {
     );
   }
 
-  const { total_count, items, other_pct } = data;
+  const { total_count, items } = data;
+  const visibleItems = n === 0 ? items : items.slice(0, n);
+  const hiddenItems = n === 0 ? [] : items.slice(n);
+  const other_pct =
+    hiddenItems.length > 0
+      ? hiddenItems.reduce((sum, item) => sum + (item.pct_val ?? 0), 0)
+      : null;
 
   const handleNChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = Number(e.target.value);
+    setN(val);
     onNChange?.(val);
   };
 
@@ -76,7 +86,7 @@ export function HoldingsCard({ data, onNChange }: HoldingsCardProps) {
             </tr>
           </thead>
           <tbody>
-            {items.map((holding, idx) => (
+            {visibleItems.map((holding, idx) => (
               <tr key={idx} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                 <td className="py-2 pr-4 text-muted-foreground">{idx + 1}</td>
                 <td className="py-2 pr-4 font-medium truncate max-w-[200px]" title={holding.name}>
@@ -93,11 +103,11 @@ export function HoldingsCard({ data, onNChange }: HoldingsCardProps) {
                 </td>
               </tr>
             ))}
-            {other_pct !== null && other_pct !== undefined && other_pct > 0 && (
+            {other_pct !== null && other_pct > 0 && (
               <tr className="text-muted-foreground bg-muted/20">
                 <td className="py-2 pr-4">—</td>
                 <td className="py-2 pr-4 italic" colSpan={2}>
-                  Other ({total_count - items.length} holdings)
+                  Other ({total_count - visibleItems.length} holdings)
                 </td>
                 <td className="py-2 pr-4 text-right">—</td>
                 <td className="py-2 text-right tabular-nums">{formatPct(other_pct)}</td>

@@ -13,7 +13,7 @@ import {
   Geography,
   ZoomableGroup,
 } from "react-simple-maps";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const GEO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -34,7 +34,7 @@ interface GeographicCardProps {
 
 // Map ISO alpha-2 to ISO numeric used by world-atlas TopoJSON
 const ISO2_TO_NUMERIC: Record<string, string> = {
-  AF: "004", AX: "008", AL: "008", DZ: "012", AS: "016", AD: "020",
+  AF: "004", AX: "248", AL: "008", DZ: "012", AS: "016", AD: "020",
   AO: "024", AI: "660", AQ: "010", AG: "028", AR: "032", AM: "051",
   AW: "533", AU: "036", AT: "040", AZ: "031", BS: "044", BH: "048",
   BD: "050", BB: "052", BY: "112", BE: "056", BZ: "084", BJ: "204",
@@ -103,18 +103,19 @@ export function GeographicCard({ data }: GeographicCardProps) {
     );
   }
 
-  const sorted = [...data.items].sort((a, b) => b.pct - a.pct);
-  const top10 = sorted.slice(0, 10);
-  const maxPct = sorted[0]?.pct ?? 1;
-
-  // Build lookup: numeric ID -> pct
-  const pctByNumeric: Record<string, number> = {};
-  const nameByCode: Record<string, string> = {};
-  for (const item of data.items) {
-    const numeric = ISO2_TO_NUMERIC[item.country_code.toUpperCase()];
-    if (numeric) pctByNumeric[numeric] = item.pct;
-    nameByCode[item.country_code.toUpperCase()] = item.country_name;
-  }
+  const { top10, maxPct, pctByNumeric, nameByCode } = useMemo(() => {
+    const sorted = [...data.items].sort((a, b) => b.pct - a.pct);
+    const top10 = sorted.slice(0, 10);
+    const maxPct = sorted[0]?.pct ?? 1;
+    const pctByNumeric: Record<string, number> = {};
+    const nameByCode: Record<string, string> = {};
+    for (const item of data.items) {
+      const numeric = ISO2_TO_NUMERIC[item.country_code.toUpperCase()];
+      if (numeric) pctByNumeric[numeric] = item.pct;
+      nameByCode[item.country_code.toUpperCase()] = item.country_name;
+    }
+    return { top10, maxPct, pctByNumeric, nameByCode };
+  }, [data]);
 
   return (
     <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 col-span-1 md:col-span-2">

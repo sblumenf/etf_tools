@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { getXRay } from "../lib/api";
+import type { XRayResponse } from "../lib/api";
 
-export function useXRayData(ticker: string | undefined, n: number = 10) {
-  const [data, setData] = useState<any>(null);
+export function useXRayData(ticker: string | undefined) {
+  const [data, setData] = useState<XRayResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -10,11 +11,11 @@ export function useXRayData(ticker: string | undefined, n: number = 10) {
     if (!ticker) return;
     setLoading(true);
     setError(null);
-    getXRay(ticker, n)
+    getXRay(ticker)
       .then(setData)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [ticker, n]);
+  }, [ticker]);
 
   return { data, loading, error };
 }

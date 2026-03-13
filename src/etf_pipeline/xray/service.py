@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, case
 from etf_pipeline.models import ETF, Holding, FeeExpense, Performance, FundSnapshot, NPORTMonthlyFlow, FlowData
-from etf_pipeline.xray.calculations import compute_hhi, compute_top_n_weight
 
 ASSET_CATEGORY_MAP = {
     "EC": "Equity - Common",
@@ -46,8 +45,12 @@ COUNTRY_NAMES = {
 }
 
 
+def resolve_country_name(code: str) -> str:
+    return COUNTRY_NAMES.get(code.upper(), code)
+
+
 def get_etf(db: Session, ticker: str) -> ETF | None:
-    return db.query(ETF).filter(func.upper(ETF.ticker) == ticker.upper()).first()
+    return db.query(ETF).filter(ETF.ticker == ticker.upper()).first()
 
 
 def search_etfs(db: Session, q: str, limit: int = 20) -> list[ETF]:
