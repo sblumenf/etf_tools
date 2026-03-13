@@ -1,3 +1,5 @@
+import { formatPctSigned as fmtPct, formatReturn as fmtReturn } from "../../lib/format";
+
 interface PerformanceInterval {
   label: string;
   fund_return: number | null;
@@ -15,15 +17,6 @@ interface PerformanceCardProps {
   data: PerformanceData | null;
 }
 
-function fmtPct(val: number | null): string {
-  if (val === null || val === undefined) return "—";
-  return (val >= 0 ? "+" : "") + val.toFixed(2) + "%";
-}
-
-function fmtReturn(val: number | null): string {
-  if (val === null || val === undefined) return "—";
-  return val.toFixed(2) + "%";
-}
 
 function AlphaCell({ alpha }: { alpha: number | null }) {
   if (alpha === null || alpha === undefined) {

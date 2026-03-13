@@ -6,6 +6,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { formatUSD, formatPct } from "../../lib/format";
 
 interface AssetCategoryItem {
   code: string;
@@ -35,17 +36,6 @@ const COLORS = [
   "#6366f1",
 ];
 
-function formatUSD(val: number | null): string {
-  if (val === null || val === undefined) return "—";
-  if (val >= 1_000_000_000) return `$${(val / 1_000_000_000).toFixed(2)}B`;
-  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
-  if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}K`;
-  return `$${val.toFixed(2)}`;
-}
-
-function formatPct(val: number): string {
-  return `${val.toFixed(2)}%`;
-}
 
 export function AssetAllocationCard({ data }: AssetAllocationCardProps) {
   if (!data || !data.items || data.items.length === 0) {

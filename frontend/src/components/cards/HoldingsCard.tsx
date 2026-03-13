@@ -1,3 +1,5 @@
+import { formatUSD, formatPct } from "../../lib/format";
+
 interface HoldingItem {
   name: string;
   ticker: string | null;
@@ -14,19 +16,6 @@ interface HoldingsData {
 interface HoldingsCardProps {
   data: HoldingsData | null;
   onNChange?: (n: number) => void;
-}
-
-function formatUSD(val: number | null): string {
-  if (val === null || val === undefined) return "—";
-  if (val >= 1_000_000_000) return `$${(val / 1_000_000_000).toFixed(2)}B`;
-  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
-  if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}K`;
-  return `$${val.toFixed(2)}`;
-}
-
-function formatPct(val: number | null): string {
-  if (val === null || val === undefined) return "—";
-  return `${val.toFixed(2)}%`;
 }
 
 const N_OPTIONS = [

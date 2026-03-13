@@ -74,6 +74,11 @@ const ISO2_TO_NUMERIC: Record<string, string> = {
   YE: "887", ZM: "894", ZW: "716",
 };
 
+// Inverted map: ISO numeric -> ISO alpha-2, built once at module load
+const NUMERIC_TO_ISO2: Record<string, string> = Object.fromEntries(
+  Object.entries(ISO2_TO_NUMERIC).map(([iso2, numeric]) => [numeric, iso2])
+);
+
 function getColor(pct: number, maxPct: number): string {
   if (maxPct === 0) return "#e5e7eb";
   const intensity = Math.min(pct / maxPct, 1);
@@ -182,18 +187,9 @@ export function GeographicCard({ data }: GeographicCardProps) {
                         strokeWidth={0.3}
                         onMouseEnter={() => {
                           if (pct > 0) {
-                            // Find country name from our data
-                            const entry = Object.entries(pctByNumeric).find(
-                              ([k]) => k === numericId
-                            );
-                            if (entry) {
-                              // Find the display name via reverse lookup
-                              const code = Object.entries(ISO2_TO_NUMERIC).find(
-                                ([, v]) => v === numericId
-                              )?.[0];
-                              const name = code ? nameByCode[code] ?? code : numericId;
-                              setTooltip({ name, pct });
-                            }
+                            const code = NUMERIC_TO_ISO2[numericId];
+                            const name = code ? nameByCode[code] ?? code : numericId;
+                            setTooltip({ name, pct });
                           }
                         }}
                         onMouseLeave={() => setTooltip(null)}

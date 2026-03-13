@@ -1,3 +1,5 @@
+import { formatPct as fmtPct } from "../../lib/format";
+
 interface FeeData {
   management_fee: number | null;
   distribution_12b1: number | null;
@@ -14,10 +16,6 @@ interface FeeCardProps {
   data: FeeData | null;
 }
 
-function fmtPct(val: number | null): string {
-  if (val === null || val === undefined) return "—";
-  return val.toFixed(2) + "%";
-}
 
 interface FeeRowProps {
   label: string;

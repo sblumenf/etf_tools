@@ -24,34 +24,12 @@ from etf_pipeline.api.schemas.xray import (
 )
 from etf_pipeline.xray import service
 from etf_pipeline.xray.calculations import compute_hhi, compute_top_n_weight
-from etf_pipeline.xray.service import ASSET_CATEGORY_MAP, LIQUIDITY_MAP
+from etf_pipeline.xray.service import ASSET_CATEGORY_MAP, COUNTRY_NAMES, LIQUIDITY_MAP
 
 router = APIRouter(prefix="/api/v1/xray", tags=["xray"])
 
 
 def _country_name(code: str) -> str:
-    COUNTRY_NAMES = {
-        "US": "United States", "USA": "United States",
-        "GB": "United Kingdom", "GBR": "United Kingdom",
-        "JP": "Japan", "JPN": "Japan",
-        "DE": "Germany", "DEU": "Germany",
-        "FR": "France", "FRA": "France",
-        "CA": "Canada", "CAN": "Canada",
-        "AU": "Australia", "AUS": "Australia",
-        "CN": "China", "CHN": "China",
-        "KR": "South Korea", "KOR": "South Korea",
-        "CH": "Switzerland", "CHE": "Switzerland",
-        "NL": "Netherlands", "NLD": "Netherlands",
-        "SE": "Sweden", "SWE": "Sweden",
-        "DK": "Denmark", "DNK": "Denmark",
-        "HK": "Hong Kong", "HKG": "Hong Kong",
-        "TW": "Taiwan", "TWN": "Taiwan",
-        "IN": "India", "IND": "India",
-        "BR": "Brazil", "BRA": "Brazil",
-        "SG": "Singapore", "SGP": "Singapore",
-        "IT": "Italy", "ITA": "Italy",
-        "ES": "Spain", "ESP": "Spain",
-    }
     return COUNTRY_NAMES.get(code.upper(), code)
 
 
@@ -74,12 +52,11 @@ def get_xray(ticker: str, n: int = 10, db: Session = Depends(get_db)):
     liquidity_data = None
 
     if holdings:
-        sorted_holdings = sorted(holdings, key=lambda h: (h.pct_val or 0), reverse=True)
-        total_count = len(sorted_holdings)
+        total_count = len(holdings)
         # n=0 means "All"
         effective_n = total_count if n <= 0 else min(n, total_count)
-        top_n = sorted_holdings[:effective_n]
-        other_pct = sum((h.pct_val or 0) for h in sorted_holdings[effective_n:]) if total_count > effective_n else None
+        top_n = holdings[:effective_n]
+        other_pct = sum((h.pct_val or 0) for h in holdings[effective_n:]) if total_count > effective_n else None
 
         holdings_data = HoldingsData(
             total_count=total_count,
@@ -152,32 +129,33 @@ def get_xray(ticker: str, n: int = 10, db: Session = Depends(get_db)):
             liquidity_data = LiquidityData(items=items)
 
         # concentration
-        weights = [float(h.pct_val) for h in sorted_holdings if h.pct_val is not None]
+        weights = [float(h.pct_val) for h in holdings if h.pct_val is not None]
         hhi = compute_hhi(weights) if weights else None
         top5 = compute_top_n_weight(weights, 5) if weights else None
         top10 = compute_top_n_weight(weights, 10) if weights else None
         top20 = compute_top_n_weight(weights, 20) if weights else None
-        treemap_rows = sorted_holdings[:20]
-        other_treemap_pct = sum(float(h.pct_val or 0) for h in sorted_holdings[20:]) if total_count > 20 else None
-        treemap_items = [
+        treemap_rows = holdings[:20]
+        other_treemap_pct = sum(float(h.pct_val or 0) for h in holdings[20:]) if total_count > 20 else None
+        treemap_data = [
             HoldingItem(
                 name=h.name or "",
                 ticker=h.ticker,
                 value_usd=float(h.value_usd) if h.value_usd is not None else None,
                 pct_val=float(h.pct_val) if h.pct_val is not None else None,
+                weight=float(h.pct_val) if h.pct_val is not None else None,
             )
             for h in treemap_rows
         ]
         if other_treemap_pct:
-            treemap_items.append(
-                HoldingItem(name="Other", ticker=None, value_usd=None, pct_val=other_treemap_pct)
+            treemap_data.append(
+                HoldingItem(name="Other", ticker=None, value_usd=None, pct_val=other_treemap_pct, weight=other_treemap_pct)
             )
         concentration_data = ConcentrationData(
             hhi=hhi,
             top5_weight=top5,
             top10_weight=top10,
             top20_weight=top20,
-            treemap_items=treemap_items,
+            treemap_data=treemap_data,
         )
 
     # fees card

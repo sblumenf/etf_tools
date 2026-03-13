@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, case
 from etf_pipeline.models import ETF, Holding, FeeExpense, Performance, FundSnapshot, NPORTMonthlyFlow, FlowData
 from etf_pipeline.xray.calculations import compute_hhi, compute_top_n_weight
 
@@ -22,34 +22,62 @@ LIQUIDITY_MAP = {
     "ILI": ("Illiquid", "red"),
 }
 
+COUNTRY_NAMES = {
+    "US": "United States", "USA": "United States",
+    "GB": "United Kingdom", "GBR": "United Kingdom",
+    "JP": "Japan", "JPN": "Japan",
+    "DE": "Germany", "DEU": "Germany",
+    "FR": "France", "FRA": "France",
+    "CA": "Canada", "CAN": "Canada",
+    "AU": "Australia", "AUS": "Australia",
+    "CN": "China", "CHN": "China",
+    "KR": "South Korea", "KOR": "South Korea",
+    "CH": "Switzerland", "CHE": "Switzerland",
+    "NL": "Netherlands", "NLD": "Netherlands",
+    "SE": "Sweden", "SWE": "Sweden",
+    "DK": "Denmark", "DNK": "Denmark",
+    "HK": "Hong Kong", "HKG": "Hong Kong",
+    "TW": "Taiwan", "TWN": "Taiwan",
+    "IN": "India", "IND": "India",
+    "BR": "Brazil", "BRA": "Brazil",
+    "SG": "Singapore", "SGP": "Singapore",
+    "IT": "Italy", "ITA": "Italy",
+    "ES": "Spain", "ESP": "Spain",
+}
+
 
 def get_etf(db: Session, ticker: str) -> ETF | None:
     return db.query(ETF).filter(func.upper(ETF.ticker) == ticker.upper()).first()
 
 
 def search_etfs(db: Session, q: str, limit: int = 20) -> list[ETF]:
-    """Search ETFs by ticker or name. Exact ticker match first."""
     if not q.strip():
         return []
     q_upper = q.upper()
-    exact = db.query(ETF).filter(func.upper(ETF.ticker) == q_upper).all()
-    partial = (
+    return (
         db.query(ETF)
         .filter(
             func.upper(ETF.ticker).contains(q_upper) |
             func.upper(ETF.fund_name).contains(q_upper)
         )
-        .filter(func.upper(ETF.ticker) != q_upper)
-        .limit(limit - len(exact))
+        .order_by(
+            case((func.upper(ETF.ticker) == q_upper, 0), else_=1)
+        )
+        .limit(limit)
         .all()
     )
-    return (exact + partial)[:limit]
 
 
 def get_holdings(db: Session, etf_id: int) -> list[Holding]:
+    max_date_subq = (
+        db.query(func.max(Holding.report_date))
+        .filter(Holding.etf_id == etf_id)
+        .scalar_subquery()
+    )
     return (
         db.query(Holding)
         .filter(Holding.etf_id == etf_id)
+        .filter(Holding.report_date == max_date_subq)
         .order_by(desc(Holding.pct_val))
         .all()
     )

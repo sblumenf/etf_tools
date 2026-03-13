@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
+import { formatPct1 as fmtPct } from "../../lib/format";
 
 interface TreemapEntry {
   name: string;
@@ -56,10 +58,6 @@ function getHhiColor(hhi: number): string {
   return "text-red-600";
 }
 
-function fmtPct(val: number | null): string {
-  if (val === null || val === undefined) return "—";
-  return val.toFixed(1) + "%";
-}
 
 function fmtHhi(val: number | null): string {
   if (val === null || val === undefined) return "—";
@@ -154,6 +152,11 @@ function CustomContent({ x = 0, y = 0, width = 0, height = 0, name = "", fill = 
 }
 
 export function ConcentrationCard({ data, hasHoldings }: ConcentrationCardProps) {
+  const treemapCells = useMemo(
+    () => (data?.treemap_data ? buildTreemapData(data.treemap_data) : null),
+    [data?.treemap_data]
+  );
+
   if (!hasHoldings || !data) {
     return (
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
@@ -164,8 +167,6 @@ export function ConcentrationCard({ data, hasHoldings }: ConcentrationCardProps)
       </div>
     );
   }
-
-  const treemapCells = data.treemap_data ? buildTreemapData(data.treemap_data) : null;
 
   return (
     <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">

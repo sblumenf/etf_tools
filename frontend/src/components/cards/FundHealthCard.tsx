@@ -1,3 +1,5 @@
+import { formatPct as fmtPct, formatAUM as fmtAUM } from "../../lib/format";
+
 interface FundHealthData {
   total_net_assets: number | null;
   total_borrowings: number | null;
@@ -10,20 +12,6 @@ interface FundHealthCardProps {
   data: FundHealthData | null;
 }
 
-function fmtAUM(val: number | null): string {
-  if (val === null || val === undefined) return "—";
-  const abs = Math.abs(val);
-  if (abs >= 1e12) return `$${(val / 1e12).toFixed(1)}T`;
-  if (abs >= 1e9) return `$${(val / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `$${(val / 1e6).toFixed(0)}M`;
-  if (abs >= 1e3) return `$${(val / 1e3).toFixed(0)}K`;
-  return `$${val.toFixed(0)}`;
-}
-
-function fmtPct(val: number | null): string {
-  if (val === null || val === undefined) return "—";
-  return val.toFixed(2) + "%";
-}
 
 function fmtLeverage(val: number | null): string {
   if (val === null || val === undefined) return "—";

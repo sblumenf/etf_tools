@@ -17,6 +17,7 @@ class HoldingItem(BaseModel):
     ticker: Optional[str]
     value_usd: Optional[float]
     pct_val: Optional[float]
+    weight: Optional[float] = None
 
 
 class HoldingsData(BaseModel):
@@ -95,7 +96,7 @@ class ConcentrationData(BaseModel):
     top5_weight: Optional[float]
     top10_weight: Optional[float]
     top20_weight: Optional[float]
-    treemap_items: list[HoldingItem]
+    treemap_data: list[HoldingItem]
 
 
 class XRayResponse(BaseModel):
