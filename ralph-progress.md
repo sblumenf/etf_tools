@@ -36,7 +36,12 @@
 ## Remaining
 
 ### Phase 1 final item
-- [ ] Scaffold React frontend with Vite + Tailwind + shadcn/ui (no card implementations yet)
+- [x] Scaffold React frontend with Vite + Tailwind + shadcn/ui (no card implementations yet)
+  - `npm run build` passes in frontend/
+  - Vite + Tailwind CSS v3 + shadcn primitives (clsx, tailwind-merge, radix) installed
+  - react-router-dom, recharts installed
+  - Routes: `/` (Home with SearchBar) and `/xray/:ticker` (XRay with placeholder cards)
+  - API client in `src/lib/api.ts`, `useXRayData` hook in `src/hooks/`
 
 ### Phase 2: Frontend Cards + Search
 - [ ] SearchBar component with autocomplete
@@ -62,4 +67,5 @@
 ---
 
 ## Next task
-Scaffold React frontend (Vite + Tailwind + shadcn/ui) — last item of Phase 1.
+Phase 2: Start with SearchBar + Home page (already scaffolded), then implement card components one by one.
+First card to implement: HoldingsCard.
