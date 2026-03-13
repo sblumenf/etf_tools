@@ -49,7 +49,7 @@
 - [ ] XRay page layout with responsive card grid
 - [ ] HoldingsCard with configurable N dropdown
 - [x] AssetAllocationCard with donut chart (Recharts) — donut chart + legend + summary table, "No data available" state
-- [ ] GeographicCard with bar chart + choropleth
+- [x] GeographicCard with bar chart + choropleth — horizontal bar chart (Recharts) + choropleth world map (react-simple-maps v3), ISO alpha-2 to numeric mapping, hover tooltip, spans full width
 - [ ] LiquidityCard with stacked bar chart
 - [ ] FeeCard with fee breakdown + waiver highlight
 - [ ] PerformanceCard with returns comparison
@@ -82,4 +82,4 @@ The scope-lock.json was too restrictive — it blocked editing files created by 
   - HoldingsCard shows ranked table with Other row when data is truncated
 
 ## Next task
-Phase 2: Implement GeographicCard with horizontal bar chart (Recharts) + choropleth map (react-simple-maps).
+Phase 2: Implement LiquidityCard with stacked bar chart (Recharts).

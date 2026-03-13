@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useXRayData } from "../hooks/useXRayData";
 import { HoldingsCard } from "../components/cards/HoldingsCard";
 import { AssetAllocationCard } from "../components/cards/AssetAllocationCard";
+import { GeographicCard } from "../components/cards/GeographicCard";
 import { PlaceholderCard } from "../components/cards/PlaceholderCard";
 
 export function XRay() {
@@ -52,7 +53,7 @@ export function XRay() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <HoldingsCard data={data.holdings} onNChange={setHoldingsN} />
         <AssetAllocationCard data={data.asset_allocation} />
-        <PlaceholderCard title="Geographic Diversification" available={c.geographic} />
+        <GeographicCard data={data.geographic} />
         <PlaceholderCard title="Liquidity Profile" available={c.liquidity} />
         <PlaceholderCard title="Fee Structure" available={c.fees} />
         <PlaceholderCard title="Performance vs. Benchmark" available={c.performance} />
