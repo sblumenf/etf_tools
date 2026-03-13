@@ -5,6 +5,7 @@ import { HoldingsCard } from "../components/cards/HoldingsCard";
 import { AssetAllocationCard } from "../components/cards/AssetAllocationCard";
 import { GeographicCard } from "../components/cards/GeographicCard";
 import { LiquidityCard } from "../components/cards/LiquidityCard";
+import { FeeCard } from "../components/cards/FeeCard";
 import { PlaceholderCard } from "../components/cards/PlaceholderCard";
 
 export function XRay() {
@@ -56,7 +57,7 @@ export function XRay() {
         <AssetAllocationCard data={data.asset_allocation} />
         <GeographicCard data={data.geographic} />
         <LiquidityCard data={data.liquidity} />
-        <PlaceholderCard title="Fee Structure" available={c.fees} />
+        <FeeCard data={data.fees} />
         <PlaceholderCard title="Performance vs. Benchmark" available={c.performance} />
         <PlaceholderCard title="Fund Health" available={c.fund_health} />
         <PlaceholderCard title="Concentration Analysis" available={c.concentration} />
