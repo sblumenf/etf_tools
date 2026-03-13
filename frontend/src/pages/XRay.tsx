@@ -7,6 +7,7 @@ import { GeographicCard } from "../components/cards/GeographicCard";
 import { LiquidityCard } from "../components/cards/LiquidityCard";
 import { FeeCard } from "../components/cards/FeeCard";
 import { PerformanceCard } from "../components/cards/PerformanceCard";
+import { FundHealthCard } from "../components/cards/FundHealthCard";
 import { PlaceholderCard } from "../components/cards/PlaceholderCard";
 
 export function XRay() {
@@ -60,7 +61,7 @@ export function XRay() {
         <LiquidityCard data={data.liquidity} />
         <FeeCard data={data.fees} />
         <PerformanceCard data={data.performance} />
-        <PlaceholderCard title="Fund Health" available={c.fund_health} />
+        <FundHealthCard data={data.fund_health} />
         <PlaceholderCard title="Concentration Analysis" available={c.concentration} />
       </div>
     </div>

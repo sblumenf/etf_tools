@@ -53,7 +53,7 @@
 - [x] LiquidityCard with stacked bar chart (Recharts) — horizontal stacked bar + legend list, color-coded HLI/MLI/LLI/ILI, "No data available" state
 - [x] FeeCard with fee breakdown table and waiver highlight — prominent gross/net ratio display, component fee breakdown table, amber warning for waiver expiring within 6 months, "No data available" state
 - [x] PerformanceCard with returns comparison table — fund/benchmark/alpha columns, green/red alpha coloring, turnover rate footer, "No data available" state
-- [ ] FundHealthCard with AUM, leverage, cash metrics
+- [x] FundHealthCard with AUM, leverage, cash metrics — hero AUM display, borrowings, leverage ratio (0 = "None"), cash %, net flow with green/red coloring
 - [ ] ConcentrationCard with HHI + treemap
 - [ ] "No data available" gray states
 - [ ] data_completeness-driven card states
@@ -82,4 +82,4 @@ The scope-lock.json was too restrictive — it blocked editing files created by 
   - HoldingsCard shows ranked table with Other row when data is truncated
 
 ## Next task
-Phase 2: Implement FundHealthCard with AUM, leverage, cash metrics.
+Phase 2: Implement ConcentrationCard with HHI metrics + treemap (Recharts).
