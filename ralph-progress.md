@@ -54,9 +54,9 @@
 - [x] FeeCard with fee breakdown table and waiver highlight — prominent gross/net ratio display, component fee breakdown table, amber warning for waiver expiring within 6 months, "No data available" state
 - [x] PerformanceCard with returns comparison table — fund/benchmark/alpha columns, green/red alpha coloring, turnover rate footer, "No data available" state
 - [x] FundHealthCard with AUM, leverage, cash metrics — hero AUM display, borrowings, leverage ratio (0 = "None"), cash %, net flow with green/red coloring
-- [ ] ConcentrationCard with HHI + treemap
-- [ ] "No data available" gray states
-- [ ] data_completeness-driven card states
+- [x] ConcentrationCard with HHI + treemap — HHI with interpretation label (Highly Diversified/Diversified/Moderate/Concentrated), Top 5/10/20 weight metrics, Recharts Treemap with blue gradient for holdings and gray for "Other", "No data available" state
+- [x] "No data available" gray states — implemented in all cards
+- [x] data_completeness-driven card states — implemented in all cards
 
 ### Phase 3: E2E Tests + Error Handling + Polish
 - [ ] Playwright setup and all E2E tests
@@ -81,5 +81,8 @@ The scope-lock.json was too restrictive — it blocked editing files created by 
   - `XRay.tsx` holds holdingsN state, passes onNChange to HoldingsCard
   - HoldingsCard shows ranked table with Other row when data is truncated
 
+## Phase 2 status: COMPLETE ✅
+All Phase 2 cards implemented. Next: Phase 3 — Playwright E2E tests, loading skeletons, error boundary, filing date display.
+
 ## Next task
-Phase 2: Implement ConcentrationCard with HHI metrics + treemap (Recharts).
+Phase 3: Set up Playwright config and implement E2E tests.

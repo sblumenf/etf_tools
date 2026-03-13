@@ -8,7 +8,7 @@ import { LiquidityCard } from "../components/cards/LiquidityCard";
 import { FeeCard } from "../components/cards/FeeCard";
 import { PerformanceCard } from "../components/cards/PerformanceCard";
 import { FundHealthCard } from "../components/cards/FundHealthCard";
-import { PlaceholderCard } from "../components/cards/PlaceholderCard";
+import { ConcentrationCard } from "../components/cards/ConcentrationCard";
 
 export function XRay() {
   const { ticker } = useParams<{ ticker: string }>();
@@ -62,7 +62,7 @@ export function XRay() {
         <FeeCard data={data.fees} />
         <PerformanceCard data={data.performance} />
         <FundHealthCard data={data.fund_health} />
-        <PlaceholderCard title="Concentration Analysis" available={c.concentration} />
+        <ConcentrationCard data={data.concentration} hasHoldings={!!c.holdings} />
       </div>
     </div>
   );
