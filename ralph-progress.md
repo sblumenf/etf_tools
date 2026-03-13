@@ -48,7 +48,7 @@
 - [ ] Home page with search bar
 - [ ] XRay page layout with responsive card grid
 - [ ] HoldingsCard with configurable N dropdown
-- [ ] AssetAllocationCard with donut chart (Recharts)
+- [x] AssetAllocationCard with donut chart (Recharts) — donut chart + legend + summary table, "No data available" state
 - [ ] GeographicCard with bar chart + choropleth
 - [ ] LiquidityCard with stacked bar chart
 - [ ] FeeCard with fee breakdown + waiver highlight
@@ -82,4 +82,4 @@ The scope-lock.json was too restrictive — it blocked editing files created by 
   - HoldingsCard shows ranked table with Other row when data is truncated
 
 ## Next task
-Phase 2: Implement AssetAllocationCard with donut chart (Recharts).
+Phase 2: Implement GeographicCard with horizontal bar chart (Recharts) + choropleth map (react-simple-maps).
