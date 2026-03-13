@@ -1,67 +1,72 @@
-# Draft Spec: Extend Derivative Fields
+# Specification Draft: Backfill Command
 
-## Context
-The current Derivative table stores 10 columns of position-level metadata. edgartools parses 65+ fields per derivative from NPORT-P filings. 85% of available data is dropped during ingestion. This work extends the schema to capture the full economic terms.
+*Interview in progress - Started: 2026-03-07*
 
-## Decisions Made
-- **Scope:** All derivative types (swaps, futures, options, forwards, swaptions)
-- **Schema approach:** Normalized child tables for type-specific fields + shared fields on parent table
-- **Swap legs:** Two-row model in a `derivative_swap_leg` table with direction column (pay/receive)
-- **Migration:** Schema-only, no backfill needed (testing phase, data re-run from scratch)
-- **Nested derivatives:** Flatten nested derivative info as extra columns on parent (no recursion)
-- **Unique constraint:** Add `counterparty` to existing unique constraint
+## Overview
+Add a one-time backfill capability to the existing ETF pipeline. The pipeline currently only processes recent SEC filings (forward-looking). Backfill allows populating the database with historical filings released before the pipeline was first run on 2026-02-25.
 
-## Schema Design (Draft)
+This is a **new command** on the existing CLI tool — not a separate application. It writes to the same database, uses the same parsers, and the same deduplication logic prevents duplicates.
 
-### Parent table changes (Derivative)
-Add shared fields available for ALL derivative types:
-- `unrealized_appreciation` (Numeric) — mark-to-market P&L
-- `currency` (String) — notional/position currency
-- `underlying_title` (String) — title of underlying security
-- `underlying_lei` (String) — LEI of underlying
-- `underlying_isin` (String) — ISIN of underlying
-- `underlying_ticker` (String) — ticker of underlying
-- `payoff_profile` (String) — long/short (futures)
-- Expand unique constraint to include `counterparty`
+## Key Decisions (from interview)
 
-### Child table: derivative_swap
-One row per swap derivative. FK to derivative.id.
-- `upfront_payment`, `payment_currency`
-- `upfront_receipt`, `receipt_currency`
-- `swap_flag` (Y/N)
-- `termination_date`
+### Batching & Commits
+- **Per-filing commit for ALL parsers** during backfill (not just NPORT)
+- Progress logging to console for all parsers (e.g., "Processed 50/200 filings for CIK X")
 
-### Child table: derivative_swap_leg
-Two rows per swap (pay + receive). FK to derivative_swap.id.
-- `direction` (pay/receive)
-- `leg_type` (fixed/floating/other)
-- `fixed_rate`, `fixed_amount`, `fixed_currency`
-- `floating_index`, `floating_spread`, `floating_amount`, `floating_currency`
-- `tenor`, `tenor_unit`, `reset_date_tenor`, `reset_date_unit`
-- `other_description`
+### Error Handling
+- **Log, skip, and collect**: Log errors with filing accession number and CIK, skip that filing, continue processing. Collect all failures into a summary report at the end.
 
-### Child table: derivative_option
-One row per option/swaption/warrant. FK to derivative.id.
-- `put_or_call`, `written_or_purchased`
-- `share_number`, `exercise_price`, `exercise_price_currency`
-- `index_name`, `index_identifier`
-- Nested derivative flattened fields: `nested_deriv_type`, `nested_deriv_notional`, `nested_deriv_counterparty`
+### Data Safety
+- **No special protection needed**: User is not married to existing data and can re-run if modifications happen. The original spec's suggestion to skip narrative text (objective_text, strategy_text, principal_risks) during backfill is NOT needed.
+- Parser audit confirmed: Only prospectus writes "current state" fields on the ETF record. Finhigh, NCSR, Flows, NPORT only create historical rows.
 
-### Child table: derivative_forward
-One row per forward. FK to derivative.id.
-- `currency_sold`, `amount_sold`
-- `currency_purchased`, `amount_purchased`
-- `settlement_date`
+### Run Tracking
+- Use standard database engineering practices: add created_at/updated_at timestamps to processing_log
 
-### Futures
-Futures-specific fields (payoff_profile) go on parent. No separate table needed — futures have minimal extra fields beyond what parent already stores.
+### CLI Surface
+- **Standalone `backfill` command only** — no `--backfill` flags on existing parser commands
+- `--parser` flag on the backfill command to select specific parsers
+- Simpler, one code path
 
-## Parser Changes
-- Extend `_map_investment_to_derivative()` to populate new parent columns
-- Add helper functions to create child table records for each derivative type
-- Map ALL edgartools fields to database columns
+## Constraints
+[From docs/backfill-spec.md - to be refined]
 
-## Testing
-- Extend existing NPORT test mocks to verify new fields
-- Add tests for each derivative type's child table population
-- Verify unique constraint with counterparty
+### Files to Modify
+- `src/etf_pipeline/parser_utils.py` — processing log fix, date-filter helper
+- `src/etf_pipeline/parsers/nport.py` — add date-range support, bypass 1-per-series limit
+- `src/etf_pipeline/parsers/ncsr.py` — add date-range support, bypass MAX_FILINGS = 10
+- `src/etf_pipeline/parsers/finhigh.py` — add date-range support, bypass MAX_FILINGS = 10
+- `src/etf_pipeline/parsers/prospectus.py` — add date-range support, bypass LOOKBACK_DAYS = 547
+- `src/etf_pipeline/parsers/flows.py` — add date-range support, bypass filings[0] limit
+- `src/etf_pipeline/cli.py` — add `backfill` command (no --backfill flags on existing commands)
+
+### Files NOT to Modify
+- `src/etf_pipeline/models.py` — schema already supports unlimited historical data (except possibly adding timestamps)
+- Alembic migrations — no schema changes needed (unless adding timestamps)
+- `run_all` command logic — backfill is a separate manual operation
+
+### New Files Allowed
+- Test files in `tests/` for backfill functionality
+
+### New Dependencies Allowed
+- No
+
+### Out of Scope
+- Changing `run_all` behavior
+- Building a scheduler or cron job for backfill
+- Schema migrations beyond possible timestamp additions
+
+## Problem Statement
+[From docs/backfill-spec.md - carried forward]
+
+## User Stories
+[To be filled - continuing interview]
+
+## Technical Design
+[To be filled - continuing interview]
+
+## Implementation Phases
+[To be filled - continuing interview]
+
+---
+*Interview notes accumulated above*

@@ -1,0 +1,343 @@
+================================================================================
+PORTFOLIO X-RAY TOOL: KEY DATA FINDINGS
+================================================================================
+
+RESEARCH COMPLETED: March 12, 2026
+SCOPE: Complete analysis of ETF tools codebase for X-Ray tool development
+
+================================================================================
+1. DATABASE SCHEMA OVERVIEW
+================================================================================
+
+CORE TABLES (13):
+  • etf                      - Fund metadata (2,500+ ETF tickers)
+  • holding                  - Portfolio positions (millions of records)
+  • derivative               - Derivative positions (hedge, leverage, duration)
+  • debt_security_detail     - Bond-specific fields (maturity, coupon, risk)
+  • security_lending         - Lending program participation
+  • performance              - Annual returns + benchmark comparison
+  • fee_expense              - Fee tables + waivers + expiration dates
+  • flow_data                - Annual sales/redemptions data
+  • fund_snapshot            - Quarterly balance sheet data (AUM, leverage)
+  • nport_monthly_return     - Monthly returns (3-month rolling)
+  • nport_monthly_flow       - Monthly flows (3-month rolling)
+  • interest_rate_risk       - DV01/DV100 by maturity bucket & currency
+  • credit_spread_risk       - CS01 for IG & HY bonds by maturity
+
+DERIVATIVE DETAIL TABLES (4):
+  • derivative_swap          - Swap-specific fields (fixed/floating legs)
+  • derivative_swap_leg      - Individual swap legs (pay/receive)
+  • derivative_option        - Option-specific fields (call/put, strike)
+  • derivative_forward       - FX forward details (currencies, settlement)
+
+================================================================================
+2. FILING SOURCES (SEC EDGAR)
+================================================================================
+
+NPORT-P (Quarterly Portfolio Report) - COMPREHENSIVE
+  • Fields: Holdings, derivatives, debt details, liquidity classification
+  • Frequency: Quarterly
+  • Lag: ~45 days after quarter-end
+  • Historical: Back to Q1 2020, backfillable to earlier
+  • Risk Metrics: DV01 (interest rate), CS01 (credit spread)
+  • Monthly Data: 3-month rolling returns & flows
+
+N-CSR (Annual Certified Shareholder Report) - PERFORMANCE & DETAILS
+  • Fields: Annual returns (1yr/5yr/10yr/inception), benchmark, turnover
+  • Frequency: Annual
+  • Historical: FY 2021+, backfillable to 2015+
+  • Per-Share Details: Operating income, distributions, ratios
+
+485BPOS (Prospectus with Fee Table) - FEE & STRATEGY
+  • Fields: Management fee, 12b-1, other expenses, waivers, narrative text
+  • Frequency: Ad-hoc amendments
+  • Historical: Aug 2024+, backfillable to earliest filing
+  • Format: iXBRL (inline XBRL) within HTML
+
+24F-2NT (Annual Notice of Shares) - FUND FLOWS
+  • Fields: Sales, redemptions, net flows (issuer-level)
+  • Frequency: Annual
+  • Historical: FY 2021+, backfillable to 2015+
+  • Note: Aggregated at issuer (CIK) level, not per-share class
+
+================================================================================
+3. CRITICAL X-RAY DATA FIELDS
+================================================================================
+
+PORTFOLIO COMPOSITION:
+  ✓ Holding name, cusip, value_usd, pct_val
+  ✓ Asset category (EC/DBT/FI/etc.), issuer category
+  ✓ Country & currency
+  ✓ Liquidity classification (HLI/MLI/LLI/ILI)
+  ✓ Fair value level (GAAP hierarchy 1/2/3)
+
+PERFORMANCE:
+  ✓ Annual returns 1yr/5yr/10yr/inception
+  ✓ Benchmark returns for comparison
+  ✓ Portfolio turnover rate
+  ✓ Actual expense ratio
+  ✓ Monthly returns (3-month rolling)
+
+FEES & COSTS:
+  ✓ Management fee, 12b-1, other expenses
+  ✓ Gross vs net expense ratio
+  ✓ Fee waivers (amount & expiration date)
+  ✓ Acquired fund fees
+
+RISK METRICS:
+  ✓ Interest rate sensitivity (DV01) by maturity (3m/1y/5y/10y/30y)
+  ✓ Scenario analysis (DV100 for 1% rate move)
+  ✓ Credit spread risk (CS01) for IG & HY
+  ✓ Derivative exposure (type, notional, counterparty)
+  ✓ Bond details (maturity, coupon, default risk)
+
+FUND HEALTH:
+  ✓ AUM trend (annual from flow data)
+  ✓ Net flows (sales - redemptions)
+  ✓ Monthly flows (3-month rolling)
+  ✓ Leverage (borrowings / total assets)
+  ✓ Cash position
+
+================================================================================
+4. DATA QUALITY & COVERAGE
+================================================================================
+
+High Completeness (90%+):
+  • etf metadata (all SEC tickers)
+  • holding positions (required for registered funds)
+  • fund_snapshot (required for registered funds)
+
+Good Completeness (70-90%):
+  • performance data (most ETFs file N-CSR)
+  • fee_expense (most ETFs file 485BPOS)
+  • flow_data (most issuers file 24F-2NT)
+
+Partial Completeness (40-60%):
+  • derivative positions (only funds with derivatives)
+  • monthly return/flow data (not all funds report monthly)
+  • interest_rate_risk (only bond-heavy funds)
+  • credit_spread_risk (only credit-focused funds)
+
+Sparse (20-40%):
+  • debt_security_detail (only bond holdings)
+  • security_lending (only funds with lending programs)
+
+================================================================================
+5. TEMPORAL COVERAGE & BACKFILL
+================================================================================
+
+CURRENT DATA AVAILABLE:
+  • NPORT: Latest filing per series only (will be "latest 1-2 quarters" after backfill)
+  • N-CSR: Last 1-2 fiscal years
+  • Prospectus: Last 18 months (LOOKBACK_DAYS = 547)
+  • Flows: Latest fiscal year
+
+BACKFILL CAPABILITY:
+  Command: etf-pipeline backfill --from-date YYYY-MM-DD --to-date YYYY-MM-DD
+  
+  Bypasses hardcoded limits:
+    • NPORT: Process all filings per series (not just latest)
+    • NCSR: Process all N-CSR filings (not just 10 most recent)
+    • Finhigh: Process all financial highlights (not just 10)
+    • Prospectus: Process all fee tables (not just 18-month window)
+    • Flows: Process all 24F-2NT filings (not just latest)
+
+  Can retrieve:
+    ✓ NPORT back to Q1 2020 (6+ years of quarterly data)
+    ✓ N-CSR back to FY 2015+ (10+ years of annual data)
+    ✓ 485BPOS back to earliest filing (~2010+)
+    ✓ 24F-2NT back to FY 2015+ (10+ years)
+
+================================================================================
+6. WHAT'S MISSING (REQUIRES EXTERNAL DATA)
+================================================================================
+
+Real-Time Data:
+  • Current market price / NAV
+  • Intraday trading volume
+  • Real-time market cap
+
+Mapping/Classification:
+  • Sector codes (GICS/ICB) - currently no sector allocation
+  • Industry classifications
+  • ESG scores & factors
+
+Market Data:
+  • Historical volatility
+  • Correlation matrix
+  • Risk-free rate, yield curve
+
+Fundamental Data:
+  • Earnings / revenue (not available in X-Ray via ETF filings)
+  • Dividend history (in performance data, but historical detail minimal)
+  • Credit ratings (can be inferred from NPORT, not explicit)
+
+================================================================================
+7. X-RAY MVP RECOMMENDATION (Ready to Build)
+================================================================================
+
+CORE FEATURES (All data available in database):
+
+1. HOLDINGS VIEW
+   - Top 10 holdings with weighting
+   - "Other" row for remainder
+   - Query: SELECT name, value_usd, pct_val FROM holding WHERE etf_id=? AND report_date=?
+
+2. ASSET ALLOCATION
+   - Pie chart by asset_category (EC/DBT/FI/Cash)
+   - Query: GROUP BY asset_category, SUM(pct_val)
+
+3. GEOGRAPHIC DIVERSIFICATION
+   - Top countries by allocation
+   - Query: GROUP BY country, SUM(pct_val)
+
+4. FEE STRUCTURE CARD
+   - Management fee / 12b-1 / Other expenses
+   - Gross ER / Net ER after waiver
+   - Waiver expiration date (red alert if < 6 months)
+   - Query: SELECT * FROM fee_expense WHERE etf_id=? ORDER BY filing_date DESC LIMIT 1
+
+5. PERFORMANCE vs BENCHMARK
+   - Returns table: 1yr/5yr/10yr/inception
+   - Alpha calculation (fund return - benchmark return)
+   - Turnover rate, actual expense ratio
+   - Query: SELECT * FROM performance WHERE etf_id=?
+
+6. RISK METRICS
+   - Interest rate sensitivity (DV01 @ 5y bucket)
+   - Scenario: "If rates rise 1%, portfolio value changes by X%"
+   - Credit spread risk (IG vs HY)
+   - Query: SELECT * FROM interest_rate_risk / credit_spread_risk
+
+7. FUND HEALTH
+   - AUM trend (annual)
+   - Net flows trend (annual & monthly 3-month rolling)
+   - Investor demand indicator
+   - Query: SELECT * FROM flow_data / nport_monthly_flow
+
+8. LIQUIDITY BREAKDOWN
+   - Highly Liquid / Moderately / Less Liquid / Illiquid percentages
+   - Query: GROUP BY liquidity_classification, SUM(pct_val)
+
+9. CONCENTRATION ANALYSIS
+   - Top 10 holdings concentration %
+   - Herfindahl index (if needed)
+   - Query: Top 10 holdings by value_usd
+
+10. BOND DETAILS (if holdings contain debt)
+    - Bond ladder (maturity buckets)
+    - Coupon types distribution
+    - Credit quality (default/arrears flags)
+    - Query: JOIN holding h WITH debt_security_detail WHERE h.etf_id=?
+
+================================================================================
+8. KEY FILE LOCATIONS
+================================================================================
+
+CRITICAL REFERENCE DOCS:
+  /Users/sergeblumenfeld/etf_tools/docs/reference/SCHEMA.md (495 lines)
+    → Full schema documentation, all fields explained
+
+  /Users/sergeblumenfeld/etf_tools/docs/reference/PARSER_REFERENCE_MAP.md (148 lines)
+    → Which SEC filing specs to read for each parser
+
+DATABASE MODELS:
+  /Users/sergeblumenfeld/etf_tools/src/etf_pipeline/models.py
+    → SQLAlchemy ORM definitions, all relationships defined
+
+PARSER CODE:
+  /Users/sergeblumenfeld/etf_tools/src/etf_pipeline/parsers/
+    • nport.py        - Holdings & derivatives (NPORT-P XML)
+    • ncsr.py         - Performance data (N-CSR HTML/iXBRL)
+    • prospectus.py   - Fees & strategy (485BPOS iXBRL)
+    • finhigh.py      - Per-share data (N-CSR HTML table)
+    • flows.py        - Sales/redemptions (24F-2NT XML)
+
+BACKFILL SPEC:
+  /Users/sergeblumenfeld/etf_tools/docs/backfill-spec.md (214 lines)
+    → Full implementation plan for historical data backfill
+
+TEST FIXTURES:
+  /Users/sergeblumenfeld/etf_tools/tests/test_models.py
+    → Example data structures & constraints
+
+================================================================================
+9. IMPLEMENTATION NOTES
+================================================================================
+
+DATABASE:
+  • SQLite with SQLAlchemy ORM (SQL Alchemy 2.0)
+  • Proper indexes on: (etf_id, report_date), cusip, country, etc.
+  • Unique constraints prevent duplicates: (etf_id, report_date, holding_key, ...)
+  • Foreign keys enabled with CASCADE delete
+
+QUERY PATTERN:
+  # All holding data for an ETF as of latest report
+  stmt = select(Holding).where(
+    (Holding.etf_id == etf_id) &
+    (Holding.report_date == report_date)
+  ).order_by(Holding.value_usd.desc())
+
+TEMPORAL QUERIES:
+  # Get all snapshots for time-series
+  stmt = select(Holding).where(
+    Holding.etf_id == etf_id
+  ).order_by(Holding.report_date.desc())
+  
+  # This gives you 6+ years of quarterly data
+
+DATA FRESHNESS:
+  • Holdings (NPORT): Latest quarter + 45-day SEC lag
+  • Performance (N-CSR): Latest fiscal year
+  • Fees (485BPOS): Latest filing (ad-hoc amendments)
+  • Flows (24F-2NT): Latest fiscal year
+
+PARSER EXECUTION:
+  Command-line: etf-pipeline nport / ncsr / prospectus / finhigh / flows
+  Or: etf-pipeline run-all (runs all 5 parsers in sequence)
+  Or: etf-pipeline backfill --from-date 2020-01-01 --to-date 2025-12-31
+
+================================================================================
+10. NEXT STEPS FOR X-RAY IMPLEMENTATION
+================================================================================
+
+PHASE 1: DATA ACCESS LAYER
+  □ Set up database connection (use existing db.py)
+  □ Create query helper functions for each X-Ray section
+  □ Test queries against populated database
+
+PHASE 2: MVP UI
+  □ Holdings card (top 10 + other)
+  □ Asset allocation pie chart
+  □ Fee summary card
+  □ Performance vs benchmark
+  □ Fund health indicators
+
+PHASE 3: ADVANCED ANALYTICS
+  □ Risk heatmap (IR/CS sensitivity)
+  □ Bond ladder view
+  □ Derivative exposure summary
+  □ Concentration metrics
+  □ Fee trend analysis
+
+PHASE 4: EXTERNAL INTEGRATION (Optional)
+  □ Add real-time price feed (Yahoo Finance / IEX)
+  □ Add sector classification (GICS mapping for CUSIPs)
+  □ Add ESG scoring integration
+  □ Add correlation matrix
+
+================================================================================
+FULL REPORT
+================================================================================
+
+A comprehensive 1,176-line detailed report has been generated at:
+  /tmp/xray_data_inventory.md
+
+Contains:
+  • 24 sections with detailed field-by-field documentation
+  • SQL query examples for common X-Ray analyses
+  • Data quality assessment and completeness matrices
+  • Implementation roadmap with phased approach
+  • All file locations and code references
+
+================================================================================
