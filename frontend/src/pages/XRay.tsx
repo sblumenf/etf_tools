@@ -17,8 +17,25 @@ export function XRay() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Loading {ticker}...</p>
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="mb-8">
+          <div className="h-4 w-24 bg-gray-200 animate-pulse rounded mb-4" />
+          <div className="flex items-baseline gap-3">
+            <div className="h-9 w-20 bg-gray-200 animate-pulse rounded" />
+            <div className="h-6 w-64 bg-gray-200 animate-pulse rounded" />
+          </div>
+          <div className="h-4 w-40 bg-gray-200 animate-pulse rounded mt-2" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-xl border bg-card p-6 space-y-3">
+              <div className="h-5 w-32 bg-gray-200 animate-pulse rounded" />
+              <div className="h-4 w-full bg-gray-200 animate-pulse rounded" />
+              <div className="h-4 w-5/6 bg-gray-200 animate-pulse rounded" />
+              <div className="h-32 bg-gray-200 animate-pulse rounded mt-4" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
