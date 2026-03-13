@@ -1,0 +1,55 @@
+{
+  "name": "ETF X-Ray: Single-ETF Analysis Webapp",
+  "slug": "etf-xray-docsxray-reportmd",
+  "status": "pending",
+  "created": "2026-03-12",
+  "phases": [
+    {
+      "id": 1,
+      "name": "Foundation + Backend API",
+      "status": "pending",
+      "stories": ["US-1", "US-2", "US-3", "US-4", "US-5", "US-6", "US-7", "US-8", "US-9"],
+      "verification": "python -m pytest tests/test_api/ tests/test_xray/ -v"
+    },
+    {
+      "id": 2,
+      "name": "Frontend Cards + Search",
+      "status": "pending",
+      "stories": ["US-1", "US-2", "US-3", "US-4", "US-5", "US-6", "US-7", "US-8", "US-9"],
+      "verification": "cd frontend && npm run build"
+    },
+    {
+      "id": 3,
+      "name": "E2E Tests + Error Handling + Polish",
+      "status": "pending",
+      "stories": ["US-1", "US-2", "US-3", "US-4", "US-5", "US-6", "US-7", "US-8", "US-9"],
+      "verification": "npx playwright test"
+    }
+  ],
+  "architecture": {
+    "backend": "FastAPI + SQLAlchemy service layer",
+    "frontend": "React + Vite + Tailwind + shadcn/ui + Recharts",
+    "database": "SQLite (existing etf_data.db), Postgres-ready",
+    "deployment": "Separate frontend/backend (CDN + API server)"
+  },
+  "constraints": {
+    "files_off_limits": [
+      "src/etf_pipeline/parsers/*",
+      "src/etf_pipeline/cli.py",
+      "src/etf_pipeline/config.py"
+    ],
+    "files_modifiable": [
+      "src/etf_pipeline/models.py",
+      "src/etf_pipeline/db.py"
+    ],
+    "new_directories": [
+      "src/etf_pipeline/api/",
+      "src/etf_pipeline/xray/",
+      "frontend/",
+      "tests/test_api/",
+      "tests/test_xray/",
+      "tests/e2e/"
+    ]
+  },
+  "test_tickers": ["SPY", "AGG", "QQQ"]
+}

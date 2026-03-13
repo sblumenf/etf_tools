@@ -1,0 +1,8 @@
+ETF X-Ray: Single-ETF Analysis Webapp
+======================================
+
+Phase 1: Foundation + Backend API           [PENDING]
+Phase 2: Frontend Cards + Search            [PENDING]
+Phase 3: E2E Tests + Error Handling + Polish [PENDING]
+
+Last updated: 2026-03-12

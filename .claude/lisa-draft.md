@@ -1,72 +1,91 @@
-# Specification Draft: Backfill Command
+# Specification Draft: ETF X-Ray (Single-ETF)
 
-*Interview in progress - Started: 2026-03-07*
+*Interview in progress - Started: 2026-03-12*
 
 ## Overview
-Add a one-time backfill capability to the existing ETF pipeline. The pipeline currently only processes recent SEC filings (forward-looking). Backfill allows populating the database with historical filings released before the pipeline was first run on 2026-02-25.
+Build a single-ETF X-Ray webapp that displays comprehensive fund analysis across 8 feature cards. Uses the existing SEC filing data already in the etf_tools database. This is Phase 1 of a larger product that will grow to include multi-ETF portfolio analysis, historical tracking, and advanced analytics.
 
-This is a **new command** on the existing CLI tool — not a separate application. It writes to the same database, uses the same parsers, and the same deduplication logic prevents duplicates.
+## Architecture Decisions
+- **Backend**: FastAPI with a service layer (`xray/service.py`) for query logic, thin API route handlers
+- **Frontend**: React SPA with Tailwind CSS + shadcn/ui + Recharts for data visualization
+- **Database**: SQLite (etf_data.db) now, designed for easy Postgres migration via SQLAlchemy
+- **Repo structure**: Monorepo — `src/etf_pipeline/api/` for FastAPI, `frontend/` at project root for React
+- **Scope**: Tier 1 only — single-ETF analysis. Multi-ETF is future work but architecture should accommodate it.
 
-## Key Decisions (from interview)
-
-### Batching & Commits
-- **Per-filing commit for ALL parsers** during backfill (not just NPORT)
-- Progress logging to console for all parsers (e.g., "Processed 50/200 filings for CIK X")
-
-### Error Handling
-- **Log, skip, and collect**: Log errors with filing accession number and CIK, skip that filing, continue processing. Collect all failures into a summary report at the end.
-
-### Data Safety
-- **No special protection needed**: User is not married to existing data and can re-run if modifications happen. The original spec's suggestion to skip narrative text (objective_text, strategy_text, principal_risks) during backfill is NOT needed.
-- Parser audit confirmed: Only prospectus writes "current state" fields on the ETF record. Finhigh, NCSR, Flows, NPORT only create historical rows.
-
-### Run Tracking
-- Use standard database engineering practices: add created_at/updated_at timestamps to processing_log
-
-### CLI Surface
-- **Standalone `backfill` command only** — no `--backfill` flags on existing parser commands
-- `--parser` flag on the backfill command to select specific parsers
-- Simpler, one code path
+## Design Principles
+- **Future-proof but KISS**: Design for growth without over-engineering. Service layer enables reuse by future multi-ETF and CLI consumers.
+- **Graceful data gaps**: Show available data, gray out missing metrics. Never hide cards entirely.
+- **Consistent patterns**: Same approach for missing data across all cards.
 
 ## Constraints
-[From docs/backfill-spec.md - to be refined]
 
 ### Files to Modify
-- `src/etf_pipeline/parser_utils.py` — processing log fix, date-filter helper
-- `src/etf_pipeline/parsers/nport.py` — add date-range support, bypass 1-per-series limit
-- `src/etf_pipeline/parsers/ncsr.py` — add date-range support, bypass MAX_FILINGS = 10
-- `src/etf_pipeline/parsers/finhigh.py` — add date-range support, bypass MAX_FILINGS = 10
-- `src/etf_pipeline/parsers/prospectus.py` — add date-range support, bypass LOOKBACK_DAYS = 547
-- `src/etf_pipeline/parsers/flows.py` — add date-range support, bypass filings[0] limit
-- `src/etf_pipeline/cli.py` — add `backfill` command (no --backfill flags on existing commands)
+- `src/etf_pipeline/models.py` — may add computed properties or relationships
+- `src/etf_pipeline/db.py` — may extend for async/FastAPI session management
 
 ### Files NOT to Modify
-- `src/etf_pipeline/models.py` — schema already supports unlimited historical data (except possibly adding timestamps)
-- Alembic migrations — no schema changes needed (unless adding timestamps)
-- `run_all` command logic — backfill is a separate manual operation
+- `src/etf_pipeline/parsers/*` — all parsers off-limits
+- `src/etf_pipeline/cli.py` — CLI unchanged
+- `src/etf_pipeline/config.py` — config unchanged
 
 ### New Files Allowed
-- Test files in `tests/` for backfill functionality
+- `src/etf_pipeline/api/` — FastAPI app, routes, schemas
+- `src/etf_pipeline/xray/` — service layer (query functions)
+- `frontend/` — React application
+- `tests/test_api/` or `tests/test_xray/` — new tests
 
 ### New Dependencies Allowed
-- No
+- Backend: fastapi, uvicorn, pydantic (for response schemas)
+- Frontend: react, tailwindcss, @shadcn/ui, recharts, and standard React tooling (vite, etc.)
+
+### Existing Code to Reuse
+- SQLAlchemy models from `models.py`
+- Database engine setup from `db.py`
+- All existing table relationships and data
 
 ### Out of Scope
-- Changing `run_all` behavior
-- Building a scheduler or cron job for backfill
-- Schema migrations beyond possible timestamp additions
+- Multi-ETF portfolio analysis
+- Historical/temporal analysis
+- Derivatives dashboard, stress testing
+- External data enrichment (sectors, prices, ESG)
+- User authentication / authorization
+- Deployment / hosting / CI/CD
+- CLI integration for xray
 
-## Problem Statement
-[From docs/backfill-spec.md - carried forward]
-
-## User Stories
-[To be filled - continuing interview]
+## Feature Cards (All 8)
+1. **Holdings Composition** — Top 10 holdings by weight + "other" rollup
+2. **Asset Allocation** — Breakdown by asset_category (EC, EP, DBT, FI, STIV, etc.)
+3. **Geographic Diversification** — Top countries by allocation (ISO 3-letter codes)
+4. **Liquidity Profile** — HLI/MLI/LLI/ILI distribution
+5. **Fee Structure** — Management fee, 12b-1, other, gross/net ER, waiver status
+6. **Performance vs. Benchmark** — 1yr/5yr/10yr/inception returns + alpha
+7. **Fund Health Dashboard** — AUM trend, net flows, leverage, cash position
+8. **Concentration Analysis** — HHI, top-5/10/20 weight percentages
 
 ## Technical Design
-[To be filled - continuing interview]
 
-## Implementation Phases
-[To be filled - continuing interview]
+### Backend
+- FastAPI app in `src/etf_pipeline/api/`
+- Service layer in `src/etf_pipeline/xray/` with per-card query functions
+- Pydantic response models for type-safe API responses
+- Separate endpoints per card for independent loading (future multi-ETF will add aggregate endpoints)
+
+### Frontend
+- React + Vite
+- Tailwind CSS + shadcn/ui
+- Recharts for charts
+- ETF selection: ticker in URL (/xray/:ticker) + search bar with autocomplete
+- Dashboard layout with responsive card grid
+
+### ETF Selection UX
+- URL-driven: `/xray/SPY`
+- Search bar with ticker/name autocomplete (queries `/api/etfs/search?q=...`)
+- Future-proofed for multi-ETF (URL could become `/xray?tickers=SPY,QQQ&weights=60,40`)
+
+## Open Questions
+- [TBD — continuing interview]
 
 ---
-*Interview notes accumulated above*
+*Interview notes accumulated during session*
+---
+
