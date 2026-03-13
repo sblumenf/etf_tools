@@ -63,7 +63,7 @@
 - [x] E2E tests: search for BND + click result, direct /xray/BND nav, invalid ticker error state, BND vs VXUS different profiles — all 4 pass
 - [x] Filing date display — fixed `filing_date=None` in xray route; now derived from holdings/fees/snapshot
 - [x] Loading skeleton states — XRay.tsx loading block replaced with 8-card pulse skeleton grid matching page layout
-- [ ] Error boundary / error state
+- [x] Error boundary — added React ErrorBoundary class component wrapping the router in App.tsx; catches render-time errors with a friendly UI and "Back to search" link
 
 ---
 
