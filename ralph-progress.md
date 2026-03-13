@@ -59,10 +59,11 @@
 - [x] data_completeness-driven card states — implemented in all cards
 
 ### Phase 3: E2E Tests + Error Handling + Polish
-- [ ] Playwright setup and all E2E tests
+- [x] Playwright setup (`playwright.config.ts`, `@playwright/test` installed at root)
+- [x] E2E tests: search for BND + click result, direct /xray/BND nav, invalid ticker error state, BND vs VXUS different profiles — all 4 pass
+- [x] Filing date display — fixed `filing_date=None` in xray route; now derived from holdings/fees/snapshot
 - [ ] Loading skeleton states
 - [ ] Error boundary / error state
-- [ ] Filing date display
 
 ---
 
