@@ -1,20 +1,9 @@
 import { useMemo } from "react";
 import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
 import { formatPct1 as fmtPct } from "../../lib/format";
+import type { ConcentrationData, HoldingItem } from "../../lib/api";
 
-interface TreemapEntry {
-  name: string;
-  ticker: string | null;
-  pct_val: number | null;
-}
-
-interface ConcentrationData {
-  hhi: number | null;
-  top5_weight: number | null;
-  top10_weight: number | null;
-  top20_weight: number | null;
-  treemap_data: TreemapEntry[] | null;
-}
+type TreemapEntry = HoldingItem;
 
 interface ConcentrationCardProps {
   data: ConcentrationData | null;

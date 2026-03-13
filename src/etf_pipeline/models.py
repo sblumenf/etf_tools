@@ -338,6 +338,7 @@ class Performance(Base):
         UniqueConstraint(
             "etf_id", "fiscal_year_end", "filing_date", name="performance_etf_fy_uniq"
         ),
+        Index("performance_etf_id_idx", "etf_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -364,6 +365,7 @@ class FeeExpense(Base):
         UniqueConstraint(
             "etf_id", "effective_date", "filing_date", name="fee_expense_etf_date_uniq"
         ),
+        Index("fee_expense_etf_id_idx", "etf_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -389,6 +391,7 @@ class FlowData(Base):
             "cik", "fiscal_year_end", "filing_date", name="flow_data_cik_fy_uniq"
         ),
         Index("flow_data_fy_idx", "fiscal_year_end"),
+        Index("flow_data_cik_idx", "cik"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -536,6 +539,7 @@ class NPORTMonthlyFlow(Base):
         UniqueConstraint(
             "etf_id", "report_date", "class_id", "filing_date", name="nport_monthly_flow_uniq"
         ),
+        Index("nport_monthly_flow_etf_id_idx", "etf_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

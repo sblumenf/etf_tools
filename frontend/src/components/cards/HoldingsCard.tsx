@@ -1,22 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { formatUSD, formatPct } from "../../lib/format";
-
-interface HoldingItem {
-  name: string;
-  ticker: string | null;
-  value_usd: number | null;
-  pct_val: number | null;
-}
-
-interface HoldingsData {
-  total_count: number;
-  items: HoldingItem[];
-  other_pct: number | null;
-}
+import type { HoldingsData } from "../../lib/api";
 
 interface HoldingsCardProps {
   data: HoldingsData | null;
-  onNChange?: (n: number) => void;
 }
 
 const N_OPTIONS = [
@@ -26,7 +13,7 @@ const N_OPTIONS = [
   { label: "All", value: 0 },
 ];
 
-export function HoldingsCard({ data, onNChange }: HoldingsCardProps) {
+export function HoldingsCard({ data }: HoldingsCardProps) {
   const [n, setN] = useState(10);
 
   if (!data) {
@@ -41,17 +28,19 @@ export function HoldingsCard({ data, onNChange }: HoldingsCardProps) {
   }
 
   const { total_count, items } = data;
-  const visibleItems = n === 0 ? items : items.slice(0, n);
-  const hiddenItems = n === 0 ? [] : items.slice(n);
-  const other_pct =
-    hiddenItems.length > 0
-      ? hiddenItems.reduce((sum, item) => sum + (item.pct_val ?? 0), 0)
-      : null;
+
+  const { visibleItems, other_pct } = useMemo(() => {
+    const visibleItems = n === 0 ? items : items.slice(0, n);
+    const hiddenItems = n === 0 ? [] : items.slice(n);
+    const other_pct =
+      hiddenItems.length > 0
+        ? hiddenItems.reduce((sum, item) => sum + (item.pct_val ?? 0), 0)
+        : null;
+    return { visibleItems, other_pct };
+  }, [items, n]);
 
   const handleNChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = Number(e.target.value);
-    setN(val);
-    onNChange?.(val);
+    setN(Number(e.target.value));
   };
 
   return (
@@ -63,7 +52,7 @@ export function HoldingsCard({ data, onNChange }: HoldingsCardProps) {
         </div>
         <select
           className="text-sm border rounded px-2 py-1 bg-background text-foreground"
-          defaultValue={10}
+          value={n}
           onChange={handleNChange}
         >
           {N_OPTIONS.map((opt) => (

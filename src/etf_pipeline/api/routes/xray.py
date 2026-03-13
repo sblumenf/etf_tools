@@ -231,7 +231,7 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
 
         net_assets_f = float(net_assets) if net_assets else None
         leverage = (
-            (total_borrowings_val / float(net_assets))
+            (total_borrowings_val / float(net_assets)) * 100
             if (total_borrowings and net_assets and float(net_assets) != 0)
             else 0.0
         )

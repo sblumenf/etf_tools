@@ -1,16 +1,5 @@
 import { formatPct as fmtPct } from "../../lib/format";
-
-interface FeeData {
-  management_fee: number | null;
-  distribution_12b1: number | null;
-  other_expenses: number | null;
-  acquired_fund_fees: number | null;
-  gross_expense_ratio: number | null;
-  net_expense_ratio: number | null;
-  fee_waiver: number | null;
-  waiver_expiration: string | null;
-  waiver_expiring_soon: boolean;
-}
+import type { FeeData } from "../../lib/api";
 
 interface FeeCardProps {
   data: FeeData | null;

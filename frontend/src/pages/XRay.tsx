@@ -70,7 +70,7 @@ export function XRay() {
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <HoldingsCard data={data.holdings} onNChange={() => {}} />
+        <HoldingsCard data={data.holdings} />
         <AssetAllocationCard data={data.asset_allocation} />
         <GeographicCard data={data.geographic} />
         <LiquidityCard data={data.liquidity} />

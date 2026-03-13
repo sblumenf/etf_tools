@@ -14,19 +14,10 @@ import {
   ZoomableGroup,
 } from "react-simple-maps";
 import { useState, useMemo } from "react";
+import type { GeographicData } from "../../lib/api";
 
 const GEO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-
-interface CountryItem {
-  country_code: string;
-  country_name: string;
-  pct: number;
-}
-
-interface GeographicData {
-  items: CountryItem[];
-}
 
 interface GeographicCardProps {
   data: GeographicData | null;

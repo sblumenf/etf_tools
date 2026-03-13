@@ -7,17 +7,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatUSD, formatPct } from "../../lib/format";
-
-interface AssetCategoryItem {
-  code: string;
-  display_name: string;
-  pct: number;
-  value_usd: number | null;
-}
-
-interface AssetAllocationData {
-  items: AssetCategoryItem[];
-}
+import type { AssetAllocationData } from "../../lib/api";
 
 interface AssetAllocationCardProps {
   data: AssetAllocationData | null;

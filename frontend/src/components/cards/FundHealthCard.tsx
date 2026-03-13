@@ -1,12 +1,5 @@
 import { formatPct as fmtPct, formatAUM as fmtAUM } from "../../lib/format";
-
-interface FundHealthData {
-  total_net_assets: number | null;
-  total_borrowings: number | null;
-  leverage_ratio: number | null;
-  cash_position_pct: number | null;
-  latest_net_flow: number | null;
-}
+import type { FundHealthData } from "../../lib/api";
 
 interface FundHealthCardProps {
   data: FundHealthData | null;

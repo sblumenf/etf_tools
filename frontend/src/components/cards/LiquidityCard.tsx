@@ -7,17 +7,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-
-interface LiquidityItem {
-  code: string;
-  display_name: string;
-  color: string;
-  pct: number;
-}
-
-interface LiquidityData {
-  items: LiquidityItem[];
-}
+import type { LiquidityData, LiquidityItem } from "../../lib/api";
 
 interface LiquidityCardProps {
   data: LiquidityData | null;

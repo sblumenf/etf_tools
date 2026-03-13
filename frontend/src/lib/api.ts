@@ -20,7 +20,6 @@ export interface HoldingItem {
 export interface HoldingsData {
   total_count: number;
   items: HoldingItem[];
-  other_pct: number | null;
 }
 
 export interface AssetCategoryItem {
@@ -93,7 +92,7 @@ export interface ConcentrationData {
   top5_weight: number | null;
   top10_weight: number | null;
   top20_weight: number | null;
-  treemap_data: HoldingItem[];
+  treemap_data: HoldingItem[] | null;
 }
 
 export interface XRayResponse {

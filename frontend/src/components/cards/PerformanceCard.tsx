@@ -1,17 +1,5 @@
 import { formatPctSigned as fmtPct, formatReturn as fmtReturn } from "../../lib/format";
-
-interface PerformanceInterval {
-  label: string;
-  fund_return: number | null;
-  benchmark_return: number | null;
-  alpha: number | null;
-}
-
-interface PerformanceData {
-  benchmark_name: string | null;
-  turnover_rate: number | null;
-  intervals: PerformanceInterval[];
-}
+import type { PerformanceData } from "../../lib/api";
 
 interface PerformanceCardProps {
   data: PerformanceData | null;
