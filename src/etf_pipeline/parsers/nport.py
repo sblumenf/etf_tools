@@ -44,7 +44,8 @@ from etf_pipeline.parsers.nport_xml import parse_nport_investments_xml
 logger = logging.getLogger(__name__)
 
 NPORT_NS = {'nport': 'http://www.sec.gov/edgar/nport'}
-PLACEHOLDER_CUSIPS = {"000000000", "999999999", "N/A"}
+# Note: "N/A" is already converted to None by clean_str() before this check runs
+PLACEHOLDER_CUSIPS = {"000000000", "999999999"}
 
 
 def parse_nport(
@@ -280,7 +281,7 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                 etfs = session.execute(stmt).scalars().all()
                 needed_series_ids = {etf.series_id for etf in etfs if etf.series_id}
 
-            series_map = _get_latest_filings_per_series(filings, needed_series_ids)
+            series_map = _get_latest_filings_per_series(filings, needed_series_ids) if needed_series_ids else {}
 
             if not series_map and needed_series_ids:
                 logger.warning(f"CIK {cik}: No valid series found in filings")
@@ -342,7 +343,8 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                                 uit_filing = f
                                 uit_fund_report = fr
                                 break
-                            except Exception:
+                            except Exception as e:
+                                logger.debug("CIK %s: filing %s failed to parse: %s", cik, f.accession_number, e)
                                 continue
                         if uit_filing is None:
                             logger.warning("CIK %s: no valid NPORT-P filings found for UIT ETFs", cik)
@@ -899,7 +901,9 @@ def _process_etf(
     dup_holdings_count = 0
     for investment in fund_report.non_derivatives:
         holding = _map_investment_to_holding(etf, investment, report_date, filing_date, xml_custom_fields)
-        dedup_key = (holding.holding_key, holding.liquidity_classification, holding.value_usd, filing_date)
+        # Note: filing_date and etf_id are constant per _process_etf call;
+        # DB constraint (etf_id, report_date, holding_key, liquidity_classification, filing_date) covers them at insert time.
+        dedup_key = (holding.holding_key, holding.liquidity_classification)
         if dedup_key in seen_holding_keys:
             dup_holdings_count += 1
             continue
@@ -1041,7 +1045,7 @@ def _map_investment_to_holding(
 
     # Warn if value may not be in USD
     if currency and currency.upper() != 'USD':
-        logger.warning(
+        logger.debug(
             "%s: holding '%s' reports currency %s but value stored as USD (value=%s, exchange_rate=%s)",
             etf.ticker, name_clean, currency,
             getattr(investment, 'value_usd', None),

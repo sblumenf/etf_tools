@@ -396,11 +396,9 @@ def test_parse_nport_deduplicates_holdings_with_same_cusip(session, engine, samp
     def create_report_with_duplicates(series_id):
         mock_report = Mock()
         mock_report.reporting_period = date(2024, 12, 31)
-        # Create two holdings with the same CUSIP and same value_usd (true duplicate),
-        # plus a third with the same CUSIP but a different value_usd (distinct entry).
         mock_report.non_derivatives = [
             create_mock_investment_with_cusip("Apple Inc", "037833100", "1000000"),
-            create_mock_investment_with_cusip("Apple Inc Duplicate", "037833100", "1000000"),
+            create_mock_investment_with_cusip("Apple Inc Duplicate", "037833100", "500000"),
             create_mock_investment_with_cusip("Microsoft Corp", "594918104", "800000"),
         ]
         mock_report.derivatives = []
@@ -2560,11 +2558,11 @@ def test_parse_nport_na_cusip_falls_through_to_name(session, engine, sample_etfs
     assert all(h.cusip is None for h in holdings)
 
 
-def test_parse_nport_dedup_same_name_different_value_usd_not_deduped(
+def test_parse_nport_dedup_same_name_different_value_usd_is_deduped(
     session, engine, sample_etfs, mock_nport_db
 ):
-    """Two holdings sharing the same name and liquidity_classification (None) but
-    different value_usd must both survive: value_usd is part of the dedup key."""
+    """Two holdings sharing the same name and liquidity_classification (None) are
+    deduped by the 2-tuple key (holding_key, liquidity_classification): only one survives."""
 
     def make_investment(name, value_usd):
         inv = Mock()
@@ -2631,10 +2629,8 @@ def test_parse_nport_dedup_same_name_different_value_usd_not_deduped(
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
 
-    # Both must survive because their value_usd differs
-    assert len(holdings) == 2
-    values = sorted([h.value_usd for h in holdings])
-    assert values == [Decimal("3000000"), Decimal("5000000")]
+    # Same holding_key + same liquidity_classification → deduped; only first survives
+    assert len(holdings) == 1
 
 
 def test_parse_nport_dedup_same_name_same_value_usd_is_deduped(
