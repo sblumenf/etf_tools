@@ -483,14 +483,16 @@ class FundSnapshot(Base):
     __tablename__ = "fund_snapshot"
     __table_args__ = (
         UniqueConstraint(
-            "cik", "report_date", "filing_date", name="fund_snapshot_cik_date_uniq"
+            "cik", "series_id", "report_date", "filing_date", name="fund_snapshot_cik_date_uniq"
         ),
         Index("fund_snapshot_cik_idx", "cik"),
         Index("fund_snapshot_report_date_idx", "report_date"),
+        Index("fund_snapshot_series_id_idx", "series_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cik: Mapped[str] = mapped_column(String(10), nullable=False)
+    series_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     report_date: Mapped[date] = mapped_column(Date, nullable=False)
     filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     total_assets: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
