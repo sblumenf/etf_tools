@@ -1489,11 +1489,11 @@ def test_parse_nport_creates_fund_snapshot(session, engine, sample_etfs, mock_ed
     parse_nport(cik="36405")
 
     # Verify fund snapshots were created
-    stmt = select(FundSnapshot).where(FundSnapshot.cik == "0000036405")
+    stmt = select(FundSnapshot).where(FundSnapshot.cik == "0000036405").order_by(FundSnapshot.series_id)
     snapshots = session.execute(stmt).scalars().all()
 
-    # Should have one snapshot (both ETFs share same CIK and filing date)
-    assert len(snapshots) == 1
+    # Should have two snapshots (one per series: S000002839 and S000002840)
+    assert len(snapshots) == 2
 
     snapshot = snapshots[0]
     assert snapshot.cik == "0000036405"
@@ -1524,26 +1524,38 @@ def test_parse_nport_skips_duplicate_fund_snapshot(session, engine, sample_etfs,
     import logging
     caplog.set_level(logging.DEBUG)
 
-    # Create initial snapshot
-    existing_snapshot = FundSnapshot(
+    # Create initial snapshots for both series
+    existing_snapshot_1 = FundSnapshot(
         cik="0000036405",
+        series_id="S000002839",
         report_date=date(2024, 12, 31),
         filing_date=date(2025, 1, 15),
         total_assets=Decimal("5000000.00"),
         total_liabilities=Decimal("200000.00"),
         net_assets=Decimal("4800000.00"),
     )
-    session.add(existing_snapshot)
+    existing_snapshot_2 = FundSnapshot(
+        cik="0000036405",
+        series_id="S000002840",
+        report_date=date(2024, 12, 31),
+        filing_date=date(2025, 1, 15),
+        total_assets=Decimal("3000000.00"),
+        total_liabilities=Decimal("100000.00"),
+        net_assets=Decimal("2900000.00"),
+    )
+    session.add(existing_snapshot_1)
+    session.add(existing_snapshot_2)
     session.commit()
 
     # Run parser
     parse_nport(cik="36405")
 
-    # Verify only one snapshot exists (original was not overwritten)
-    stmt = select(FundSnapshot).where(FundSnapshot.cik == "0000036405")
+    # Verify both snapshots exist and originals were not overwritten
+    stmt = select(FundSnapshot).where(FundSnapshot.cik == "0000036405").order_by(FundSnapshot.series_id)
     snapshots = session.execute(stmt).scalars().all()
-    assert len(snapshots) == 1
-    assert snapshots[0].total_assets == Decimal("5000000.00")  # Original value
+    assert len(snapshots) == 2
+    assert snapshots[0].total_assets == Decimal("5000000.00")  # Original value for S000002839
+    assert snapshots[1].total_assets == Decimal("3000000.00")  # Original value for S000002840
     assert "Fund snapshot already exists" in caplog.text
 
 
