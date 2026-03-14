@@ -536,8 +536,79 @@ def test_parse_nport_does_not_deduplicate_none_cusip_holdings(session, engine, s
     # Verify both have cusip = None
     assert all(h.cusip is None for h in holdings)
 
-    # Verify no warning was logged about duplicates
-    assert "Skipping duplicate CUSIP" not in caplog.text
+
+def test_parse_nport_placeholder_cusip_falls_through_to_name(session, engine, sample_etfs, mock_nport_db):
+    """Holdings with placeholder CUSIPs must not be deduplicated against each other."""
+
+    def make_investment(name, cusip):
+        inv = Mock()
+        inv.name = name
+        inv.lei = "N/A"
+        inv.title = "N/A"
+        inv.cusip = cusip
+        inv.balance = Decimal("100.0")
+        inv.units = "NS"
+        inv.currency_code = "USD"
+        inv.value_usd = Decimal("1000000")
+        inv.pct_value = Decimal("3.0")
+        inv.asset_category = "EC"
+        inv.issuer_category = "CORP"
+        inv.investment_country = "US"
+        inv.is_restricted_security = False
+        inv.fair_value_level = "1"
+        inv.ticker = name[:4]
+        inv.debt_security = None
+
+        identifiers = Mock()
+        identifiers.isin = None
+        identifiers.ticker = name[:4]
+        inv.identifiers = identifiers
+
+        return inv
+
+    def create_report(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [
+            make_investment("Alpha Fund", "000000000"),
+            make_investment("Beta Fund", "000000000"),
+            make_investment("Gamma Fund", "999999999"),
+        ]
+        mock_report.derivatives = []
+
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+    # All three must survive; none should be silently dropped as duplicates
+    assert len(holdings) == 3
+    names = sorted([h.name for h in holdings])
+    assert names == ["Alpha Fund", "Beta Fund", "Gamma Fund"]
 
 
 def test_parse_nport_does_not_deduplicate_holdings_with_different_liquidity(

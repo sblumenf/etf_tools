@@ -44,6 +44,7 @@ from etf_pipeline.parsers.nport_xml import parse_nport_investments_xml
 logger = logging.getLogger(__name__)
 
 NPORT_NS = {'nport': 'http://www.sec.gov/edgar/nport'}
+PLACEHOLDER_CUSIPS = {"000000000", "999999999"}
 
 
 def parse_nport(
@@ -988,11 +989,14 @@ def _map_investment_to_holding(
     isin_clean = clean_str(isin)
     name_clean = clean_str(investment.name) or ""
     lei_clean = clean_str(investment.lei)
+    cusip_for_xml = cusip_clean  # preserve original for xml_key lookup
+    if cusip_clean in PLACEHOLDER_CUSIPS:
+        cusip_clean = None
     holding_key = cusip_clean or isin_clean or name_clean
 
     # Extract custom XML fields using holding key
     # Build XML holding key (name|cusip|lei as used in nport_xml.py)
-    xml_key = f"{name_clean}|{cusip_clean or ''}|{lei_clean or ''}"
+    xml_key = f"{name_clean}|{cusip_for_xml or ''}|{lei_clean or ''}"
     custom_fields = xml_custom_fields.get(xml_key, {})
     liquidity_classification = custom_fields.get("liquidity_classification")
 

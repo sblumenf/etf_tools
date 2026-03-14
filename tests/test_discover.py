@@ -19,7 +19,7 @@ MOCK_EFTS_RESPONSE = {
         "hits": [
             {
                 "_source": {
-                    "cik": "884394",
+                    "ciks": ["884394"],
                     "entity_name": "SPDR S&P 500 ETF TRUST",
                 }
             }

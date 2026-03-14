@@ -39,7 +39,8 @@ def _fetch_uit_etfs():
 
         for hit in hits:
             src = hit.get("_source", {})
-            cik_str = src.get("cik") or ""
+            ciks_list = src.get("ciks") or []
+            cik_str = str(ciks_list[0]) if ciks_list else ""
             if cik_str:
                 try:
                     ciks.add(int(cik_str))
