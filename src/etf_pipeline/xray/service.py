@@ -9,8 +9,17 @@ ASSET_CATEGORY_MAP = {
     "FI": "Fixed Income",
     "STIV": "Cash Equivalent",
     "ABS": "Asset-Backed Security",
+    "ABS-MBS": "Mortgage-Backed Securities",
+    "ABS-O": "Other ABS",
+    "ABS-CBDO": "CDO/CLO",
+    "ABS-APCP": "Asset-Backed Commercial Paper",
     "MBS": "Mortgage-Backed Security",
     "UST": "US Treasury",
+    "LON": "Loan",
+    "RA": "Repurchase Agreement",
+    "SN": "Structured Note",
+    "RE": "Real Estate",
+    "COMM": "Commodity",
     "OTHER": "Other",
 }
 
