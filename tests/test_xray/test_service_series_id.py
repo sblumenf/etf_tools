@@ -132,8 +132,6 @@ def test_asset_category_map_original_entries_unchanged():
     original = {
         "EC": "Equity - Common",
         "EP": "Equity - Preferred",
-        "MBS": "Mortgage-Backed Security",
-        "UST": "US Treasury",
         "OTHER": "Other",
     }
     for code, label in original.items():
@@ -143,5 +141,46 @@ def test_asset_category_map_original_entries_unchanged():
 
 
 def test_asset_category_map_total_count():
-    """ASSET_CATEGORY_MAP has exactly 18 entries after the 9-entry addition."""
-    assert len(ASSET_CATEGORY_MAP) == 18
+    """ASSET_CATEGORY_MAP has exactly 20 entries matching the NPORT XSD enum plus OTHER."""
+    assert len(ASSET_CATEGORY_MAP) == 20
+
+
+# All codes that appear in the NPORT-P XSD assetCatType enum
+XSD_VALID_CODES = {
+    "STIV",
+    "RA",
+    "EC",
+    "EP",
+    "DBT",
+    "DCO",
+    "DCR",
+    "DE",
+    "DFE",
+    "DIR",
+    "DO",
+    "SN",
+    "LON",
+    "ABS-MBS",
+    "ABS-APCP",
+    "ABS-CBDO",
+    "ABS-O",
+    "COMM",
+    "RE",
+}
+
+# Legacy / non-XSD codes that must NOT be present in the map
+DEPRECATED_CODES = {"FI", "ABS", "MBS", "UST"}
+
+
+@pytest.mark.parametrize("code", sorted(XSD_VALID_CODES))
+def test_asset_category_map_contains_all_xsd_codes(code):
+    """Every code from the NPORT-P XSD assetCatType enum is present in ASSET_CATEGORY_MAP."""
+    assert code in ASSET_CATEGORY_MAP, f"XSD code '{code}' is missing from ASSET_CATEGORY_MAP"
+
+
+@pytest.mark.parametrize("code", sorted(DEPRECATED_CODES))
+def test_asset_category_map_excludes_deprecated_codes(code):
+    """Codes that are NOT part of the XSD enum must not appear in ASSET_CATEGORY_MAP."""
+    assert code not in ASSET_CATEGORY_MAP, (
+        f"Deprecated/non-XSD code '{code}' should not be in ASSET_CATEGORY_MAP"
+    )

@@ -44,7 +44,7 @@ from etf_pipeline.parsers.nport_xml import parse_nport_investments_xml
 logger = logging.getLogger(__name__)
 
 NPORT_NS = {'nport': 'http://www.sec.gov/edgar/nport'}
-PLACEHOLDER_CUSIPS = {"000000000", "999999999"}
+PLACEHOLDER_CUSIPS = {"000000000", "999999999", "N/A"}
 
 
 def parse_nport(
@@ -282,7 +282,7 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
 
             series_map = _get_latest_filings_per_series(filings, needed_series_ids)
 
-            if not series_map:
+            if not series_map and needed_series_ids:
                 logger.warning(f"CIK {cik}: No valid series found in filings")
                 return
 
@@ -322,6 +322,44 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                     filing, fund_report, report_date, filing_date = series_map[etf.series_id]
                     _process_etf(session, etf, filing, fund_report, report_date, filing_date)
                     processed += 1
+
+                # Handle UITs (ETFs with no series_id) — process by CIK alone
+                uit_etfs = [etf for etf in etfs if not etf.series_id]
+                if uit_etfs and filings:
+                    # Only use this path when ALL ETFs under this CIK lack series_id
+                    # (prevents accidentally using this for multi-series issuers)
+                    series_etfs = [etf for etf in etfs if etf.series_id]
+                    if not series_etfs:
+                        uit_filing = None
+                        uit_fund_report = None
+                        uit_report_date = None
+                        uit_filing_date_val = None
+                        for f in filings:
+                            try:
+                                fr = FundReport.from_filing(f)
+                                uit_report_date = fr.general_info.report_date
+                                uit_filing_date_val = f.filing_date
+                                uit_filing = f
+                                uit_fund_report = fr
+                                break
+                            except Exception:
+                                continue
+                        if uit_filing is None:
+                            logger.warning("CIK %s: no valid NPORT-P filings found for UIT ETFs", cik)
+                            return
+
+                        for etf in uit_etfs:
+                            existing_count = (
+                                session.query(Holding)
+                                .filter(Holding.etf_id == etf.id, Holding.report_date == uit_report_date)
+                                .count()
+                            )
+                            if existing_count > 0:
+                                logger.debug("%s: already has %d holdings for %s, skipping", etf.ticker, existing_count, uit_report_date)
+                                continue
+                            logger.info("Processing UIT ETF %s (CIK %s) from filing dated %s", etf.ticker, cik, uit_filing_date_val)
+                            _process_etf(session, etf, uit_filing, uit_fund_report, uit_report_date, uit_filing_date_val)
+                            processed += 1
 
                 # Update processing log after successful processing
                 if latest_filing_date is not None:
@@ -861,10 +899,11 @@ def _process_etf(
     dup_holdings_count = 0
     for investment in fund_report.non_derivatives:
         holding = _map_investment_to_holding(etf, investment, report_date, filing_date, xml_custom_fields)
-        if (holding.holding_key, holding.liquidity_classification) in seen_holding_keys:
+        dedup_key = (holding.holding_key, holding.liquidity_classification, holding.value_usd, filing_date)
+        if dedup_key in seen_holding_keys:
             dup_holdings_count += 1
             continue
-        seen_holding_keys.add((holding.holding_key, holding.liquidity_classification))
+        seen_holding_keys.add(dedup_key)
         session.add(holding)
 
         # Check for debt security details and attach to holding
@@ -999,6 +1038,15 @@ def _map_investment_to_holding(
     xml_key = f"{name_clean}|{cusip_for_xml or ''}|{lei_clean or ''}"
     custom_fields = xml_custom_fields.get(xml_key, {})
     liquidity_classification = custom_fields.get("liquidity_classification")
+
+    # Warn if value may not be in USD
+    if currency and currency.upper() != 'USD':
+        logger.warning(
+            "%s: holding '%s' reports currency %s but value stored as USD (value=%s, exchange_rate=%s)",
+            etf.ticker, name_clean, currency,
+            getattr(investment, 'value_usd', None),
+            getattr(investment, 'exchange_rate', None),
+        )
 
     return Holding(
         etf_id=etf.id,

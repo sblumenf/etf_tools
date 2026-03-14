@@ -17,6 +17,13 @@ log = logging.getLogger(__name__)
 
 EXCHANGE_NAMES = {"NYSE", "NASDAQ", "NYSE ARCA", "NYSEARCA", "BATS", "CBOE", "NYSE MKT", "NYSE American"}
 
+# Exchange-traded UITs that filed under obsolete S-6EL24 (not indexed by EFTS)
+UIT_ETF_ALLOWLIST = [
+    {"ticker": "SPY", "cik": 884394, "series_id": None, "class_id": None},
+    {"ticker": "DIA", "cik": 1041130, "series_id": None, "class_id": None},
+    {"ticker": "MDY", "cik": 936958, "series_id": None, "class_id": None},
+]
+
 
 def _fetch_uit_etfs():
     """Discover UIT ETFs by finding S-6 filers on EDGAR and checking their exchange listings."""
@@ -84,6 +91,12 @@ def _fetch_uit_etfs():
                     "series_id": None,
                     "class_id": None,
                 })
+
+    # Always include known exchange-traded UITs not discoverable via EFTS
+    existing_tickers = {e["ticker"] for e in uit_etfs}
+    for entry in UIT_ETF_ALLOWLIST:
+        if entry["ticker"] not in existing_tickers:
+            uit_etfs.append(entry)
 
     log.info("Discovered %d UIT ETF ticker(s) from S-6 filers", len(uit_etfs))
     return uit_etfs

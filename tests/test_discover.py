@@ -174,6 +174,41 @@ def test_fetch_uit_non_exchange_traded_excluded(tmp_path, monkeypatch):
     assert "XYZ" not in tickers
 
 
+def test_fetch_uit_allowlist_included_when_efts_returns_zero(tmp_path, monkeypatch):
+    """SPY/DIA/MDY appear in the output via the hardcoded allowlist even when
+    the EFTS search returns zero hits (total=0, hits=[])."""
+    monkeypatch.setattr("etf_pipeline.discover.DATA_DIR", tmp_path)
+    monkeypatch.setattr("etf_pipeline.discover.FILTERED_FILE", tmp_path / "filtered.json")
+
+    empty_efts_response = {
+        "hits": {
+            "total": {"value": 0},
+            "hits": [],
+        }
+    }
+
+    def urlopen_side_effect(req):
+        url = req.full_url
+        if "company_tickers_mf" in url:
+            return _make_resp(MOCK_MF_DATA)
+        if "efts.sec.gov" in url:
+            return _make_resp(empty_efts_response)
+        raise ValueError(f"Unexpected URL: {url}")
+
+    with patch("urllib.request.urlopen", side_effect=urlopen_side_effect):
+        etfs = fetch()
+
+    tickers = {e["ticker"] for e in etfs}
+    assert "SPY" in tickers, "SPY must appear via the UIT allowlist"
+    assert "DIA" in tickers, "DIA must appear via the UIT allowlist"
+    assert "MDY" in tickers, "MDY must appear via the UIT allowlist"
+
+    # Allowlist entries carry series_id=None and class_id=None
+    spy = next(e for e in etfs if e["ticker"] == "SPY")
+    assert spy["series_id"] is None
+    assert spy["class_id"] is None
+
+
 def test_fetch_writes_json_file(tmp_path, monkeypatch):
     """Combined results are written to the output file."""
     monkeypatch.setattr("etf_pipeline.discover.DATA_DIR", tmp_path)

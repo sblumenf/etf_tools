@@ -3,21 +3,28 @@ from sqlalchemy import func, desc, case
 from etf_pipeline.models import ETF, Holding, FeeExpense, Performance, FundSnapshot, NPORTMonthlyFlow, FlowData
 
 ASSET_CATEGORY_MAP = {
+    # Equity
     "EC": "Equity - Common",
     "EP": "Equity - Preferred",
+    # Debt
     "DBT": "Debt",
-    "FI": "Fixed Income",
-    "STIV": "Cash Equivalent",
-    "ABS": "Asset-Backed Security",
+    "SN": "Structured Note",
+    "LON": "Loan",
+    # Asset-Backed
     "ABS-MBS": "Mortgage-Backed Securities",
     "ABS-O": "Other ABS",
     "ABS-CBDO": "CDO/CLO",
     "ABS-APCP": "Asset-Backed Commercial Paper",
-    "MBS": "Mortgage-Backed Security",
-    "UST": "US Treasury",
-    "LON": "Loan",
+    # Derivatives
+    "DCO": "Derivative - Commodity",
+    "DCR": "Derivative - Credit",
+    "DE": "Derivative - Equity",
+    "DFE": "Derivative - Foreign Exchange",
+    "DIR": "Derivative - Interest Rate",
+    "DO": "Derivative - Other",
+    # Other
+    "STIV": "Cash Equivalent",
     "RA": "Repurchase Agreement",
-    "SN": "Structured Note",
     "RE": "Real Estate",
     "COMM": "Commodity",
     "OTHER": "Other",
