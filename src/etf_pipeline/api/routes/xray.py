@@ -29,6 +29,16 @@ from etf_pipeline.xray.service import ASSET_CATEGORY_MAP, LIQUIDITY_MAP, resolve
 router = APIRouter(prefix="/api/v1/xray", tags=["xray"])
 
 
+def _cash_pct(cash_not_reported, net_assets):
+    if cash_not_reported is None or net_assets is None:
+        return None
+    cash_val = float(cash_not_reported)
+    net = float(net_assets)
+    if net == 0 or cash_val == 0:
+        return None
+    return (cash_val / net) * 100
+
+
 @router.get("/{ticker}", response_model=XRayResponse)
 def get_xray(ticker: str, db: Session = Depends(get_db)):
     etf = service.get_etf(db, ticker)
@@ -79,17 +89,14 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             )
             for code, data in sorted(asset_groups.items(), key=lambda x: -x[1]["pct"])
         ]
-        if snapshot and snapshot.cash_not_reported and snapshot.net_assets:
-            cash_val = float(snapshot.cash_not_reported)
-            net = float(snapshot.net_assets)
-            if net != 0 and cash_val != 0:
-                cash_pct = (cash_val / net) * 100
-                allocation_items.append(AssetCategoryItem(
-                    code="CASH",
-                    display_name="Cash",
-                    pct=round(cash_pct, 4),
-                    value_usd=round(cash_val, 2),
-                ))
+        computed_cash_pct = _cash_pct(snapshot.cash_not_reported if snapshot else None, snapshot.net_assets if snapshot else None)
+        if computed_cash_pct is not None:
+            allocation_items.append(AssetCategoryItem(
+                code="CASH",
+                display_name="Cash",
+                pct=round(computed_cash_pct, 4),
+                value_usd=round(float(snapshot.cash_not_reported), 2),
+            ))
         asset_allocation_data = AssetAllocationData(items=allocation_items)
 
         # geographic
@@ -248,9 +255,7 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             leverage = None
 
         # cash_not_reported is the closest field for uninvested cash
-        cash_pct = None
-        if snapshot.cash_not_reported is not None and net_assets and float(net_assets) != 0:
-            cash_pct = float(snapshot.cash_not_reported) / float(net_assets) * 100
+        cash_pct = _cash_pct(snapshot.cash_not_reported, net_assets)
 
         fund_health_data = FundHealthData(
             total_net_assets=net_assets_f,

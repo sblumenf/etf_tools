@@ -1293,7 +1293,7 @@ def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, s
     swaption_derivs = [d for d in derivatives if d.derivative_type == "SWAPTION"]
     assert len(swaption_derivs) == 2
     swo = swaption_derivs[0]
-    assert swo.underlying_name == "UNKNOWN"
+    assert swo.underlying_name is None
     assert swo.underlying_cusip is None
     assert swo.notional_value is None
     assert swo.counterparty == "Bank of America"

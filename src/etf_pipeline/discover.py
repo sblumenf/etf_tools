@@ -18,6 +18,8 @@ log = logging.getLogger(__name__)
 
 EXCHANGE_NAMES = {"NYSE", "NASDAQ", "NYSE ARCA", "NYSEARCA", "BATS", "CBOE", "NYSE MKT", "NYSE American"}
 
+_SEC_REQUEST_DELAY = 0.1  # seconds between SEC EDGAR requests (10 req/s limit)
+
 # Exchange-traded UITs that filed under obsolete S-6EL24 (not indexed by EFTS)
 UIT_ETF_ALLOWLIST = [
     {"ticker": "SPY", "cik": 884394, "series_id": None, "class_id": None},
@@ -55,7 +57,7 @@ def _fetch_uit_etfs():
                 except (ValueError, TypeError):
                     pass
 
-        time.sleep(0.1)
+        time.sleep(_SEC_REQUEST_DELAY)
         start += len(hits)
         if start >= total or not hits:
             break
@@ -73,7 +75,7 @@ def _fetch_uit_etfs():
         except Exception as exc:
             log.warning("Failed to fetch submissions for CIK %s: %s", cik, exc)
             continue
-        time.sleep(0.1)
+        time.sleep(_SEC_REQUEST_DELAY)
 
         tickers = sub.get("tickers", [])
         exchanges = sub.get("exchanges", [])

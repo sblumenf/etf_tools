@@ -1,5 +1,6 @@
 """Parse NPORT-P filings for holdings and derivatives data."""
 
+import hashlib
 import logging
 import xml.etree.ElementTree as ET
 from collections import defaultdict
@@ -334,6 +335,8 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                     except Exception as e:
                         session.rollback()
                         logger.error("%s: failed to process: %s", etf.ticker, e)
+                        if etf.series_id:
+                            processed_series.add(etf.series_id)
 
                 # Handle UITs (ETFs with no series_id) — process by CIK alone
                 uit_etfs = [etf for etf in etfs if not etf.series_id]
@@ -349,7 +352,7 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                         for f in filings:
                             try:
                                 fr = FundReport.from_filing(f)
-                                uit_report_date = fr.general_info.report_date
+                                uit_report_date = ensure_date(fr.general_info.report_date)
                                 uit_filing_date_val = f.filing_date
                                 uit_filing = f
                                 uit_fund_report = fr
@@ -941,7 +944,7 @@ def _process_etf(
 
             holdings_count += 1
         except Exception as e:
-            logger.warning("%s: skipping holding due to error: %s", etf.ticker, e)
+            logger.warning("%s: skipping holding due to error: %s", etf.ticker, e, exc_info=True)
             continue
 
     derivatives_count = 0
@@ -992,7 +995,7 @@ def _process_etf(
 
                 derivatives_count += 1
         except Exception as e:
-            logger.warning("%s: skipping derivative due to error: %s", etf.ticker, e)
+            logger.warning("%s: skipping derivative due to error: %s", etf.ticker, e, exc_info=True)
             continue
 
     # Log summary of duplicate skips if any
@@ -1063,7 +1066,8 @@ def _map_investment_to_holding(
         cusip_clean = None
     holding_key = cusip_clean or isin_clean or name_clean
     if not holding_key:
-        holding_key = f"__unknown_{id(investment)}__"
+        raw = f"{getattr(investment, 'balance', '')}|{getattr(investment, 'value_usd', '')}|{getattr(investment, 'units', '')}"
+        holding_key = f"__unknown_{hashlib.md5(raw.encode()).hexdigest()[:12]}__"
         logger.debug("Generated fallback holding_key for unnamed security in %s", etf.ticker)
 
     # Extract custom XML fields using holding key
@@ -1254,7 +1258,7 @@ def _map_investment_to_derivative(
         report_date=report_date,
         filing_date=filing_date,
         derivative_type=derivative_type,
-        underlying_name=clean_str(underlying_name) or "UNKNOWN",
+        underlying_name=clean_str(underlying_name),
         underlying_cusip=clean_str(underlying_cusip),
         notional_value=notional_value,
         counterparty=clean_str(counterparty),
