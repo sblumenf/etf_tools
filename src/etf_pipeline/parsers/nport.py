@@ -820,7 +820,7 @@ def _process_etf(
 ) -> None:
     """Process a single ETF: extract and insert holdings and derivatives."""
     # Extract fund-level snapshot
-    _extract_fund_snapshot(session, etf.cik, fund_report, report_date, filing_date)
+    _extract_fund_snapshot(session, etf.cik, etf.series_id, fund_report, report_date, filing_date)
 
     xml_text = filing.xml()
 
