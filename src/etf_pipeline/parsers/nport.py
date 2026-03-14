@@ -339,12 +339,13 @@ _process_cik = _make_process_cik()
 
 
 def _extract_fund_snapshot(
-    session: Session, cik: str, fund_report: FundReport, report_date, filing_date
+    session: Session, cik: str, series_id: str | None, fund_report: FundReport, report_date, filing_date
 ) -> None:
     """Extract and insert fund-level balance sheet snapshot from FundReport."""
     # Check if snapshot already exists
     stmt = select(FundSnapshot).where(
         FundSnapshot.cik == cik,
+        FundSnapshot.series_id == series_id,
         FundSnapshot.report_date == report_date,
         FundSnapshot.filing_date == filing_date,
     )

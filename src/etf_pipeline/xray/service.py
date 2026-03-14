@@ -113,13 +113,11 @@ def get_performance(db: Session, etf_id: int) -> Performance | None:
     )
 
 
-def get_fund_snapshot(db: Session, cik: str) -> FundSnapshot | None:
-    return (
-        db.query(FundSnapshot)
-        .filter(FundSnapshot.cik == cik)
-        .order_by(desc(FundSnapshot.report_date))
-        .first()
-    )
+def get_fund_snapshot(db: Session, cik: str, series_id: str | None = None) -> FundSnapshot | None:
+    q = db.query(FundSnapshot).filter(FundSnapshot.cik == cik)
+    if series_id:
+        q = q.filter(FundSnapshot.series_id == series_id)
+    return q.order_by(desc(FundSnapshot.report_date)).first()
 
 
 def get_latest_flow(db: Session, etf_id: int, cik: str) -> float | None:
