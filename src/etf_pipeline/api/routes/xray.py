@@ -38,7 +38,8 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
     holdings = service.get_holdings(db, etf.id)
     fees = service.get_fees(db, etf.id)
     perf = service.get_performance(db, etf.id)
-    snapshot = service.get_fund_snapshot(db, etf.cik, etf.series_id)
+    holdings_report_date = holdings[0].report_date if holdings else None
+    snapshot = service.get_fund_snapshot(db, etf.cik, etf.series_id, report_date=holdings_report_date)
     latest_flow = service.get_latest_flow(db, etf.id, etf.cik)
 
     holdings_data = None
@@ -69,17 +70,27 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             code = h.asset_category or "OTHER"
             asset_groups[code]["pct"] += float(h.pct_val or 0)
             asset_groups[code]["value_usd"] += float(h.value_usd or 0)
-        asset_allocation_data = AssetAllocationData(
-            items=[
-                AssetCategoryItem(
-                    code=code,
-                    display_name=ASSET_CATEGORY_MAP.get(code, code),
-                    pct=round(data["pct"], 4),
-                    value_usd=data["value_usd"] or None,
-                )
-                for code, data in sorted(asset_groups.items(), key=lambda x: -x[1]["pct"])
-            ]
-        )
+        allocation_items = [
+            AssetCategoryItem(
+                code=code,
+                display_name=ASSET_CATEGORY_MAP.get(code, code),
+                pct=round(data["pct"], 4),
+                value_usd=data["value_usd"] or None,
+            )
+            for code, data in sorted(asset_groups.items(), key=lambda x: -x[1]["pct"])
+        ]
+        if snapshot and snapshot.cash_not_reported and snapshot.net_assets:
+            cash_val = float(snapshot.cash_not_reported)
+            net = float(snapshot.net_assets)
+            if net != 0 and cash_val != 0:
+                cash_pct = (cash_val / net) * 100
+                allocation_items.append(AssetCategoryItem(
+                    code="CASH",
+                    display_name="Cash",
+                    pct=round(cash_pct, 4),
+                    value_usd=round(cash_val, 2),
+                ))
+        asset_allocation_data = AssetAllocationData(items=allocation_items)
 
         # geographic
         country_groups: dict[str, float] = defaultdict(float)
@@ -120,7 +131,7 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             liquidity_data = LiquidityData(items=items)
 
         # concentration
-        weights = [float(h.pct_val) for h in holdings if h.pct_val is not None]
+        weights = [float(h.pct_val or 0) for h in holdings]
         hhi = compute_hhi(weights) if weights else None
         top5 = compute_top_n_weight(weights, 5) if weights else None
         top10 = compute_top_n_weight(weights, 10) if weights else None
@@ -226,15 +237,15 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             snapshot.amt_pay_aft_one_yr_oth_affil,
             snapshot.amt_pay_aft_one_yr_other,
         ]
-        total_borrowings_val = sum(float(f) for f in borrowing_fields if f is not None)
+        has_borrowing_data = any(f is not None for f in borrowing_fields)
+        total_borrowings_val = sum(float(f or 0) for f in borrowing_fields)
         total_borrowings = total_borrowings_val if total_borrowings_val > 0 else None
 
         net_assets_f = float(net_assets) if net_assets else None
-        leverage = (
-            (total_borrowings_val / float(net_assets)) * 100
-            if (total_borrowings and net_assets and float(net_assets) != 0)
-            else 0.0
-        )
+        if has_borrowing_data and net_assets and float(net_assets) != 0:
+            leverage = (total_borrowings_val / float(net_assets)) * 100
+        else:
+            leverage = None
 
         # cash_not_reported is the closest field for uninvested cash
         cash_pct = None

@@ -313,6 +313,7 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                     existing_etf_ids = set(session.execute(stmt_existing).scalars().all())
 
                 processed = 0
+                processed_series = set()
                 for etf in etfs:
                     if etf.series_id not in series_map:
                         logger.warning(f"ETF {etf.ticker} (series_id={etf.series_id}): No matching NPORT-P filing found")
@@ -320,9 +321,19 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                     if etf.id in existing_etf_ids:
                         logger.info(f"ETF {etf.ticker}: Holdings already exist, skipping")
                         continue
+                    if etf.series_id and etf.series_id in processed_series:
+                        logger.debug("%s: series %s already processed for this CIK, skipping", etf.ticker, etf.series_id)
+                        continue
                     filing, fund_report, report_date, filing_date = series_map[etf.series_id]
-                    _process_etf(session, etf, filing, fund_report, report_date, filing_date)
-                    processed += 1
+                    try:
+                        _process_etf(session, etf, filing, fund_report, report_date, filing_date)
+                        session.commit()
+                        processed += 1
+                        if etf.series_id:
+                            processed_series.add(etf.series_id)
+                    except Exception as e:
+                        session.rollback()
+                        logger.error("%s: failed to process: %s", etf.ticker, e)
 
                 # Handle UITs (ETFs with no series_id) — process by CIK alone
                 uit_etfs = [etf for etf in etfs if not etf.series_id]
@@ -360,15 +371,22 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                                 logger.debug("%s: already has %d holdings for %s, skipping", etf.ticker, existing_count, uit_report_date)
                                 continue
                             logger.info("Processing UIT ETF %s (CIK %s) from filing dated %s", etf.ticker, cik, uit_filing_date_val)
-                            _process_etf(session, etf, uit_filing, uit_fund_report, uit_report_date, uit_filing_date_val)
-                            processed += 1
+                            try:
+                                _process_etf(session, etf, uit_filing, uit_fund_report, uit_report_date, uit_filing_date_val)
+                                session.commit()
+                                processed += 1
+                            except Exception as e:
+                                session.rollback()
+                                logger.error("%s: failed to process: %s", etf.ticker, e)
+
+                        if uit_filing_date_val and not latest_filing_date:
+                            latest_filing_date = ensure_date(uit_filing_date_val)
 
                 # Update processing log after successful processing
                 if latest_filing_date is not None:
                     latest_filing_date = ensure_date(latest_filing_date)
                     update_processing_log(session, cik, "nport", latest_filing_date)
-
-                session.commit()
+                    session.commit()
 
             logger.info(f"CIK {cik}: Processed {processed}/{etf_count} ETF(s)")
 
@@ -899,75 +917,83 @@ def _process_etf(
     holdings_count = 0
     seen_holding_keys = set()
     dup_holdings_count = 0
-    for investment in fund_report.non_derivatives:
-        holding = _map_investment_to_holding(etf, investment, report_date, filing_date, xml_custom_fields)
-        # Note: filing_date and etf_id are constant per _process_etf call;
-        # DB constraint (etf_id, report_date, holding_key, liquidity_classification, filing_date) covers them at insert time.
-        dedup_key = (holding.holding_key, holding.liquidity_classification)
-        if dedup_key in seen_holding_keys:
-            dup_holdings_count += 1
+    for investment in (fund_report.non_derivatives or []):
+        try:
+            holding = _map_investment_to_holding(etf, investment, report_date, filing_date, xml_custom_fields)
+            # Note: filing_date and etf_id are constant per _process_etf call;
+            # DB constraint (etf_id, report_date, holding_key, filing_date) covers them at insert time.
+            dedup_key = holding.holding_key
+            if dedup_key in seen_holding_keys:
+                dup_holdings_count += 1
+                continue
+            seen_holding_keys.add(dedup_key)
+            session.add(holding)
+
+            # Check for debt security details and attach to holding
+            debt_detail = _map_debt_security_detail(investment)
+            if debt_detail:
+                holding.debt_security_detail = debt_detail
+
+            # Check for security lending details and attach to holding
+            sec_lending = _map_security_lending(investment)
+            if sec_lending:
+                holding.security_lending = sec_lending
+
+            holdings_count += 1
+        except Exception as e:
+            logger.warning("%s: skipping holding due to error: %s", etf.ticker, e)
             continue
-        seen_holding_keys.add(dedup_key)
-        session.add(holding)
-
-        # Check for debt security details and attach to holding
-        debt_detail = _map_debt_security_detail(investment)
-        if debt_detail:
-            holding.debt_security_detail = debt_detail
-
-        # Check for security lending details and attach to holding
-        sec_lending = _map_security_lending(investment)
-        if sec_lending:
-            holding.security_lending = sec_lending
-
-        holdings_count += 1
 
     derivatives_count = 0
     seen_derivative_keys = set()
     dup_derivatives_count = 0
-    for investment in fund_report.derivatives:
-        derivative = _map_investment_to_derivative(etf, investment, report_date, filing_date)
-        if derivative:
-            deriv_key = (derivative.derivative_type, derivative.underlying_name, derivative.expiration_date, derivative.counterparty)
-            if deriv_key in seen_derivative_keys:
-                dup_derivatives_count += 1
-                continue
-            seen_derivative_keys.add(deriv_key)
-            session.add(derivative)
-            session.flush()  # Flush to get derivative.id
+    for investment in (fund_report.derivatives or []):
+        try:
+            derivative = _map_investment_to_derivative(etf, investment, report_date, filing_date)
+            if derivative:
+                deriv_key = (derivative.derivative_type, derivative.underlying_name, derivative.expiration_date, derivative.counterparty)
+                if deriv_key in seen_derivative_keys:
+                    dup_derivatives_count += 1
+                    continue
+                seen_derivative_keys.add(deriv_key)
+                session.add(derivative)
+                session.flush()  # Flush to get derivative.id
 
-            # Check for swap derivative and create child tables
-            if investment.derivative_info and investment.derivative_info.swap_derivative:
-                swp = investment.derivative_info.swap_derivative
-                derivative_swap = _build_derivative_swap(swp, derivative.id)
-                session.add(derivative_swap)
-                session.flush()  # Flush to get swap.id
+                # Check for swap derivative and create child tables
+                if investment.derivative_info and investment.derivative_info.swap_derivative:
+                    swp = investment.derivative_info.swap_derivative
+                    derivative_swap = _build_derivative_swap(swp, derivative.id)
+                    session.add(derivative_swap)
+                    session.flush()  # Flush to get swap.id
 
-                # Create swap legs
-                swap_legs = _build_swap_legs(swp, derivative_swap.id)
-                for leg in swap_legs:
-                    session.add(leg)
+                    # Create swap legs
+                    swap_legs = _build_swap_legs(swp, derivative_swap.id)
+                    for leg in swap_legs:
+                        session.add(leg)
 
-            # Check for option derivative and create child table
-            # Handles regular options, swaptions, and warrants
-            if investment.derivative_info and investment.derivative_info.option_derivative:
-                opt = investment.derivative_info.option_derivative
-                derivative_option = _build_derivative_option(opt, derivative.id)
-                session.add(derivative_option)
+                # Check for option derivative and create child table
+                # Handles regular options, swaptions, and warrants
+                if investment.derivative_info and investment.derivative_info.option_derivative:
+                    opt = investment.derivative_info.option_derivative
+                    derivative_option = _build_derivative_option(opt, derivative.id)
+                    session.add(derivative_option)
 
-            # Check for swaption (option on swap) - also creates DerivativeOption
-            if investment.derivative_info and investment.derivative_info.swaption_derivative:
-                swaption = investment.derivative_info.swaption_derivative
-                derivative_option = _build_derivative_option(swaption, derivative.id)
-                session.add(derivative_option)
+                # Check for swaption (option on swap) - also creates DerivativeOption
+                if investment.derivative_info and investment.derivative_info.swaption_derivative:
+                    swaption = investment.derivative_info.swaption_derivative
+                    derivative_option = _build_derivative_option(swaption, derivative.id)
+                    session.add(derivative_option)
 
-            # Check for forward derivative and create child table
-            if investment.derivative_info and investment.derivative_info.forward_derivative:
-                fwd = investment.derivative_info.forward_derivative
-                derivative_forward = _build_derivative_forward(fwd, derivative.id)
-                session.add(derivative_forward)
+                # Check for forward derivative and create child table
+                if investment.derivative_info and investment.derivative_info.forward_derivative:
+                    fwd = investment.derivative_info.forward_derivative
+                    derivative_forward = _build_derivative_forward(fwd, derivative.id)
+                    session.add(derivative_forward)
 
-            derivatives_count += 1
+                derivatives_count += 1
+        except Exception as e:
+            logger.warning("%s: skipping derivative due to error: %s", etf.ticker, e)
+            continue
 
     # Log summary of duplicate skips if any
     if dup_holdings_count > 0 or dup_derivatives_count > 0:
@@ -1036,6 +1062,9 @@ def _map_investment_to_holding(
     if cusip_clean in PLACEHOLDER_CUSIPS:
         cusip_clean = None
     holding_key = cusip_clean or isin_clean or name_clean
+    if not holding_key:
+        holding_key = f"__unknown_{id(investment)}__"
+        logger.debug("Generated fallback holding_key for unnamed security in %s", etf.ticker)
 
     # Extract custom XML fields using holding key
     # Build XML holding key (name|cusip|lei as used in nport_xml.py)
@@ -1225,7 +1254,7 @@ def _map_investment_to_derivative(
         report_date=report_date,
         filing_date=filing_date,
         derivative_type=derivative_type,
-        underlying_name=clean_str(underlying_name),
+        underlying_name=clean_str(underlying_name) or "UNKNOWN",
         underlying_cusip=clean_str(underlying_cusip),
         notional_value=notional_value,
         counterparty=clean_str(counterparty),

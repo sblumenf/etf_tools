@@ -610,11 +610,11 @@ def test_parse_nport_placeholder_cusip_falls_through_to_name(session, engine, sa
     assert names == ["Alpha Fund", "Beta Fund", "Gamma Fund"]
 
 
-def test_parse_nport_does_not_deduplicate_holdings_with_different_liquidity(
+def test_parse_nport_deduplicates_holdings_with_same_cusip(
     session, engine, sample_etfs, mock_nport_db, caplog
 ):
-    """Test that holdings with the same CUSIP but different liquidity_classification are
-    treated as distinct positions and are NOT deduplicated."""
+    """Test that holdings with the same CUSIP are deduplicated by holding_key,
+    regardless of liquidity_classification."""
     import logging
     caplog.set_level(logging.INFO)
 
@@ -644,8 +644,7 @@ def test_parse_nport_does_not_deduplicate_holdings_with_different_liquidity(
 
         return inv
 
-    # Two names, same CUSIP — xml_custom_fields maps each name|cusip| key to a
-    # different liquidity bucket so the composite dedup key differs.
+    # Two names, same CUSIP — holding_key is derived from CUSIP so both map to the same key.
     CUSIP = "037833100"
     xml_fields = {
         f"Apple Inc HLI|{CUSIP}|": {"liquidity_classification": "HLI"},
@@ -692,20 +691,13 @@ def test_parse_nport_does_not_deduplicate_holdings_with_different_liquidity(
             ):
                 parse_nport(cik="36405")
 
-    # Both holdings should be inserted — different liquidity_classification means distinct positions
+    # Only 1 holding should be inserted — same CUSIP means same holding_key, second is deduplicated
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
-    assert len(holdings) == 2
+    assert len(holdings) == 1
 
-    # Both share the same CUSIP
-    assert all(h.cusip == CUSIP for h in holdings)
-
-    # Verify they carry the distinct liquidity values
-    liquidity_values = {h.liquidity_classification for h in holdings}
-    assert liquidity_values == {"HLI", "LLI"}
-
-    # No duplicate holdings message should appear
-    assert "duplicate holdings" not in caplog.text
+    # The surviving holding has the correct CUSIP
+    assert holdings[0].cusip == CUSIP
 
 
 def test_parse_nport_deduplicates_derivatives_with_same_key(session, engine, sample_etfs, mock_nport_db, caplog):
@@ -1301,7 +1293,7 @@ def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, s
     swaption_derivs = [d for d in derivatives if d.derivative_type == "SWAPTION"]
     assert len(swaption_derivs) == 2
     swo = swaption_derivs[0]
-    assert swo.underlying_name is None
+    assert swo.underlying_name == "UNKNOWN"
     assert swo.underlying_cusip is None
     assert swo.notional_value is None
     assert swo.counterparty == "Bank of America"
@@ -4974,3 +4966,162 @@ def test_parse_nport_matches_series_across_filing_dates(session, engine, sample_
     assert vtv.id in etf_ids_with_holdings, (
         "VTV (filed Feb 28) has no holdings — series was not matched across filing dates"
     )
+
+
+def test_parse_nport_per_etf_commit_isolation(session, engine, sample_etfs, mock_nport_db, caplog):
+    """When one ETF in a multi-ETF filing fails, the others are still committed."""
+    import logging
+    caplog.set_level(logging.ERROR)
+
+    def create_report(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = [
+            Mock(
+                name="Apple Inc",
+                lei="N/A",
+                title="N/A",
+                cusip="037833100",
+                balance=Decimal("100.0"),
+                units="NS",
+                currency_code="USD",
+                value_usd=Decimal("1000000"),
+                pct_value=Decimal("10.0"),
+                asset_category="EC",
+                issuer_category="CORP",
+                investment_country="US",
+                is_restricted_security=False,
+                fair_value_level="1",
+                ticker="AAPL",
+                debt_security=None,
+                identifiers=Mock(isin="US0378331005", ticker="AAPL"),
+            )
+        ]
+        mock_report.derivatives = []
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    call_count = [0]
+    series_ids = ["S000002839", "S000002840"]
+
+    def fund_report_side_effect(filing):
+        idx = call_count[0]
+        call_count[0] += 1
+        sid = series_ids[idx]
+        if sid == "S000002840":
+            raise RuntimeError("Simulated parse failure for VTV")
+        return create_report(sid)
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+        filing1.series_id = "S000002839"
+
+        filing2 = Mock()
+        filing2.filing_date = date(2025, 1, 15)
+        filing2.accession_number = "0000000000-25-000001"
+        filing2.series_id = "S000002840"
+
+        filings_obj = Mock()
+        filings_obj.empty = False
+        filings_obj.__len__ = Mock(return_value=2)
+        filings_obj.__getitem__ = Mock(side_effect=[filing1, filing2])
+        company.get_filings = Mock(return_value=filings_obj)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            side_effect=fund_report_side_effect,
+        ):
+            parse_nport(cik="36405")
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+
+    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+    vtv = session.execute(select(ETF).where(ETF.ticker == "VTV")).scalar_one()
+
+    etf_ids_with_holdings = {h.etf_id for h in holdings}
+    assert voo.id in etf_ids_with_holdings, "VOO should be committed even though VTV failed"
+    assert vtv.id not in etf_ids_with_holdings, "VTV should have no holdings due to simulated failure"
+
+
+def test_map_investment_to_holding_fallback_holding_key(session, engine, sample_etfs):
+    """When CUSIP, ISIN, and name are all absent, holding_key starts with __unknown_."""
+    from etf_pipeline.parsers.nport import _map_investment_to_holding
+
+    etf = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+
+    inv = Mock()
+    inv.name = None
+    inv.lei = None
+    inv.title = None
+    inv.cusip = None
+    inv.balance = Decimal("100.0")
+    inv.units = "NS"
+    inv.currency_code = "USD"
+    inv.value_usd = Decimal("5000")
+    inv.pct_value = Decimal("0.5")
+    inv.asset_category = "EC"
+    inv.issuer_category = "CORP"
+    inv.investment_country = "US"
+    inv.is_restricted_security = False
+    inv.fair_value_level = "1"
+    inv.ticker = None
+    inv.debt_security = None
+    inv.identifiers = None
+
+    holding = _map_investment_to_holding(
+        etf, inv, date(2024, 12, 31), date(2025, 1, 15), {}
+    )
+
+    assert holding.holding_key.startswith("__unknown_"), (
+        f"Expected fallback holding_key starting with '__unknown_', got: {holding.holding_key!r}"
+    )
+
+
+def test_extract_fund_snapshot_uit_no_duplicate(session):
+    """Calling _extract_fund_snapshot twice with series_id=None for the same
+    (cik, report_date, filing_date) must not insert a duplicate row."""
+    from etf_pipeline.parsers.nport import _extract_fund_snapshot
+
+    fund_report = Mock()
+    fund_info = Mock()
+    fund_info.total_assets = Decimal("10000000.00")
+    fund_info.total_liabilities = Decimal("500000.00")
+    fund_info.net_assets = Decimal("9500000.00")
+    fund_info.cash_not_reported = Decimal("50000.00")
+    fund_info.assets_invested = Decimal("9800000.00")
+    fund_info.assets_misc_sec = Decimal("150000.00")
+    fund_info.amt_pay_one_yr_banks_borr = Decimal("0.00")
+    fund_info.amt_pay_one_yr_ctrld_comp = Decimal("0.00")
+    fund_info.amt_pay_one_yr_oth_affil = Decimal("0.00")
+    fund_info.amt_pay_one_yr_other = Decimal("0.00")
+    fund_info.amt_pay_aft_one_yr_banks_borr = Decimal("0.00")
+    fund_info.amt_pay_aft_one_yr_ctrld_comp = Decimal("0.00")
+    fund_info.amt_pay_aft_one_yr_oth_affil = Decimal("0.00")
+    fund_info.amt_pay_aft_one_yr_other = Decimal("0.00")
+    fund_info.delay_deliv = Decimal("0.00")
+    fund_info.stand_by_commit = Decimal("0.00")
+    fund_info.liquidity_pref = Decimal("0.00")
+    fund_info.is_non_cash_collateral = False
+    fund_report.fund_info = fund_info
+
+    cik = "0000884394"
+    report_date = date(2024, 12, 31)
+    filing_date = date(2025, 1, 15)
+
+    _extract_fund_snapshot(session, cik, None, fund_report, report_date, filing_date)
+    session.flush()
+    _extract_fund_snapshot(session, cik, None, fund_report, report_date, filing_date)
+    session.flush()
+
+    stmt = select(FundSnapshot).where(FundSnapshot.cik == cik)
+    snapshots = session.execute(stmt).scalars().all()
+    assert len(snapshots) == 1

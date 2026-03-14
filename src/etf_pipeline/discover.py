@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 import urllib.request
 from pathlib import Path
 
@@ -54,6 +55,7 @@ def _fetch_uit_etfs():
                 except (ValueError, TypeError):
                     pass
 
+        time.sleep(0.1)
         start += len(hits)
         if start >= total or not hits:
             break
@@ -71,6 +73,7 @@ def _fetch_uit_etfs():
         except Exception as exc:
             log.warning("Failed to fetch submissions for CIK %s: %s", cik, exc)
             continue
+        time.sleep(0.1)
 
         tickers = sub.get("tickers", [])
         exchanges = sub.get("exchanges", [])
@@ -84,19 +87,13 @@ def _fetch_uit_etfs():
             continue
 
         for ticker in tickers:
-            if ticker and len(ticker) in (3, 4):
+            if ticker and len(ticker) in (2, 3, 4):
                 uit_etfs.append({
                     "ticker": ticker,
                     "cik": cik,
                     "series_id": None,
                     "class_id": None,
                 })
-
-    # Always include known exchange-traded UITs not discoverable via EFTS
-    existing_tickers = {e["ticker"] for e in uit_etfs}
-    for entry in UIT_ETF_ALLOWLIST:
-        if entry["ticker"] not in existing_tickers:
-            uit_etfs.append(entry)
 
     log.info("Discovered %d UIT ETF ticker(s) from S-6 filers", len(uit_etfs))
     return uit_etfs
@@ -117,7 +114,7 @@ def fetch():
     etfs = [
         {"ticker": r[syi], "cik": r[ci], "series_id": r[si], "class_id": r[cli]}
         for r in raw["data"]
-        if r[syi] and len(r[syi]) in (3, 4)
+        if r[syi] and len(r[syi]) in (2, 3, 4)
     ]
 
     try:
@@ -128,6 +125,12 @@ def fetch():
 
     existing_tickers = {e["ticker"] for e in etfs}
     for entry in uit_etfs:
+        if entry["ticker"] not in existing_tickers:
+            etfs.append(entry)
+            existing_tickers.add(entry["ticker"])
+
+    # Always include known exchange-traded UITs regardless of EFTS discovery success
+    for entry in UIT_ETF_ALLOWLIST:
         if entry["ticker"] not in existing_tickers:
             etfs.append(entry)
             existing_tickers.add(entry["ticker"])

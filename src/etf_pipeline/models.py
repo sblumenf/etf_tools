@@ -79,7 +79,7 @@ class Holding(Base):
     __tablename__ = "holding"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "report_date", "holding_key", "liquidity_classification", "filing_date", name="holding_uniq"
+            "etf_id", "report_date", "holding_key", "filing_date", name="holding_uniq"
         ),
         Index("holding_etf_report_idx", "etf_id", "report_date"),
         Index("holding_cusip_idx", "cusip"),
@@ -539,7 +539,7 @@ class NPORTMonthlyFlow(Base):
     __tablename__ = "nport_monthly_flow"
     __table_args__ = (
         UniqueConstraint(
-            "etf_id", "report_date", "class_id", "filing_date", name="nport_monthly_flow_uniq"
+            "etf_id", "report_date", "filing_date", name="nport_monthly_flow_uniq"
         ),
         Index("nport_monthly_flow_etf_id_idx", "etf_id"),
     )

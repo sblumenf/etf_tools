@@ -120,10 +120,12 @@ def get_performance(db: Session, etf_id: int) -> Performance | None:
     )
 
 
-def get_fund_snapshot(db: Session, cik: str, series_id: str | None = None) -> FundSnapshot | None:
+def get_fund_snapshot(db: Session, cik: str, series_id: str | None = None, report_date=None) -> FundSnapshot | None:
     q = db.query(FundSnapshot).filter(FundSnapshot.cik == cik)
     if series_id:
         q = q.filter(FundSnapshot.series_id == series_id)
+    if report_date:
+        q = q.filter(FundSnapshot.report_date == report_date)
     return q.order_by(desc(FundSnapshot.report_date)).first()
 
 

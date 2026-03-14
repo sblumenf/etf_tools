@@ -143,8 +143,8 @@ def test_fetch_graceful_degradation_on_uit_failure(tmp_path, monkeypatch):
 
     tickers = {e["ticker"] for e in etfs}
     assert "IJAN" in tickers
-    # SPY not present because UIT discovery failed
-    assert "SPY" not in tickers
+    # SPY still present because the UIT allowlist is applied unconditionally in fetch()
+    assert "SPY" in tickers
 
 
 def test_fetch_uit_non_exchange_traded_excluded(tmp_path, monkeypatch):
