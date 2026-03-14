@@ -157,11 +157,12 @@ def _get_all_filings_per_series(filings):
     return series_map
 
 
-def _get_latest_filings_per_series(filings):
+def _get_latest_filings_per_series(filings, needed_series_ids=None):
     """Get the most recent filing per series_id across all filing dates.
 
     Args:
         filings: EntityFilings collection from edgartools
+        needed_series_ids: optional set of series_ids to find; when all are found, stops early
 
     Returns:
         dict: Mapping of series_id -> (filing, fund_report, report_date, filing_date)
@@ -195,6 +196,10 @@ def _get_latest_filings_per_series(filings):
 
             filing_date = ensure_date(filing.filing_date)
             series_map[series_id] = (filing, fund_report, report_date, filing_date)
+
+            if needed_series_ids and needed_series_ids.issubset(series_map.keys()):
+                logger.info(f"All {len(needed_series_ids)} needed series found after scanning — stopping early")
+                break
 
         except Exception as e:
             logger.warning(f"Failed to parse filing: {e} (filing_date={filing.filing_date})")
@@ -268,7 +273,13 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
             logger.info(f"CIK {cik}: Backfill complete — {processed} filing(s) processed")
         else:
             # Normal mode: latest filing per series only
-            series_map = _get_latest_filings_per_series(filings)
+            # Query ETFs first so we know which series_ids we need
+            with session_factory() as session:
+                stmt = select(ETF).where(ETF.cik == cik)
+                etfs = session.execute(stmt).scalars().all()
+                needed_series_ids = {etf.series_id for etf in etfs if etf.series_id}
+
+            series_map = _get_latest_filings_per_series(filings, needed_series_ids)
 
             if not series_map:
                 logger.warning(f"CIK {cik}: No valid series found in filings")

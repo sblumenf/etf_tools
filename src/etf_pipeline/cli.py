@@ -387,6 +387,15 @@ def run_all(limit):
 
         click.echo(f"Found {len(ciks)} CIKs to check")
 
+        # Get ETF count per CIK for adaptive timeout
+        from sqlalchemy import func
+        from etf_pipeline.models import ETF
+        etf_counts = dict(
+            session.execute(
+                select(ETF.cik, func.count(ETF.id)).group_by(ETF.cik)
+            ).all()
+        )
+
     processed = 0
     skipped = 0
     failed = 0
@@ -399,6 +408,7 @@ def run_all(limit):
 
     try:
         for cik in ciks:
+            etf_count = etf_counts.get(cik, 1)
             click.echo(f"\nChecking CIK {cik}...")
 
             # Staleness check runs in the main process — it's just HTTP + DB, not heavy parsing
@@ -434,14 +444,15 @@ def run_all(limit):
                     args=(result_queue, log_queue, cik, parser_type),
                 )
                 proc.start()
-                proc.join(timeout=600)
+                timeout = max(600, etf_count * 10)
+                proc.join(timeout=timeout)
 
                 duration = time.time() - start_time
 
                 if proc.is_alive():
                     proc.terminate()
                     proc.join()
-                    click.echo(f"  Process timed out for CIK {cik} parser {parser_type} ({duration:.1f}s)")
+                    click.echo(f"  Process timed out for CIK {cik} parser {parser_type} ({duration:.1f}s, timeout={timeout}s)")
                     failed_parsers.append(f"{parser_type}({cik})")
                     cik_process_failed = True
                     continue
