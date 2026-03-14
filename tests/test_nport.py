@@ -189,16 +189,17 @@ def test_parse_nport_creates_holdings(session, engine, sample_etfs, mock_edgar_c
 
 
 def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, caplog):
-    """Test that parse_nport skips ETF when holdings already exist for report_date."""
+    """Test that parse_nport skips ETF when holdings already exist with same or newer filing_date."""
     import logging
     caplog.set_level(logging.INFO)
 
     voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
 
+    # filing_date matches mock filing date (2025-01-15), so not an amendment — should skip
     existing_holding = Holding(
         etf_id=voo.id,
         report_date=date(2024, 12, 31),
-        filing_date=date(2024, 12, 31),
+        filing_date=date(2025, 1, 15),
         name="Existing Holding",
         cusip="123456789",
         value_usd=Decimal("1000"),
@@ -215,6 +216,38 @@ def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_
     assert len(holdings) == 1
     assert holdings[0].name == "Existing Holding"
     assert "already exist" in caplog.text
+
+
+def test_parse_nport_overwrites_holdings_for_amendment(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, caplog):
+    """Test that parse_nport replaces holdings when an amendment has a newer filing_date."""
+    import logging
+    caplog.set_level(logging.INFO)
+
+    voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+
+    # filing_date older than mock filing date (2025-01-15), so amendment should overwrite
+    existing_holding = Holding(
+        etf_id=voo.id,
+        report_date=date(2024, 12, 31),
+        filing_date=date(2025, 1, 10),
+        name="Stale Holding",
+        cusip="123456789",
+        value_usd=Decimal("1000"),
+        holding_key="123456789",
+    )
+    session.add(existing_holding)
+    session.commit()
+
+    parse_nport(cik="36405")
+
+    stmt = select(Holding).where(Holding.etf_id == voo.id).order_by(Holding.name)
+    holdings = session.execute(stmt).scalars().all()
+
+    # Stale holding should be gone; new holdings from the amendment should be present
+    names = [h.name for h in holdings]
+    assert "Stale Holding" not in names
+    assert len(holdings) > 0
+    assert "replacing holdings" in caplog.text
 
 
 def test_parse_nport_no_nport_filing(session, engine, sample_etfs, mock_nport_db, caplog):
@@ -1099,13 +1132,14 @@ def test_parse_nport_etf_with_no_derivatives(session, engine, sample_etfs, mock_
 
 
 def test_parse_nport_skips_derivatives_when_holdings_exist(session, engine, sample_etfs, mock_nport_db):
-    """Test that parse_nport skips derivatives when holdings already exist for report_date."""
+    """Test that parse_nport skips derivatives when holdings already exist with same filing_date."""
     voo = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
 
+    # filing_date matches mock (2025-01-15) so not an amendment — should skip
     existing_holding = Holding(
         etf_id=voo.id,
         report_date=date(2024, 12, 31),
-        filing_date=date(2024, 12, 31),
+        filing_date=date(2025, 1, 15),
         name="Existing Holding",
         cusip="123456789",
         value_usd=Decimal("1000"),
@@ -1293,7 +1327,7 @@ def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, s
     swaption_derivs = [d for d in derivatives if d.derivative_type == "SWAPTION"]
     assert len(swaption_derivs) == 2
     swo = swaption_derivs[0]
-    assert swo.underlying_name is None
+    assert swo.underlying_name == ""
     assert swo.underlying_cusip is None
     assert swo.notional_value is None
     assert swo.counterparty == "Bank of America"
@@ -5125,3 +5159,110 @@ def test_extract_fund_snapshot_uit_no_duplicate(session):
     stmt = select(FundSnapshot).where(FundSnapshot.cik == cik)
     snapshots = session.execute(stmt).scalars().all()
     assert len(snapshots) == 1
+
+
+# ---------------------------------------------------------------------------
+# Derivative sentinel value tests
+# ---------------------------------------------------------------------------
+
+def test_map_investment_to_derivative_sentinel_values_when_fields_missing(session, engine, sample_etfs):
+    """_map_investment_to_derivative produces sentinel values instead of None for
+    underlying_name, counterparty, and expiration_date when those fields are absent."""
+    from etf_pipeline.parsers.nport import _map_investment_to_derivative
+
+    etf = session.execute(select(ETF).where(ETF.ticker == "VOO")).scalar_one()
+
+    # Build a minimal derivative investment with no child type attributes set
+    inv = Mock()
+    inv.derivative_info = Mock()
+    inv.derivative_info.derivative_category = "FUT"
+    inv.derivative_info.forward_derivative = None
+    inv.derivative_info.future_derivative = None
+    inv.derivative_info.option_derivative = None
+    inv.derivative_info.swap_derivative = None
+    inv.derivative_info.swaption_derivative = None
+    # No unrealized_appr attribute
+    del inv.derivative_info.unrealized_appr
+
+    result = _map_investment_to_derivative(
+        etf, inv, date(2024, 12, 31), date(2025, 1, 15)
+    )
+
+    assert result is not None
+    assert result.underlying_name == ""
+    assert result.counterparty == ""
+    assert result.expiration_date == date(9999, 12, 31)
+
+
+# ---------------------------------------------------------------------------
+# Savepoint rollback test — orphaned Derivative row on child build failure
+# ---------------------------------------------------------------------------
+
+def test_parse_nport_savepoint_rolls_back_derivative_on_child_failure(
+    session, engine, sample_etfs, mock_nport_db, caplog
+):
+    """When building a swap child row raises an error, the savepoint rollback
+    must remove the parent Derivative row so no orphaned rows remain."""
+    import logging
+    caplog.set_level(logging.WARNING)
+
+    def create_mock_bad_swap(series_id):
+        inv = Mock()
+        inv.name = "Bad Swap"
+        inv.derivative_info = Mock()
+        inv.derivative_info.derivative_category = "SWP"
+        inv.derivative_info.forward_derivative = None
+        inv.derivative_info.future_derivative = None
+        inv.derivative_info.option_derivative = None
+        inv.derivative_info.swaption_derivative = None
+
+        # swap_derivative is truthy but accessing its attributes will raise
+        bad_swp = Mock()
+        bad_swp.counterparty_name = "Bad CP"
+        bad_swp.counterparty_lei = None
+        bad_swp.deriv_addl_name = "Bad Underlying"
+        bad_swp.deriv_addl_cusip = None
+        bad_swp.reference_entity_name = None
+        bad_swp.reference_entity_cusip = None
+        bad_swp.notional_amount = Decimal("1000.00")
+        bad_swp.termination_date = None
+        # Make notional_amount raise on the second attribute access so
+        # _build_derivative_swap blows up after the parent is flushed
+        bad_swp.upfront_payment = Mock(side_effect=RuntimeError("boom"))
+        inv.derivative_info.swap_derivative = bad_swp
+        return inv
+
+    def create_report(series_id):
+        mock_report = Mock()
+        mock_report.reporting_period = date(2024, 12, 31)
+        mock_report.non_derivatives = []
+        mock_report.derivatives = [create_mock_bad_swap(series_id)]
+        general_info = Mock()
+        general_info.series_id = series_id
+        mock_report.general_info = general_info
+        _add_mock_fund_info(mock_report)
+        return mock_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        filing1 = Mock()
+        filing1.filing_date = date(2025, 1, 15)
+        filing1.accession_number = "0000000000-25-000000"
+        filings = Mock()
+        filings.empty = False
+        filings.__len__ = Mock(return_value=1)
+        filings.__getitem__ = Mock(side_effect=[filing1])
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report("S000002839"),
+        ):
+            parse_nport(cik="36405")
+
+    # The savepoint rollback must remove the parent Derivative row too
+    stmt = select(Derivative)
+    derivatives = session.execute(stmt).scalars().all()
+    assert len(derivatives) == 0
+    assert "skipping derivative due to error" in caplog.text

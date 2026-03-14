@@ -34,12 +34,12 @@ def _snapshot(cik, series_id, total_assets, report_date=REPORT_DATE, filing_date
 # ---------------------------------------------------------------------------
 
 def test_get_fund_snapshot_without_series_id_returns_latest(session):
-    """Without series_id, returns the most recent snapshot for the CIK."""
+    """With explicit series_id, returns the most recent snapshot for that series."""
     session.add(_snapshot(CIK, "S000002839", "1000000", date(2024, 9, 30), date(2024, 10, 15)))
     session.add(_snapshot(CIK, "S000002839", "2000000", date(2024, 12, 31), date(2025, 1, 15)))
     session.commit()
 
-    result = service.get_fund_snapshot(session, CIK)
+    result = service.get_fund_snapshot(session, CIK, series_id="S000002839")
 
     assert result is not None
     assert result.total_assets == Decimal("2000000")

@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
@@ -19,6 +20,21 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    # Remove holding duplicates before tightening constraint
+    conn.execute(text("""
+        DELETE FROM holding WHERE id NOT IN (
+            SELECT MAX(id) FROM holding
+            GROUP BY etf_id, report_date, holding_key, filing_date
+        )
+    """))
+    conn.execute(text("""
+        DELETE FROM nport_monthly_flow WHERE id NOT IN (
+            SELECT MAX(id) FROM nport_monthly_flow
+            GROUP BY etf_id, report_date, filing_date
+        )
+    """))
+
     with op.batch_alter_table('holding') as batch_op:
         batch_op.drop_constraint('holding_uniq', type_='unique')
         batch_op.create_unique_constraint(

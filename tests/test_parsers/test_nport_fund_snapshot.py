@@ -100,7 +100,7 @@ def test_extract_fund_snapshot_skips_duplicate_same_series(session, caplog):
 
 
 def test_extract_fund_snapshot_none_series_id(session):
-    """series_id=None is stored as NULL and treated as a distinct key."""
+    """series_id=None is stored as '' (empty string sentinel) for UITs."""
     report = _make_fund_report()
     _extract_fund_snapshot(session, CIK, None, report, REPORT_DATE, FILING_DATE)
     session.flush()
@@ -109,7 +109,7 @@ def test_extract_fund_snapshot_none_series_id(session):
     snapshots = session.execute(stmt).scalars().all()
 
     assert len(snapshots) == 1
-    assert snapshots[0].series_id is None
+    assert snapshots[0].series_id == ""
 
 
 def test_extract_fund_snapshot_missing_fund_info(session, caplog):

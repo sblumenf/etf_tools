@@ -49,7 +49,7 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
     fees = service.get_fees(db, etf.id)
     perf = service.get_performance(db, etf.id)
     holdings_report_date = holdings[0].report_date if holdings else None
-    snapshot = service.get_fund_snapshot(db, etf.cik, etf.series_id, report_date=holdings_report_date)
+    snapshot = service.get_fund_snapshot(db, etf.cik, etf.series_id or "", report_date=holdings_report_date)
     latest_flow = service.get_latest_flow(db, etf.id, etf.cik)
 
     holdings_data = None
@@ -89,21 +89,42 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             )
             for code, data in sorted(asset_groups.items(), key=lambda x: -x[1]["pct"])
         ]
-        computed_cash_pct = _cash_pct(snapshot.cash_not_reported if snapshot else None, snapshot.net_assets if snapshot else None)
-        if computed_cash_pct is not None:
-            allocation_items.append(AssetCategoryItem(
-                code="CASH",
-                display_name="Cash",
-                pct=round(computed_cash_pct, 4),
-                value_usd=round(float(snapshot.cash_not_reported), 2),
-            ))
+        if snapshot and snapshot.cash_not_reported is not None:
+            computed_cash_pct = _cash_pct(snapshot.cash_not_reported, snapshot.net_assets)
+            cash_val = float(snapshot.cash_not_reported) if snapshot.cash_not_reported else 0
+            if computed_cash_pct is not None:
+                if "STIV" in asset_groups:
+                    asset_groups["STIV"]["pct"] += computed_cash_pct
+                    asset_groups["STIV"]["value_usd"] += cash_val
+                else:
+                    asset_groups["STIV"]["pct"] = computed_cash_pct
+                    asset_groups["STIV"]["value_usd"] = cash_val
+                allocation_items = [
+                    AssetCategoryItem(
+                        code=code,
+                        display_name=ASSET_CATEGORY_MAP.get(code, code),
+                        pct=round(data["pct"], 4),
+                        value_usd=data["value_usd"] or None,
+                    )
+                    for code, data in sorted(asset_groups.items(), key=lambda x: -x[1]["pct"])
+                ]
+        total_alloc_pct = sum(item.pct for item in allocation_items)
+        if total_alloc_pct < 95.0:
+            allocation_items.append(
+                AssetCategoryItem(
+                    code="UNALLOC",
+                    display_name="Unallocated / Other",
+                    pct=round(100.0 - total_alloc_pct, 4),
+                    value_usd=None,
+                )
+            )
         asset_allocation_data = AssetAllocationData(items=allocation_items)
 
         # geographic
         country_groups: dict[str, float] = defaultdict(float)
         for h in holdings:
-            if h.country:
-                country_groups[h.country] += float(h.pct_val or 0)
+            code = h.country or "XX"
+            country_groups[code] += float(h.pct_val or 0)
         if country_groups:
             country_items = [
                 CountryItem(

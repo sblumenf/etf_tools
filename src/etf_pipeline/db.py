@@ -5,7 +5,9 @@ from etf_pipeline.config import DATABASE_URL
 
 
 def get_engine(url: str | None = None) -> Engine:
-    return create_engine(url or DATABASE_URL)
+    engine = create_engine(url or DATABASE_URL)
+    enable_sqlite_fks(engine)
+    return engine
 
 
 def enable_sqlite_fks(engine: Engine) -> None:

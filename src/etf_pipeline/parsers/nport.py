@@ -290,7 +290,7 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
 
             logger.info(f"CIK {cik}: Parsed {len(series_map)} series from filings")
 
-            latest_filing_date = max(filing_date for _, _, _, filing_date in series_map.values()) if series_map else None
+            latest_filing_date = None
 
             with session_factory() as session:
                 stmt = select(ETF).where(ETF.cik == cik)
@@ -303,15 +303,22 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                         _, _, report_date, _ = series_map[etf.series_id]
                         etf_report_pairs.append((etf.id, report_date))
 
-                # Batch query: find ETFs that already have holdings for their report_date
-                existing_etf_ids = set()
+                # Batch query: find ETFs that already have holdings for their report_date,
+                # and the max filing_date stored for each, so amendments can overwrite older data.
+                from sqlalchemy import func as sqlfunc
+                existing_filing_dates = {}
                 if etf_report_pairs:
                     conditions = [
                         and_(Holding.etf_id == eid, Holding.report_date == rd)
                         for eid, rd in etf_report_pairs
                     ]
-                    stmt_existing = select(Holding.etf_id).where(or_(*conditions)).distinct()
-                    existing_etf_ids = set(session.execute(stmt_existing).scalars().all())
+                    stmt_existing = (
+                        select(Holding.etf_id, sqlfunc.max(Holding.filing_date))
+                        .where(or_(*conditions))
+                        .group_by(Holding.etf_id)
+                    )
+                    for row_etf_id, row_filing_date in session.execute(stmt_existing).all():
+                        existing_filing_dates[row_etf_id] = ensure_date(row_filing_date)
 
                 processed = 0
                 processed_series = set()
@@ -319,17 +326,33 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                     if etf.series_id not in series_map:
                         logger.warning(f"ETF {etf.ticker} (series_id={etf.series_id}): No matching NPORT-P filing found")
                         continue
-                    if etf.id in existing_etf_ids:
-                        logger.info(f"ETF {etf.ticker}: Holdings already exist, skipping")
-                        continue
                     if etf.series_id and etf.series_id in processed_series:
                         logger.debug("%s: series %s already processed for this CIK, skipping", etf.ticker, etf.series_id)
                         continue
+                    if etf.id in existing_filing_dates:
+                        old_date = existing_filing_dates[etf.id]
+                        _, _, report_date_check, filing_date_check = series_map[etf.series_id]
+                        new_date = ensure_date(filing_date_check)
+                        if new_date > old_date:
+                            logger.info("%s: replacing holdings from filing %s with amendment from %s", etf.ticker, old_date, new_date)
+                            session.query(Holding).filter(
+                                Holding.etf_id == etf.id,
+                                Holding.report_date == report_date_check,
+                            ).delete()
+                            session.query(Derivative).filter(
+                                Derivative.etf_id == etf.id,
+                                Derivative.report_date == report_date_check,
+                            ).delete()
+                        else:
+                            logger.info(f"ETF {etf.ticker}: Holdings already exist, skipping")
+                            continue
                     filing, fund_report, report_date, filing_date = series_map[etf.series_id]
                     try:
                         _process_etf(session, etf, filing, fund_report, report_date, filing_date)
                         session.commit()
                         processed += 1
+                        if filing_date and (latest_filing_date is None or ensure_date(filing_date) > latest_filing_date):
+                            latest_filing_date = ensure_date(filing_date)
                         if etf.series_id:
                             processed_series.add(etf.series_id)
                     except Exception as e:
@@ -365,25 +388,37 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                             return
 
                         for etf in uit_etfs:
-                            existing_count = (
-                                session.query(Holding)
+                            uit_new_date = ensure_date(uit_filing_date_val)
+                            uit_existing = (
+                                session.query(sqlfunc.max(Holding.filing_date))
                                 .filter(Holding.etf_id == etf.id, Holding.report_date == uit_report_date)
-                                .count()
+                                .scalar()
                             )
-                            if existing_count > 0:
-                                logger.debug("%s: already has %d holdings for %s, skipping", etf.ticker, existing_count, uit_report_date)
-                                continue
+                            if uit_existing is not None:
+                                uit_old_date = ensure_date(uit_existing)
+                                if uit_new_date > uit_old_date:
+                                    logger.info("%s: replacing holdings from filing %s with amendment from %s", etf.ticker, uit_old_date, uit_new_date)
+                                    session.query(Holding).filter(
+                                        Holding.etf_id == etf.id,
+                                        Holding.report_date == uit_report_date,
+                                    ).delete()
+                                    session.query(Derivative).filter(
+                                        Derivative.etf_id == etf.id,
+                                        Derivative.report_date == uit_report_date,
+                                    ).delete()
+                                else:
+                                    logger.debug("%s: already has holdings for %s, skipping", etf.ticker, uit_report_date)
+                                    continue
                             logger.info("Processing UIT ETF %s (CIK %s) from filing dated %s", etf.ticker, cik, uit_filing_date_val)
                             try:
                                 _process_etf(session, etf, uit_filing, uit_fund_report, uit_report_date, uit_filing_date_val)
                                 session.commit()
                                 processed += 1
+                                if uit_filing_date_val and (latest_filing_date is None or ensure_date(uit_filing_date_val) > latest_filing_date):
+                                    latest_filing_date = ensure_date(uit_filing_date_val)
                             except Exception as e:
                                 session.rollback()
                                 logger.error("%s: failed to process: %s", etf.ticker, e)
-
-                        if uit_filing_date_val and not latest_filing_date:
-                            latest_filing_date = ensure_date(uit_filing_date_val)
 
                 # Update processing log after successful processing
                 if latest_filing_date is not None:
@@ -407,7 +442,7 @@ def _extract_fund_snapshot(
     # Check if snapshot already exists
     stmt = select(FundSnapshot).where(
         FundSnapshot.cik == cik,
-        FundSnapshot.series_id == series_id,
+        FundSnapshot.series_id == (series_id or ""),
         FundSnapshot.report_date == report_date,
         FundSnapshot.filing_date == filing_date,
     )
@@ -427,7 +462,7 @@ def _extract_fund_snapshot(
 
     snapshot = FundSnapshot(
         cik=cik,
-        series_id=series_id,
+        series_id=series_id or "",
         report_date=report_date,
         filing_date=filing_date,
         total_assets=getattr(fi, 'total_assets', None),
@@ -959,41 +994,49 @@ def _process_etf(
                     dup_derivatives_count += 1
                     continue
                 seen_derivative_keys.add(deriv_key)
-                session.add(derivative)
-                session.flush()  # Flush to get derivative.id
 
-                # Check for swap derivative and create child tables
-                if investment.derivative_info and investment.derivative_info.swap_derivative:
-                    swp = investment.derivative_info.swap_derivative
-                    derivative_swap = _build_derivative_swap(swp, derivative.id)
-                    session.add(derivative_swap)
-                    session.flush()  # Flush to get swap.id
+                savepoint = session.begin_nested()
+                try:
+                    session.add(derivative)
+                    session.flush()  # Flush to get derivative.id
 
-                    # Create swap legs
-                    swap_legs = _build_swap_legs(swp, derivative_swap.id)
-                    for leg in swap_legs:
-                        session.add(leg)
+                    # Check for swap derivative and create child tables
+                    if investment.derivative_info and investment.derivative_info.swap_derivative:
+                        swp = investment.derivative_info.swap_derivative
+                        derivative_swap = _build_derivative_swap(swp, derivative.id)
+                        session.add(derivative_swap)
+                        session.flush()  # Flush to get swap.id
 
-                # Check for option derivative and create child table
-                # Handles regular options, swaptions, and warrants
-                if investment.derivative_info and investment.derivative_info.option_derivative:
-                    opt = investment.derivative_info.option_derivative
-                    derivative_option = _build_derivative_option(opt, derivative.id)
-                    session.add(derivative_option)
+                        # Create swap legs
+                        swap_legs = _build_swap_legs(swp, derivative_swap.id)
+                        for leg in swap_legs:
+                            session.add(leg)
 
-                # Check for swaption (option on swap) - also creates DerivativeOption
-                if investment.derivative_info and investment.derivative_info.swaption_derivative:
-                    swaption = investment.derivative_info.swaption_derivative
-                    derivative_option = _build_derivative_option(swaption, derivative.id)
-                    session.add(derivative_option)
+                    # Check for option derivative and create child table
+                    # Handles regular options, swaptions, and warrants
+                    if investment.derivative_info and investment.derivative_info.option_derivative:
+                        opt = investment.derivative_info.option_derivative
+                        derivative_option = _build_derivative_option(opt, derivative.id)
+                        session.add(derivative_option)
 
-                # Check for forward derivative and create child table
-                if investment.derivative_info and investment.derivative_info.forward_derivative:
-                    fwd = investment.derivative_info.forward_derivative
-                    derivative_forward = _build_derivative_forward(fwd, derivative.id)
-                    session.add(derivative_forward)
+                    # Check for swaption (option on swap) - also creates DerivativeOption
+                    if investment.derivative_info and investment.derivative_info.swaption_derivative:
+                        swaption = investment.derivative_info.swaption_derivative
+                        derivative_option = _build_derivative_option(swaption, derivative.id)
+                        session.add(derivative_option)
 
-                derivatives_count += 1
+                    # Check for forward derivative and create child table
+                    if investment.derivative_info and investment.derivative_info.forward_derivative:
+                        fwd = investment.derivative_info.forward_derivative
+                        derivative_forward = _build_derivative_forward(fwd, derivative.id)
+                        session.add(derivative_forward)
+
+                    savepoint.commit()
+                    derivatives_count += 1
+                except Exception as e:
+                    savepoint.rollback()
+                    logger.warning("%s: skipping derivative due to error: %s", etf.ticker, e, exc_info=True)
+                    continue
         except Exception as e:
             logger.warning("%s: skipping derivative due to error: %s", etf.ticker, e, exc_info=True)
             continue
@@ -1066,7 +1109,7 @@ def _map_investment_to_holding(
         cusip_clean = None
     holding_key = cusip_clean or isin_clean or name_clean
     if not holding_key:
-        raw = f"{getattr(investment, 'balance', '')}|{getattr(investment, 'value_usd', '')}|{getattr(investment, 'units', '')}"
+        raw = f"{getattr(investment, 'balance', '')}|{getattr(investment, 'value_usd', '')}|{getattr(investment, 'units', '')}|{getattr(investment, 'asset_cat', '')}|{getattr(investment, 'country', '')}|{getattr(investment, 'title', '')}|{getattr(investment, 'payoff_profile', '')}"
         holding_key = f"__unknown_{hashlib.md5(raw.encode()).hexdigest()[:12]}__"
         logger.debug("Generated fallback holding_key for unnamed security in %s", etf.ticker)
 
@@ -1253,15 +1296,18 @@ def _map_investment_to_derivative(
         underlying_other_id = get_clean(swo, 'reference_entity_other_id')
         underlying_other_id_type = get_clean(swo, 'reference_entity_other_id_type')
 
+    if expiration_date is None:
+        expiration_date = date(9999, 12, 31)
+
     return Derivative(
         etf_id=etf.id,
         report_date=report_date,
         filing_date=filing_date,
         derivative_type=derivative_type,
-        underlying_name=clean_str(underlying_name),
+        underlying_name=clean_str(underlying_name) or "",
         underlying_cusip=clean_str(underlying_cusip),
         notional_value=notional_value,
-        counterparty=clean_str(counterparty),
+        counterparty=clean_str(counterparty) or "",
         counterparty_lei=clean_str(counterparty_lei),
         delta=delta,
         expiration_date=expiration_date,
