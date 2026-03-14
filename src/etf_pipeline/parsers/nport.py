@@ -10,7 +10,7 @@ from typing import Optional
 
 from edgar import Company
 from edgar.funds.reports import FundReport
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from etf_pipeline.db import get_engine
@@ -47,6 +47,10 @@ logger = logging.getLogger(__name__)
 NPORT_NS = {'nport': 'http://www.sec.gov/edgar/nport'}
 # Note: "N/A" is already converted to None by clean_str() before this check runs
 PLACEHOLDER_CUSIPS = {"000000000", "999999999"}
+
+# Sentinel values for NOT NULL constraint columns where data is missing
+EMPTY_SENTINEL = ""
+NO_EXPIRATION_SENTINEL = date(9999, 12, 31)
 
 
 def parse_nport(
@@ -305,7 +309,6 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
 
                 # Batch query: find ETFs that already have holdings for their report_date,
                 # and the max filing_date stored for each, so amendments can overwrite older data.
-                from sqlalchemy import func as sqlfunc
                 existing_filing_dates = {}
                 if etf_report_pairs:
                     conditions = [
@@ -313,7 +316,7 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                         for eid, rd in etf_report_pairs
                     ]
                     stmt_existing = (
-                        select(Holding.etf_id, sqlfunc.max(Holding.filing_date))
+                        select(Holding.etf_id, func.max(Holding.filing_date))
                         .where(or_(*conditions))
                         .group_by(Holding.etf_id)
                     )
@@ -330,21 +333,8 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                         logger.debug("%s: series %s already processed for this CIK, skipping", etf.ticker, etf.series_id)
                         continue
                     if etf.id in existing_filing_dates:
-                        old_date = existing_filing_dates[etf.id]
                         _, _, report_date_check, filing_date_check = series_map[etf.series_id]
-                        new_date = ensure_date(filing_date_check)
-                        if new_date > old_date:
-                            logger.info("%s: replacing holdings from filing %s with amendment from %s", etf.ticker, old_date, new_date)
-                            session.query(Holding).filter(
-                                Holding.etf_id == etf.id,
-                                Holding.report_date == report_date_check,
-                            ).delete()
-                            session.query(Derivative).filter(
-                                Derivative.etf_id == etf.id,
-                                Derivative.report_date == report_date_check,
-                            ).delete()
-                        else:
-                            logger.info(f"ETF {etf.ticker}: Holdings already exist, skipping")
+                        if not _check_amendment_and_clear(session, etf, report_date_check, filing_date_check, existing_filing_dates[etf.id]):
                             continue
                     filing, fund_report, report_date, filing_date = series_map[etf.series_id]
                     try:
@@ -388,27 +378,8 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                             return
 
                         for etf in uit_etfs:
-                            uit_new_date = ensure_date(uit_filing_date_val)
-                            uit_existing = (
-                                session.query(sqlfunc.max(Holding.filing_date))
-                                .filter(Holding.etf_id == etf.id, Holding.report_date == uit_report_date)
-                                .scalar()
-                            )
-                            if uit_existing is not None:
-                                uit_old_date = ensure_date(uit_existing)
-                                if uit_new_date > uit_old_date:
-                                    logger.info("%s: replacing holdings from filing %s with amendment from %s", etf.ticker, uit_old_date, uit_new_date)
-                                    session.query(Holding).filter(
-                                        Holding.etf_id == etf.id,
-                                        Holding.report_date == uit_report_date,
-                                    ).delete()
-                                    session.query(Derivative).filter(
-                                        Derivative.etf_id == etf.id,
-                                        Derivative.report_date == uit_report_date,
-                                    ).delete()
-                                else:
-                                    logger.debug("%s: already has holdings for %s, skipping", etf.ticker, uit_report_date)
-                                    continue
+                            if not _check_amendment_and_clear(session, etf, uit_report_date, uit_filing_date_val):
+                                continue
                             logger.info("Processing UIT ETF %s (CIK %s) from filing dated %s", etf.ticker, cik, uit_filing_date_val)
                             try:
                                 _process_etf(session, etf, uit_filing, uit_fund_report, uit_report_date, uit_filing_date_val)
@@ -912,6 +883,34 @@ def _build_derivative_forward(fwd, derivative_id: int) -> DerivativeForward:
     )
 
 
+def _check_amendment_and_clear(session, etf, report_date, new_filing_date, existing_max_date=None):
+    """Check if new filing supersedes existing data. Delete old data if so.
+
+    Returns True if caller should proceed with processing, False to skip.
+    """
+    if existing_max_date is None:
+        existing_max_date = (
+            session.query(func.max(Holding.filing_date))
+            .filter(Holding.etf_id == etf.id, Holding.report_date == report_date)
+            .scalar()
+        )
+
+    if existing_max_date is None:
+        return True  # No existing data, proceed
+
+    old_date = ensure_date(existing_max_date)
+    new_date = ensure_date(new_filing_date)
+
+    if new_date > old_date:
+        logger.info("%s: replacing holdings from filing %s with amendment from %s", etf.ticker, old_date, new_date)
+        session.query(Holding).filter(Holding.etf_id == etf.id, Holding.report_date == report_date).delete()
+        session.query(Derivative).filter(Derivative.etf_id == etf.id, Derivative.report_date == report_date).delete()
+        return True
+
+    logger.info("%s: holdings already up to date (filing %s), skipping", etf.ticker, old_date)
+    return False
+
+
 def _process_etf(
     session: Session, etf: ETF, filing, fund_report: FundReport, report_date, filing_date
 ) -> None:
@@ -1035,10 +1034,10 @@ def _process_etf(
                     derivatives_count += 1
                 except Exception as e:
                     savepoint.rollback()
-                    logger.warning("%s: skipping derivative due to error: %s", etf.ticker, e, exc_info=True)
+                    logger.warning("%s: skipping derivative (child build failed): %s", etf.ticker, e, exc_info=True)
                     continue
         except Exception as e:
-            logger.warning("%s: skipping derivative due to error: %s", etf.ticker, e, exc_info=True)
+            logger.warning("%s: skipping derivative (mapping failed): %s", etf.ticker, e, exc_info=True)
             continue
 
     # Log summary of duplicate skips if any
@@ -1297,17 +1296,17 @@ def _map_investment_to_derivative(
         underlying_other_id_type = get_clean(swo, 'reference_entity_other_id_type')
 
     if expiration_date is None:
-        expiration_date = date(9999, 12, 31)
+        expiration_date = NO_EXPIRATION_SENTINEL
 
     return Derivative(
         etf_id=etf.id,
         report_date=report_date,
         filing_date=filing_date,
         derivative_type=derivative_type,
-        underlying_name=clean_str(underlying_name) or "",
+        underlying_name=clean_str(underlying_name) or EMPTY_SENTINEL,
         underlying_cusip=clean_str(underlying_cusip),
         notional_value=notional_value,
-        counterparty=clean_str(counterparty) or "",
+        counterparty=clean_str(counterparty) or EMPTY_SENTINEL,
         counterparty_lei=clean_str(counterparty_lei),
         delta=delta,
         expiration_date=expiration_date,

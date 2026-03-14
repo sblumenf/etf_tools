@@ -215,7 +215,7 @@ def test_parse_nport_skips_existing_holdings(session, engine, sample_etfs, mock_
 
     assert len(holdings) == 1
     assert holdings[0].name == "Existing Holding"
-    assert "already exist" in caplog.text
+    assert "already up to date" in caplog.text
 
 
 def test_parse_nport_overwrites_holdings_for_amendment(session, engine, sample_etfs, mock_edgar_company, mock_nport_db, caplog):
@@ -5265,4 +5265,4 @@ def test_parse_nport_savepoint_rolls_back_derivative_on_child_failure(
     stmt = select(Derivative)
     derivatives = session.execute(stmt).scalars().all()
     assert len(derivatives) == 0
-    assert "skipping derivative due to error" in caplog.text
+    assert "skipping derivative (child build failed)" in caplog.text

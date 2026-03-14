@@ -28,6 +28,8 @@ from etf_pipeline.xray.service import ASSET_CATEGORY_MAP, LIQUIDITY_MAP, resolve
 
 router = APIRouter(prefix="/api/v1/xray", tags=["xray"])
 
+_ALLOC_COMPLETENESS_THRESHOLD = 95.0  # percent; below this, add "Unallocated" row
+
 
 def _cash_pct(cash_not_reported, net_assets):
     if cash_not_reported is None or net_assets is None:
@@ -80,6 +82,16 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             code = h.asset_category or "OTHER"
             asset_groups[code]["pct"] += float(h.pct_val or 0)
             asset_groups[code]["value_usd"] += float(h.value_usd or 0)
+
+        # Merge snapshot cash into STIV bucket before building items
+        if snapshot and snapshot.cash_not_reported is not None:
+            computed_cash_pct = _cash_pct(snapshot.cash_not_reported, snapshot.net_assets)
+            if computed_cash_pct is not None:
+                cash_val = float(snapshot.cash_not_reported)
+                asset_groups["STIV"]["pct"] += computed_cash_pct
+                asset_groups["STIV"]["value_usd"] += cash_val
+
+        # Build allocation items once
         allocation_items = [
             AssetCategoryItem(
                 code=code,
@@ -89,27 +101,8 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             )
             for code, data in sorted(asset_groups.items(), key=lambda x: -x[1]["pct"])
         ]
-        if snapshot and snapshot.cash_not_reported is not None:
-            computed_cash_pct = _cash_pct(snapshot.cash_not_reported, snapshot.net_assets)
-            cash_val = float(snapshot.cash_not_reported) if snapshot.cash_not_reported else 0
-            if computed_cash_pct is not None:
-                if "STIV" in asset_groups:
-                    asset_groups["STIV"]["pct"] += computed_cash_pct
-                    asset_groups["STIV"]["value_usd"] += cash_val
-                else:
-                    asset_groups["STIV"]["pct"] = computed_cash_pct
-                    asset_groups["STIV"]["value_usd"] = cash_val
-                allocation_items = [
-                    AssetCategoryItem(
-                        code=code,
-                        display_name=ASSET_CATEGORY_MAP.get(code, code),
-                        pct=round(data["pct"], 4),
-                        value_usd=data["value_usd"] or None,
-                    )
-                    for code, data in sorted(asset_groups.items(), key=lambda x: -x[1]["pct"])
-                ]
         total_alloc_pct = sum(item.pct for item in allocation_items)
-        if total_alloc_pct < 95.0:
+        if total_alloc_pct < _ALLOC_COMPLETENESS_THRESHOLD:
             allocation_items.append(
                 AssetCategoryItem(
                     code="UNALLOC",
