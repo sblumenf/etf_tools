@@ -365,6 +365,7 @@ def _extract_fund_snapshot(
 
     snapshot = FundSnapshot(
         cik=cik,
+        series_id=series_id,
         report_date=report_date,
         filing_date=filing_date,
         total_assets=getattr(fi, 'total_assets', None),
