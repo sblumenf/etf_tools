@@ -786,3 +786,281 @@ class TestNCSRParser:
         )
         perf = session.execute(stmt).scalar_one()
         assert perf.filing_date == date(2024, 12, 1)
+
+    def test_benchmark_additional_index_fallback(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """Benchmark is extracted from AdditionalIndexAxis when BroadBasedIndexAxis is absent."""
+        data = {
+            'concept': [
+                'oef:AvgAnnlRtrPct',
+                'oef:AvgAnnlRtrPct',
+                'oef:AvgAnnlRtrPct',
+                'oef:ExpenseRatioPct',
+                # AdditionalIndexAxis benchmark rows (ClassAxis is NULL)
+                'oef:AvgAnnlRtrPct',
+                'oef:AvgAnnlRtrPct',
+                'oef:AvgAnnlRtrPct',
+            ],
+            'numeric_value': [
+                Decimal('0.1500'),  # 1yr fund return
+                Decimal('0.0900'),  # 5yr fund return
+                Decimal('0.1000'),  # 10yr fund return
+                Decimal('0.0004'),  # expense ratio
+                Decimal('0.1400'),  # 1yr benchmark return
+                Decimal('0.0850'),  # 5yr benchmark return
+                Decimal('0.0950'),  # 10yr benchmark return
+            ],
+            'period_start': [
+                date(2023, 10, 31),
+                date(2019, 10, 31),
+                date(2014, 10, 31),
+                None,
+                date(2023, 10, 31),
+                date(2019, 10, 31),
+                date(2014, 10, 31),
+            ],
+            'period_end': [
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+            ],
+            'dim_oef_ClassAxis': [
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+                None,  # Benchmark rows have NULL ClassAxis
+                None,
+                None,
+            ],
+            # No BroadBasedIndexAxis column at all — only AdditionalIndexAxis
+            'dim_oef_AdditionalIndexAxis': [
+                None,  # Fund rows have NULL AdditionalIndexAxis
+                None,
+                None,
+                None,
+                'ist:RussellMidcapIndexMember',  # Benchmark rows
+                'ist:RussellMidcapIndexMember',
+                'ist:RussellMidcapIndexMember',
+            ],
+        }
+        mock_df = pd.DataFrame(data)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+
+            mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
+            mock_filing.is_inline_xbrl = True
+            mock_xbrl = Mock()
+            mock_facts = Mock()
+            mock_facts.to_dataframe.return_value = mock_df
+            mock_xbrl.facts = mock_facts
+            mock_filing.xbrl.return_value = mock_xbrl
+
+            mock_filings = Mock()
+            mock_filings.__iter__ = Mock(return_value=iter([mock_filing]))
+            mock_filings.__getitem__ = Mock(side_effect=lambda i: [mock_filing][i])
+            mock_filings.__len__ = Mock(return_value=1)
+            mock_filings.empty = False
+            mock_instance.get_filings.return_value = mock_filings
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        # Fund returns are present
+        assert perf.return_1yr == Decimal('0.1500')
+        assert perf.return_5yr == Decimal('0.0900')
+        assert perf.return_10yr == Decimal('0.1000')
+        # Benchmark came from AdditionalIndexAxis fallback
+        assert perf.benchmark_name == "RussellMidcapIndexMember"
+        assert perf.benchmark_return_1yr == Decimal('0.1400')
+        assert perf.benchmark_return_5yr == Decimal('0.0850')
+        assert perf.benchmark_return_10yr == Decimal('0.0950')
+
+    def test_benchmark_broad_based_takes_priority(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """BroadBasedIndexAxis data wins over AdditionalIndexAxis when both are present."""
+        data = {
+            'concept': [
+                'oef:AvgAnnlRtrPct',
+                'oef:AvgAnnlRtrPct',
+                # BroadBasedIndexAxis rows (ClassAxis is NULL)
+                'oef:AvgAnnlRtrPct',
+                'oef:AvgAnnlRtrPct',
+                # AdditionalIndexAxis rows (ClassAxis is NULL)
+                'oef:AvgAnnlRtrPct',
+                'oef:AvgAnnlRtrPct',
+            ],
+            'numeric_value': [
+                Decimal('0.1200'),  # 1yr fund return
+                Decimal('0.0800'),  # 5yr fund return
+                Decimal('0.1100'),  # 1yr broad-based benchmark return
+                Decimal('0.0750'),  # 5yr broad-based benchmark return
+                Decimal('0.0600'),  # 1yr additional benchmark return (should be ignored)
+                Decimal('0.0400'),  # 5yr additional benchmark return (should be ignored)
+            ],
+            'period_start': [
+                date(2023, 10, 31),
+                date(2019, 10, 31),
+                date(2023, 10, 31),
+                date(2019, 10, 31),
+                date(2023, 10, 31),
+                date(2019, 10, 31),
+            ],
+            'period_end': [
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+            ],
+            'dim_oef_ClassAxis': [
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+                None,
+                None,
+                None,
+                None,
+            ],
+            'dim_oef_BroadBasedIndexAxis': [
+                None,
+                None,
+                'ist:SP500IndexMember',   # Broad-based benchmark
+                'ist:SP500IndexMember',
+                None,
+                None,
+            ],
+            'dim_oef_AdditionalIndexAxis': [
+                None,
+                None,
+                None,
+                None,
+                'ist:NasdaqCompositeIndexMember',  # Additional benchmark (lower priority)
+                'ist:NasdaqCompositeIndexMember',
+            ],
+        }
+        mock_df = pd.DataFrame(data)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+
+            mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
+            mock_filing.is_inline_xbrl = True
+            mock_xbrl = Mock()
+            mock_facts = Mock()
+            mock_facts.to_dataframe.return_value = mock_df
+            mock_xbrl.facts = mock_facts
+            mock_filing.xbrl.return_value = mock_xbrl
+
+            mock_filings = Mock()
+            mock_filings.__iter__ = Mock(return_value=iter([mock_filing]))
+            mock_filings.__getitem__ = Mock(side_effect=lambda i: [mock_filing][i])
+            mock_filings.__len__ = Mock(return_value=1)
+            mock_filings.empty = False
+            mock_instance.get_filings.return_value = mock_filings
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        # benchmark_name and returns come from BroadBasedIndexAxis, not AdditionalIndexAxis
+        assert perf.benchmark_name == "SP500IndexMember"
+        assert perf.benchmark_return_1yr == Decimal('0.1100')
+        assert perf.benchmark_return_5yr == Decimal('0.0750')
+        # AdditionalIndexAxis values were NOT used
+        assert perf.benchmark_name != "NasdaqCompositeIndexMember"
+        assert perf.benchmark_return_1yr != Decimal('0.0600')
+
+    def test_benchmark_null_does_not_overwrite(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """A filing with no benchmark data does not overwrite existing benchmark values."""
+        etf = sample_etfs_with_class_id[0]
+
+        # Seed a Performance record with benchmark data already populated
+        existing_perf = Performance(
+            etf_id=etf.id,
+            fiscal_year_end=date(2024, 10, 31),
+            filing_date=date(2024, 12, 1),
+            return_1yr=Decimal('0.1234'),
+            benchmark_name="SP500IndexMember",
+            benchmark_return_1yr=Decimal('0.1100'),
+            benchmark_return_5yr=Decimal('0.0800'),
+            benchmark_return_10yr=Decimal('0.0880'),
+            expense_ratio_actual=Decimal('0.0003'),
+        )
+        session.add(existing_perf)
+        session.commit()
+
+        # Now process a filing that has expense data but NO benchmark axis at all
+        data = {
+            'concept': [
+                'oef:ExpenseRatioPct',
+            ],
+            'numeric_value': [
+                Decimal('0.0002'),  # Updated expense ratio
+            ],
+            'period_start': [None],
+            'period_end': [date(2024, 10, 31)],
+            'dim_oef_ClassAxis': ['ist:C000131291Member'],
+            'dim_oef_BroadBasedIndexAxis': [None],
+        }
+        mock_df = pd.DataFrame(data)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+
+            mock_filing = Mock()
+            mock_filing.filing_date = date(2024, 12, 1)
+            mock_filing.is_inline_xbrl = True
+            mock_xbrl = Mock()
+            mock_facts = Mock()
+            mock_facts.to_dataframe.return_value = mock_df
+            mock_xbrl.facts = mock_facts
+            mock_filing.xbrl.return_value = mock_xbrl
+
+            mock_filings = Mock()
+            mock_filings.__iter__ = Mock(return_value=iter([mock_filing]))
+            mock_filings.__getitem__ = Mock(side_effect=lambda i: [mock_filing][i])
+            mock_filings.__len__ = Mock(return_value=1)
+            mock_filings.empty = False
+            mock_instance.get_filings.return_value = mock_filings
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        # Fetch the updated record
+        session.expire_all()
+        stmt = select(Performance).where(
+            Performance.etf_id == etf.id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        # expense_ratio was updated by the new filing
+        assert perf.expense_ratio_actual == Decimal('0.0002')
+        # benchmark fields were NOT overwritten — original values preserved
+        assert perf.benchmark_name == "SP500IndexMember"
+        assert perf.benchmark_return_1yr == Decimal('0.1100')
+        assert perf.benchmark_return_5yr == Decimal('0.0800')
+        assert perf.benchmark_return_10yr == Decimal('0.0880')

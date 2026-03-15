@@ -265,6 +265,43 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
 
                         logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark: {benchmark_name}, returns: {benchmark_returns}")
 
+                # Fallback to AdditionalIndexAxis if no benchmark found from BroadBasedIndexAxis
+                if benchmark_name is None and 'dim_oef_AdditionalIndexAxis' in df_filtered.columns:
+                    additional_facts = df_filtered[
+                        (df_filtered['dim_oef_AdditionalIndexAxis'].notna()) &
+                        (df_filtered['dim_oef_ClassAxis'].isna())
+                    ].copy()
+
+                    if not additional_facts.empty:
+                        additional_facts_deduped = additional_facts.drop_duplicates(
+                            subset=['concept', 'period_start', 'period_end', 'numeric_value'],
+                            keep='first'
+                        )
+
+                        additional_axis_values = additional_facts_deduped['dim_oef_AdditionalIndexAxis'].dropna().unique()
+                        if len(additional_axis_values) > 0:
+                            benchmark_name = _extract_benchmark_name(additional_axis_values[0])
+
+                        for _, row in additional_facts_deduped.iterrows():
+                            concept = row['concept']
+                            numeric_value = row.get('numeric_value')
+
+                            if concept == 'oef:AvgAnnlRtrPct':
+                                period_start = row.get('period_start')
+                                period_end = row.get('period_end')
+
+                                if period_start and period_end:
+                                    period_start = parse_date(period_start)
+                                    period_end = parse_date(period_end)
+
+                                    field_name = _map_return_period(period_start, period_end)
+                                    if field_name:
+                                        benchmark_field = field_name.replace('return_', 'benchmark_return_')
+                                        if benchmark_field in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
+                                            benchmark_returns[benchmark_field] = parse_decimal(numeric_value)
+
+                        logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark (AdditionalIndex fallback): {benchmark_name}, returns: {benchmark_returns}")
+
                 # Process each unique class_id in this filing's XBRL data
                 for class_axis_value in df_filtered['dim_oef_ClassAxis'].dropna().unique():
                     class_id = _extract_class_id(class_axis_value)
@@ -329,6 +366,15 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                             portfolio_turnover = parse_decimal(numeric_value)
 
                     # Upsert Performance record
+                    data_kwargs = {
+                        **returns_data,
+                        "expense_ratio_actual": expense_ratio,
+                        "portfolio_turnover": portfolio_turnover,
+                    }
+                    # Only include benchmark data if we actually extracted some
+                    if benchmark_name is not None:
+                        data_kwargs["benchmark_name"] = benchmark_name
+                        data_kwargs.update(benchmark_returns)
                     upsert_record(
                         session,
                         Performance,
@@ -337,13 +383,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                             "fiscal_year_end": fiscal_year_end,
                             "filing_date": filing_date,
                         },
-                        data_kwargs={
-                            **returns_data,
-                            "expense_ratio_actual": expense_ratio,
-                            "portfolio_turnover": portfolio_turnover,
-                            "benchmark_name": benchmark_name,
-                            **benchmark_returns,
-                        },
+                        data_kwargs=data_kwargs,
                     )
                     logger.debug(f"CIK {cik}: Upserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
 
