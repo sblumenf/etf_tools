@@ -12,6 +12,9 @@ from etf_pipeline.parsers.prospectus import (
     parse_contexts,
     parse_date_tag,
     strip_html_to_text,
+    _parse_html_fee_value,
+    _match_fee_row_label,
+    _extract_fees_from_html_table,
 )
 
 
@@ -1402,3 +1405,428 @@ class TestFeeExpenseNetFallback:
         assert fee.total_expense_gross == pytest.approx(Decimal('0.0085'))
         assert fee.fee_waiver == Decimal('0')  # zerodash
         assert fee.total_expense_net == pytest.approx(Decimal('0.0085'))  # Fallback: net = gross (waiver is 0)
+
+
+class TestParseHtmlFeeValue:
+    """Unit tests for _parse_html_fee_value()."""
+
+    def test_basic_percentage(self):
+        assert _parse_html_fee_value('0.70%') == Decimal('0.0070')
+
+    def test_no_percent_sign(self):
+        assert _parse_html_fee_value('0.70') == Decimal('0.0070')
+
+    def test_zero_value(self):
+        assert _parse_html_fee_value('0.00%') == Decimal('0.0000')
+
+    def test_parentheses_negative(self):
+        # Parentheses = negative in financial tables, absolute taken
+        assert _parse_html_fee_value('(0.10)%') == Decimal('0.0010')
+
+    def test_dash_returns_none(self):
+        assert _parse_html_fee_value('—') is None
+        assert _parse_html_fee_value('-') is None
+
+    def test_none_text_returns_none(self):
+        assert _parse_html_fee_value('None') is None
+        assert _parse_html_fee_value('none') is None
+
+    def test_empty_string_returns_none(self):
+        assert _parse_html_fee_value('') is None
+        assert _parse_html_fee_value('   ') is None
+
+    def test_whitespace_stripped(self):
+        assert _parse_html_fee_value('  0.25%  ') == Decimal('0.0025')
+
+    def test_large_percentage(self):
+        assert _parse_html_fee_value('1.30%') == Decimal('0.0130')
+
+
+class TestMatchFeeRowLabel:
+    """Unit tests for _match_fee_row_label()."""
+
+    def test_management_fees(self):
+        assert _match_fee_row_label('Management Fees') == 'management_fee'
+        assert _match_fee_row_label('management fees') == 'management_fee'
+
+    def test_distribution_12b1(self):
+        assert _match_fee_row_label('Distribution and/or Service (12b-1) Fees') == 'distribution_12b1'
+        assert _match_fee_row_label('Distribution and Service (12b-1) Fees') == 'distribution_12b1'
+
+    def test_other_expenses(self):
+        assert _match_fee_row_label('Other Expenses') == 'other_expenses'
+
+    def test_acquired_fund_fees(self):
+        assert _match_fee_row_label('Acquired Fund Fees and Expenses') == 'acquired_fund_fees'
+
+    def test_total_expense_gross(self):
+        assert _match_fee_row_label('Total Annual Fund Operating Expenses') == 'total_expense_gross'
+
+    def test_total_expense_net(self):
+        assert _match_fee_row_label('Total Annual Fund Operating Expenses After Fee Waiver') == 'total_expense_net'
+        assert _match_fee_row_label('Net Expenses') == 'total_expense_net'
+
+    def test_fee_waiver(self):
+        assert _match_fee_row_label('Fee Waiver or Reimbursement') == 'fee_waiver'
+        assert _match_fee_row_label('Fee Waiver') == 'fee_waiver'
+        assert _match_fee_row_label('Expense Reimbursement') == 'fee_waiver'
+
+    def test_unmatched_label(self):
+        assert _match_fee_row_label('Some Unrelated Row') is None
+        assert _match_fee_row_label('') is None
+
+
+class TestExtractFeesFromHtmlTable:
+    """Tests for _extract_fees_from_html_table()."""
+
+    HTML_ONE_CLASS = """
+    <html><body>
+    <h3>Class A (C000014542)</h3>
+    <table>
+      <tr><td>Management Fees</td><td>0.70%</td></tr>
+      <tr><td>Distribution and/or Service (12b-1) Fees</td><td>0.25%</td></tr>
+      <tr><td>Other Expenses</td><td>0.30%</td></tr>
+      <tr><td>Total Annual Fund Operating Expenses</td><td>1.30%</td></tr>
+      <tr><td>Fee Waiver or Reimbursement</td><td>(0.10)%</td></tr>
+      <tr><td>Total Annual Fund Operating Expenses After Fee Waiver</td><td>1.20%</td></tr>
+    </table>
+    </body></html>
+    """
+
+    HTML_NO_MANAGEMENT_FEES = """
+    <html><body>
+    <table>
+      <tr><td>Some Random Row</td><td>1.00%</td></tr>
+    </table>
+    </body></html>
+    """
+
+    HTML_NO_CLASS_ID = """
+    <html><body>
+    <h3>Annual Fund Operating Expenses</h3>
+    <table>
+      <tr><td>Management Fees</td><td>0.50%</td></tr>
+      <tr><td>Total Annual Fund Operating Expenses</td><td>0.50%</td></tr>
+    </table>
+    </body></html>
+    """
+
+    def _make_session_with_etf(self, session, class_id='C000014542', series_id='S000014796', ticker='TESTA'):
+        from etf_pipeline.models import ETF
+        etf = ETF(
+            cik='0001314612', ticker=ticker,
+            fund_name='Test Fund', issuer_name='Test Issuer',
+            series_id=series_id, class_id=class_id,
+        )
+        session.add(etf)
+        session.commit()
+        return etf
+
+    def test_extracts_fees_single_class(self, session):
+        from datetime import date
+        from etf_pipeline.models import FeeExpense
+        etf = self._make_session_with_etf(session)
+        soup = BeautifulSoup(self.HTML_ONE_CLASS, 'lxml')
+        class_id_to_etf = {etf.class_id: etf}
+        series_id_to_etfs = {etf.series_id: [etf]}
+        filing_date = date(2022, 11, 3)
+
+        matched = _extract_fees_from_html_table(
+            soup, session, class_id_to_etf, series_id_to_etfs, None, filing_date, '0001314612'
+        )
+
+        assert len(matched) == 1
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.management_fee == pytest.approx(Decimal('0.0070'))
+        assert fee.distribution_12b1 == pytest.approx(Decimal('0.0025'))
+        assert fee.other_expenses == pytest.approx(Decimal('0.0030'))
+        assert fee.total_expense_gross == pytest.approx(Decimal('0.0130'))
+        assert fee.fee_waiver == pytest.approx(Decimal('0.0010'))
+        assert fee.total_expense_net == pytest.approx(Decimal('0.0120'))
+
+    def test_uses_filing_date_when_no_effective_date(self, session):
+        from datetime import date
+        from etf_pipeline.models import FeeExpense
+        etf = self._make_session_with_etf(session)
+        soup = BeautifulSoup(self.HTML_ONE_CLASS, 'lxml')
+        class_id_to_etf = {etf.class_id: etf}
+        series_id_to_etfs = {etf.series_id: [etf]}
+        filing_date = date(2023, 5, 10)
+
+        _extract_fees_from_html_table(
+            soup, session, class_id_to_etf, series_id_to_etfs, None, filing_date, '0001314612'
+        )
+
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.effective_date == filing_date
+        assert fee.filing_date == filing_date
+
+    def test_uses_provided_effective_date(self, session):
+        from datetime import date
+        from etf_pipeline.models import FeeExpense
+        etf = self._make_session_with_etf(session)
+        soup = BeautifulSoup(self.HTML_ONE_CLASS, 'lxml')
+        class_id_to_etf = {etf.class_id: etf}
+        series_id_to_etfs = {etf.series_id: [etf]}
+        effective_date = date(2022, 10, 31)
+        filing_date = date(2022, 11, 3)
+
+        _extract_fees_from_html_table(
+            soup, session, class_id_to_etf, series_id_to_etfs, effective_date, filing_date, '0001314612'
+        )
+
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.effective_date == effective_date
+
+    def test_no_fee_table_returns_zero(self, session):
+        from datetime import date
+        etf = self._make_session_with_etf(session)
+        soup = BeautifulSoup(self.HTML_NO_MANAGEMENT_FEES, 'lxml')
+        class_id_to_etf = {etf.class_id: etf}
+        series_id_to_etfs = {etf.series_id: [etf]}
+
+        matched = _extract_fees_from_html_table(
+            soup, session, class_id_to_etf, series_id_to_etfs, None, date(2022, 11, 3), '0001314612'
+        )
+        assert len(matched) == 0
+
+    def test_single_etf_used_when_no_class_id_in_html(self, session):
+        from datetime import date
+        from etf_pipeline.models import FeeExpense
+        etf = self._make_session_with_etf(session, class_id='C000099001', series_id='S000099001', ticker='SINGLE')
+        soup = BeautifulSoup(self.HTML_NO_CLASS_ID, 'lxml')
+        class_id_to_etf = {etf.class_id: etf}
+        series_id_to_etfs = {etf.series_id: [etf]}
+
+        matched = _extract_fees_from_html_table(
+            soup, session, class_id_to_etf, series_id_to_etfs, None, date(2022, 11, 3), '0001314612'
+        )
+        assert len(matched) == 1
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.management_fee == pytest.approx(Decimal('0.0050'))
+
+    def test_net_expense_fallback_no_waiver(self, session):
+        from datetime import date
+        from etf_pipeline.models import FeeExpense
+        html = """
+        <html><body>
+        <h3>Fund (C000099002)</h3>
+        <table>
+          <tr><td>Management Fees</td><td>0.40%</td></tr>
+          <tr><td>Total Annual Fund Operating Expenses</td><td>0.40%</td></tr>
+        </table>
+        </body></html>
+        """
+        etf = self._make_session_with_etf(session, class_id='C000099002', series_id='S000099002', ticker='NETNOW')
+        soup = BeautifulSoup(html, 'lxml')
+        class_id_to_etf = {etf.class_id: etf}
+        series_id_to_etfs = {etf.series_id: [etf]}
+
+        _extract_fees_from_html_table(
+            soup, session, class_id_to_etf, series_id_to_etfs, None, date(2022, 11, 3), '0001314612'
+        )
+
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        assert fee.total_expense_gross == pytest.approx(Decimal('0.0040'))
+        assert fee.total_expense_net == pytest.approx(Decimal('0.0040'))  # fallback: net = gross
+
+
+class TestFeeValueSanityCheck:
+    """Tests for the fee value sanity check (> 0.50 correction)."""
+
+    def test_sanity_check_corrects_unscaled_ixbrl_value(self, session):
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        etf = ETF(
+            cik='0001314612', ticker='SANITY',
+            fund_name='Sanity Fund', issuer_name='Test Issuer',
+            series_id='S000088001', class_id='C000088001',
+        )
+        session.add(etf)
+        session.commit()
+        etf_id = etf.id
+
+        # Filer wrote "0.99" meaning 0.99% but omitted scale="-2"
+        # Without the sanity check this would be stored as 0.99 (= 99%)
+        html_missing_scale = """
+        <html>
+        <ix:resources>
+            <xbrli:context id="AsOf2022-11-03">
+                <xbrli:entity><xbrli:identifier>0001314612</xbrli:identifier></xbrli:entity>
+            </xbrli:context>
+            <xbrli:context id="AsOf2022-11-03_custom_S000088001Member_custom_C000088001Member">
+                <xbrli:entity>
+                    <xbrli:identifier>0001314612</xbrli:identifier>
+                    <xbrli:segment>
+                        <xbrldi:explicitmember dimension="dei:LegalEntityAxis">rr:S000088001Member</xbrldi:explicitmember>
+                        <xbrldi:explicitmember dimension="rr:ProspectusShareClassAxis">rr:C000088001Member</xbrldi:explicitmember>
+                    </xbrli:segment>
+                </xbrli:entity>
+            </xbrli:context>
+        </ix:resources>
+        <body>
+            <ix:nonfraction name="dei:DocumentPeriodEndDate" contextref="AsOf2022-11-03">2022-11-03</ix:nonfraction>
+            <ix:nonfraction name="rr:ManagementFeesOverAssets" contextref="AsOf2022-11-03_custom_S000088001Member_custom_C000088001Member">0.99</ix:nonfraction>
+        </body>
+        </html>
+        """
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_missing_scale
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+        fee = session.query(FeeExpense).filter_by(etf_id=etf_id).one()
+        # 0.99 > 0.50 so sanity check applies ÷100 → 0.0099
+        assert fee.management_fee == pytest.approx(Decimal('0.0099'))
+
+    def test_sanity_check_does_not_affect_normal_scaled_values(self, session, sample_filing_path):
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        etf = ETF(
+            cik='0001314612', ticker='NORMAL',
+            fund_name='Normal Fund', issuer_name='Test Issuer',
+            series_id='S000014796', class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+        etf_id = etf.id
+
+        with open(sample_filing_path) as f:
+            html_content = f.read()
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+        fee = session.query(FeeExpense).filter_by(etf_id=etf_id).one()
+        # Values from fixture are correctly scaled (all < 0.50) — sanity check must not alter them
+        assert fee.management_fee == pytest.approx(Decimal('0.0070'))
+        assert fee.total_expense_gross == pytest.approx(Decimal('0.0125'))
+        assert fee.total_expense_net == pytest.approx(Decimal('0.0115'))
+
+    def test_html_fallback_sanity_check(self, session):
+        from datetime import date
+        from etf_pipeline.models import FeeExpense
+        # If a value parsed from HTML somehow exceeds 0.50 (shouldn't happen with _parse_html_fee_value
+        # but the sanity check still protects against edge cases)
+        etf_class_id = 'C000088002'
+        from etf_pipeline.models import ETF
+        etf = ETF(
+            cik='0001314612', ticker='HTMLSANITY',
+            fund_name='HTML Sanity Fund', issuer_name='Test Issuer',
+            series_id='S000088002', class_id=etf_class_id,
+        )
+        session.add(etf)
+        session.commit()
+
+        # Build a soup that calls _extract_fees_from_html_table directly with a
+        # value just above 0.50 to trigger the sanity check path
+        # (Simulating a table cell that has "51%" which _parse_html_fee_value returns as 0.51)
+        html = f"""
+        <html><body>
+        <h3>Fund ({etf_class_id})</h3>
+        <table>
+          <tr><td>Management Fees</td><td>51%</td></tr>
+          <tr><td>Total Annual Fund Operating Expenses</td><td>51%</td></tr>
+        </table>
+        </body></html>
+        """
+        soup = BeautifulSoup(html, 'lxml')
+        class_id_to_etf = {etf.class_id: etf}
+        series_id_to_etfs = {etf.series_id: [etf]}
+
+        matched = _extract_fees_from_html_table(
+            soup, session, class_id_to_etf, series_id_to_etfs, None, date(2022, 11, 3), '0001314612'
+        )
+        assert len(matched) == 1
+        fee = session.query(FeeExpense).filter_by(etf_id=etf.id).one()
+        # 51% → _parse_html_fee_value returns 0.51 → sanity check corrects to 0.0051
+        assert fee.management_fee == pytest.approx(Decimal('0.0051'))
+
+
+class TestHtmlFallbackIntegration:
+    """Integration tests for HTML fallback path through _process_cik_prospectus."""
+
+    def test_html_fallback_fires_when_no_ixbrl_tags(self, session):
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from datetime import date
+
+        etf = ETF(
+            cik='0001314612', ticker='HTMLFALL',
+            fund_name='HTML Fallback Fund', issuer_name='Test Issuer',
+            series_id='S000099010', class_id='C000099010',
+        )
+        session.add(etf)
+        session.commit()
+        etf_id = etf.id
+
+        # Plain HTML with no ix: tags but with a fee table
+        html_plain = """
+        <html><body>
+        <h3>Fund (C000099010)</h3>
+        <table>
+          <tr><td>Management Fees</td><td>0.45%</td></tr>
+          <tr><td>Other Expenses</td><td>0.10%</td></tr>
+          <tr><td>Total Annual Fund Operating Expenses</td><td>0.55%</td></tr>
+        </table>
+        </body></html>
+        """
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_plain
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+        fee = session.query(FeeExpense).filter_by(etf_id=etf_id).one()
+        assert fee.management_fee == pytest.approx(Decimal('0.0045'))
+        assert fee.other_expenses == pytest.approx(Decimal('0.0010'))
+        assert fee.total_expense_gross == pytest.approx(Decimal('0.0055'))
+        assert fee.total_expense_net == pytest.approx(Decimal('0.0055'))  # fallback: net=gross
+        assert fee.effective_date == date(2022, 11, 3)  # uses filing_date as fallback
+        assert fee.filing_date == date(2022, 11, 3)

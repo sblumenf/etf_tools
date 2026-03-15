@@ -15,6 +15,9 @@ from typing import Any, Optional
 
 from bs4 import BeautifulSoup
 
+from etf_pipeline.models import FeeExpense
+from etf_pipeline.parser_utils import upsert_record
+
 logger = logging.getLogger(__name__)
 
 LOOKBACK_DAYS = 547  # 18-month window for prospectus filings
@@ -338,6 +341,277 @@ def parse_date_tag(
     return None
 
 
+FEE_VALUE_FIELDS = [
+    'management_fee', 'distribution_12b1', 'other_expenses',
+    'total_expense_gross', 'fee_waiver', 'total_expense_net', 'acquired_fund_fees',
+]
+
+
+def _apply_fee_sanity_check(fee: dict, cik: str) -> None:
+    """Correct fee values that appear to be display percentages (> 0.50 without scale)."""
+    for field in FEE_VALUE_FIELDS:
+        val = fee.get(field)
+        if val is not None and val > Decimal('0.50'):
+            logger.warning(f"CIK {cik}: Fee field {field}={val} exceeds 0.50, applying correction (÷100)")
+            fee[field] = val * Decimal('0.01')
+
+
+def _apply_net_expense_fallback(fee: dict) -> None:
+    """Calculate total_expense_net from gross and waiver if not already set."""
+    if fee.get('total_expense_net') is None and fee.get('total_expense_gross') is not None:
+        waiver = fee.get('fee_waiver')
+        if waiver is None or waiver == 0:
+            fee['total_expense_net'] = fee['total_expense_gross']
+        else:
+            fee['total_expense_net'] = fee['total_expense_gross'] - waiver
+
+
+def _parse_html_fee_value(cell_text: str) -> Optional[Decimal]:
+    """Parse a fee percentage value from an HTML table cell.
+
+    Handles:
+    - "0.70%" → Decimal('0.0070')
+    - "(0.10)%" → Decimal('0.0010')  (parentheses = negative, absolute taken)
+    - "None" / "—" / "-" → None
+    - "0.00" or "0.00%" → Decimal('0.0000')
+
+    Unlike parse_decimal(pct=True) which only divides by 100 when "%" is present,
+    this function ALWAYS divides by 100 because HTML fee tables display human-readable
+    percentages with or without the "%" suffix. Always takes abs() of negatives
+    (fee waivers in parentheses are stored as positive).
+    """
+    text = cell_text.strip()
+
+    if not text or text.lower() in ('none', '—', '–', '-', 'n/a'):
+        return None
+
+    # Handle parentheses for negative values: (0.10)
+    negative = False
+    if text.startswith('(') and ')' in text:
+        negative = True
+        text = text.replace('(', '').replace(')', '')
+
+    # Strip % and whitespace
+    text = text.replace('%', '').replace(',', '').strip()
+
+    if not text or text in ('—', '–', '-'):
+        return None
+
+    try:
+        value = Decimal(text)
+    except (ValueError, InvalidOperation):
+        return None
+
+    if negative:
+        value = abs(value)
+
+    # Convert display percentage to decimal: 0.70 → 0.0070
+    return value * Decimal('0.01')
+
+
+def _match_fee_row_label(label: str) -> Optional[str]:
+    """Match a table row label to a fee field name.
+
+    Returns field name or None if not matched.
+    """
+    normalized = label.lower().strip()
+    normalized = re.sub(r'\s+', ' ', normalized)
+
+    # Total net (must check BEFORE gross to avoid false positive on gross)
+    if ('total annual fund operating expenses after' in normalized
+            or 'net expenses' == normalized
+            or 'total annual fund operating expenses after fee waiver' in normalized
+            or 'total annual fund operating expenses after expense' in normalized):
+        return 'total_expense_net'
+
+    # Fee waiver (check before total gross)
+    if ('fee waiver' in normalized or 'expense reimbursement' in normalized
+            or 'fee waiver or reimbursement' in normalized
+            or 'waiver and/or reimbursement' in normalized):
+        # Exclude the "after fee waiver" total row (already caught above)
+        if 'total annual' not in normalized:
+            return 'fee_waiver'
+
+    # Total gross (no "after" qualifier)
+    if 'total annual fund operating expenses' in normalized and 'after' not in normalized:
+        return 'total_expense_gross'
+
+    # Management fee
+    if 'management fee' in normalized:
+        return 'management_fee'
+
+    # 12b-1 fees (handle "and/or" vs "and")
+    if '12b-1' in normalized or '12b1' in normalized:
+        return 'distribution_12b1'
+
+    # Other expenses
+    if 'other expenses' in normalized or 'other operating expenses' in normalized:
+        return 'acquired_fund_fees' if 'acquired fund' in normalized else 'other_expenses'
+
+    # Acquired fund fees
+    if 'acquired fund fees' in normalized:
+        return 'acquired_fund_fees'
+
+    return None
+
+
+def _find_etf_for_html_table(
+    table,
+    class_id_to_etf: dict,
+    series_id_to_etfs: dict,
+    cik: str,
+) -> Optional[Any]:
+    """Find the ETF associated with an HTML fee table.
+
+    Search strategy:
+    1. Look backwards from the table for headings containing class/series IDs
+    2. Look in the table header row itself
+    3. If only one ETF exists for this CIK, use it
+
+    Returns ETF object or None.
+    """
+    # Collect all preceding siblings and parent siblings to search for headings
+    candidates = []
+
+    # Walk up the DOM looking for headings before this table
+    node = table
+    for _ in range(10):  # limit search depth
+        prev = node.find_previous_sibling()
+        if prev:
+            candidates.append(prev)
+            node = prev
+        else:
+            parent = node.parent
+            if parent:
+                node = parent
+                prev = node.find_previous_sibling()
+                if prev:
+                    candidates.append(prev)
+            else:
+                break
+
+    # Search candidates for class/series IDs
+    for candidate in candidates:
+        text = candidate.get_text()
+        # Look for class ID pattern C000XXXXX
+        match = re.search(r'\b(C\d{6,})\b', text, re.IGNORECASE)
+        if match:
+            class_id = match.group(1).upper()
+            etf = class_id_to_etf.get(class_id)
+            if etf:
+                return etf
+
+        # Look for series ID pattern S000XXXXX
+        match = re.search(r'\b(S\d{6,})\b', text, re.IGNORECASE)
+        if match:
+            series_id = match.group(1).upper()
+            etf_list = series_id_to_etfs.get(series_id, [])
+            if len(etf_list) == 1:
+                return etf_list[0]
+
+    # Look in table header row
+    header = table.find('tr')
+    if header:
+        text = header.get_text()
+        match = re.search(r'\b(C\d{6,})\b', text, re.IGNORECASE)
+        if match:
+            class_id = match.group(1).upper()
+            etf = class_id_to_etf.get(class_id)
+            if etf:
+                return etf
+
+    # Last resort: if only one ETF for this CIK, use it
+    all_etfs = list(class_id_to_etf.values())
+    if len(all_etfs) == 1:
+        return all_etfs[0]
+
+    # Multiple ETFs but no identifier found
+    logger.warning(f"CIK {cik}: Could not identify ETF for HTML fee table")
+    return None
+
+
+def _extract_fees_from_html_table(
+    soup: BeautifulSoup,
+    session,
+    class_id_to_etf: dict,
+    series_id_to_etfs: dict,
+    effective_date,
+    filing_date,
+    cik: str,
+) -> set[str]:
+    """Extract fee data from plain HTML fee tables (fallback when no iXBRL tags found).
+
+    Returns the set of class_ids for which fee data was extracted.
+    """
+    # Find all tables that contain a row mentioning "Management Fees"
+    fee_tables = []
+    for table in soup.find_all('table'):
+        first_cells = table.find_all('td', limit=15)
+        if any(re.search(r'management fees?', c.get_text(), re.IGNORECASE) for c in first_cells):
+            fee_tables.append(table)
+
+    if not fee_tables:
+        logger.debug(f"CIK {cik}: No HTML fee tables found")
+        return set()
+
+    processed_class_ids = set()
+
+    for table in fee_tables:
+        etf = _find_etf_for_html_table(table, class_id_to_etf, series_id_to_etfs, cik)
+        if etf is None:
+            continue
+
+        # Extract fee data from table rows
+        fee_fields: dict[str, Optional[Decimal]] = {}
+
+        for row in table.find_all('tr'):
+            cells = row.find_all(['td', 'th'])
+            if not cells:
+                continue
+
+            label = cells[0].get_text().strip()
+            field = _match_fee_row_label(label)
+            if field is None:
+                continue
+
+            # Find the first non-label cell with a parseable percentage value
+            value = None
+            for cell in cells[1:]:
+                cell_text = cell.get_text().strip()
+                parsed = _parse_html_fee_value(cell_text)
+                if parsed is not None or cell_text.lower() in ('none', '—', '–', '-'):
+                    value = parsed
+                    break
+
+            fee_fields[field] = value
+
+        if not fee_fields:
+            continue
+
+        _apply_fee_sanity_check(fee_fields, cik)
+        _apply_net_expense_fallback(fee_fields)
+
+        # Use filing_date as effective_date fallback
+        eff_date = effective_date if effective_date is not None else filing_date
+
+        if any(v is not None for v in fee_fields.values()):
+            upsert_record(
+                session,
+                FeeExpense,
+                filter_kwargs={
+                    'etf_id': etf.id,
+                    'effective_date': eff_date,
+                    'filing_date': filing_date,
+                },
+                data_kwargs={k: v for k, v in fee_fields.items()},
+            )
+            logger.debug(f"CIK {cik}: HTML fallback upserted fee data for {etf.ticker}")
+            if etf.class_id:
+                processed_class_ids.add(etf.class_id)
+
+    return processed_class_ids
+
+
 def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optional[str] = None):
     """Factory that returns a _process_cik_prospectus function with optional date range for backfill."""
     from etf_pipeline.parser_utils import build_filing_date_filter
@@ -444,8 +718,16 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                 elif oef_tags:
                     tag_prefix = 'oef'
                 else:
-                    logger.warning(f"CIK {cik}: Filing {filing_idx} has no RR or OEF iXBRL tags, skipping")
-                    del rr_tags, oef_tags, soup, html
+                    logger.info(f"CIK {cik}: Filing {filing_idx} has no iXBRL tags, trying HTML table fallback")
+                    del rr_tags, oef_tags
+                    html_matched = _extract_fees_from_html_table(
+                        soup, session, class_id_to_etf, series_id_to_etfs,
+                        None, filing_date, cik
+                    )
+                    if html_matched:
+                        logger.info(f"CIK {cik}: HTML fallback extracted fees for {len(html_matched)} ETF(s)")
+                        satisfied.update(html_matched)
+                    del soup, html
                     gc.collect()
                     continue
 
@@ -509,12 +791,8 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                         'fee_waiver_expiration_date': parse_date_tag(tag_index, f'{tag_prefix}:FeeWaiverOrReimbursementOverAssetsDateOfTermination', context_id),
                     }
 
-                    # Fallback logic: if NetExpensesOverAssets tag is missing, calculate net from gross
-                    if fee_data['total_expense_net'] is None and fee_data['total_expense_gross'] is not None:
-                        if fee_data['fee_waiver'] is None or fee_data['fee_waiver'] == 0:
-                            fee_data['total_expense_net'] = fee_data['total_expense_gross']
-                        else:
-                            fee_data['total_expense_net'] = fee_data['total_expense_gross'] - fee_data['fee_waiver']
+                    _apply_fee_sanity_check(fee_data, cik)
+                    _apply_net_expense_fallback(fee_data)
 
                     # Upsert FeeExpense (if any data present)
                     if any(fee_data[k] is not None for k in fee_data if k not in ('etf_id', 'effective_date', 'filing_date')):
