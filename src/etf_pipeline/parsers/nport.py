@@ -365,13 +365,13 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                         for f in filings:
                             try:
                                 fr = FundReport.from_filing(f)
-                                uit_report_date = ensure_date(fr.general_info.report_date)
+                                uit_report_date = ensure_date(fr.reporting_period)
                                 uit_filing_date_val = f.filing_date
                                 uit_filing = f
                                 uit_fund_report = fr
                                 break
                             except Exception as e:
-                                logger.debug("CIK %s: filing %s failed to parse: %s", cik, f.accession_number, e)
+                                logger.warning("CIK %s: filing %s failed to parse: %s", cik, f.accession_number, e)
                                 continue
                         if uit_filing is None:
                             logger.warning("CIK %s: no valid NPORT-P filings found for UIT ETFs", cik)

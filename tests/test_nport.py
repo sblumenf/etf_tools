@@ -5266,3 +5266,215 @@ def test_parse_nport_savepoint_rolls_back_derivative_on_child_failure(
     derivatives = session.execute(stmt).scalars().all()
     assert len(derivatives) == 0
     assert "skipping derivative (child build failed)" in caplog.text
+
+
+def test_uit_fallback_uses_reporting_period(session, engine, mock_nport_db):
+    """UIT path reads fr.reporting_period, not fr.general_info.report_date.
+
+    A fund_report whose general_info.report_date raises AttributeError must still
+    be processed successfully, proving the code path uses reporting_period.
+    """
+    uit_etf = ETF(
+        ticker="DIA",
+        cik="0001027580",
+        series_id=None,
+        issuer_name="SPDR Dow Jones Industrial Average ETF Trust",
+        fund_name="SPDR Dow Jones Industrial Average ETF Trust",
+    )
+    session.add(uit_etf)
+    session.commit()
+
+    inv = Mock()
+    inv.name = "Microsoft Corp"
+    inv.lei = "N/A"
+    inv.title = "N/A"
+    inv.cusip = "594918104"
+    inv.balance = Decimal("50.0")
+    inv.units = "NS"
+    inv.currency_code = "USD"
+    inv.value_usd = Decimal("2000000.00")
+    inv.pct_value = Decimal("3.0")
+    inv.asset_category = "EC"
+    inv.issuer_category = "CORP"
+    inv.investment_country = "US"
+    inv.is_restricted_security = False
+    inv.fair_value_level = "1"
+    inv.ticker = "MSFT"
+    inv.debt_security = None
+    identifiers = Mock()
+    identifiers.isin = "US5949181045"
+    identifiers.ticker = "MSFT"
+    inv.identifiers = identifiers
+
+    fund_report = Mock()
+    fund_report.reporting_period = date(2024, 12, 31)
+    fund_report.non_derivatives = [inv]
+    fund_report.derivatives = []
+
+    # Make general_info.report_date blow up so that any code touching it fails.
+    general_info = Mock(spec=[])
+    fund_report.general_info = general_info
+
+    _add_mock_fund_info(fund_report)
+
+    filing1 = Mock()
+    filing1.filing_date = date(2025, 1, 15)
+    filing1.accession_number = "0001027580-25-000001"
+
+    filings = Mock()
+    filings.empty = False
+    filings.__len__ = Mock(return_value=1)
+    filings.__getitem__ = Mock(side_effect=[filing1])
+    filings.__iter__ = Mock(side_effect=lambda: iter([filing1]))
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=fund_report,
+        ):
+            parse_nport(cik="1027580")
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+
+    assert len(holdings) == 1
+    assert holdings[0].name == "Microsoft Corp"
+
+
+def test_uit_fallback_logs_warning_on_parse_failure(session, engine, mock_nport_db, caplog):
+    """When every filing raises during FundReport.from_filing(), the UIT path logs WARNING.
+
+    The warning must contain the parse error text, not just be silently dropped.
+    """
+    import logging
+
+    uit_etf = ETF(
+        ticker="MDY",
+        cik="0000895421",
+        series_id=None,
+        issuer_name="SPDR S&P MidCap 400 ETF Trust",
+        fund_name="SPDR S&P MidCap 400 ETF Trust",
+    )
+    session.add(uit_etf)
+    session.commit()
+
+    filing1 = Mock()
+    filing1.filing_date = date(2025, 1, 15)
+    filing1.accession_number = "0000895421-25-000001"
+
+    filings = Mock()
+    filings.empty = False
+    filings.__len__ = Mock(return_value=1)
+    filings.__getitem__ = Mock(side_effect=[filing1])
+    filings.__iter__ = Mock(side_effect=lambda: iter([filing1]))
+
+    parse_error = "XML schema mismatch"
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            side_effect=ValueError(parse_error),
+        ):
+            with caplog.at_level(logging.WARNING, logger="etf_pipeline.parsers.nport"):
+                parse_nport(cik="895421")
+
+    warning_messages = [r.message for r in caplog.records if r.levelno == logging.WARNING]
+    assert any(parse_error in str(m) for m in warning_messages), (
+        f"Expected WARNING containing '{parse_error}' but got: {warning_messages}"
+    )
+
+
+def test_uit_fallback_tries_next_filing_on_failure(session, engine, mock_nport_db):
+    """When the first filing raises, the UIT path moves on to the next filing.
+
+    Only the second filing succeeds; the result must come from that filing.
+    """
+    uit_etf = ETF(
+        ticker="SPY",
+        cik="0000884394",
+        series_id=None,
+        issuer_name="SPDR S&P 500 ETF Trust",
+        fund_name="SPDR S&P 500 ETF Trust",
+    )
+    session.add(uit_etf)
+    session.commit()
+
+    inv = Mock()
+    inv.name = "Apple Inc"
+    inv.lei = "N/A"
+    inv.title = "N/A"
+    inv.cusip = "037833100"
+    inv.balance = Decimal("100.0")
+    inv.units = "NS"
+    inv.currency_code = "USD"
+    inv.value_usd = Decimal("1000000.00")
+    inv.pct_value = Decimal("5.0")
+    inv.asset_category = "EC"
+    inv.issuer_category = "CORP"
+    inv.investment_country = "US"
+    inv.is_restricted_security = False
+    inv.fair_value_level = "1"
+    inv.ticker = "AAPL"
+    inv.debt_security = None
+    identifiers = Mock()
+    identifiers.isin = "US0378331005"
+    identifiers.ticker = "AAPL"
+    inv.identifiers = identifiers
+
+    good_report = Mock()
+    good_report.reporting_period = date(2024, 12, 31)
+    good_report.non_derivatives = [inv]
+    good_report.derivatives = []
+    general_info = Mock()
+    general_info.series_id = None
+    good_report.general_info = general_info
+    _add_mock_fund_info(good_report)
+
+    filing1 = Mock()
+    filing1.filing_date = date(2025, 2, 15)
+    filing1.accession_number = "0000884394-25-000002"
+
+    filing2 = Mock()
+    filing2.filing_date = date(2025, 1, 15)
+    filing2.accession_number = "0000884394-25-000001"
+
+    filings = Mock()
+    filings.empty = False
+    filings.__len__ = Mock(return_value=2)
+    filings.__getitem__ = Mock(side_effect=[filing1, filing2])
+    filings.__iter__ = Mock(side_effect=lambda: iter([filing1, filing2]))
+
+    call_count = 0
+
+    def from_filing_side_effect(filing):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise ValueError("corrupt filing")
+        return good_report
+
+    with patch("etf_pipeline.parsers.nport.Company") as mock_company:
+        company = Mock()
+        company.get_filings = Mock(return_value=filings)
+        mock_company.return_value = company
+
+        with patch(
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            side_effect=from_filing_side_effect,
+        ):
+            parse_nport(cik="884394")
+
+    stmt = select(Holding)
+    holdings = session.execute(stmt).scalars().all()
+
+    assert call_count == 2, "from_filing should have been called twice (first failed, second succeeded)"
+    assert len(holdings) == 1
+    assert holdings[0].name == "Apple Inc"
