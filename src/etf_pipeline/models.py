@@ -359,6 +359,26 @@ class Performance(Base):
     etf: Mapped["ETF"] = relationship(back_populates="performances")
 
 
+class BenchmarkMapping(Base):
+    __tablename__ = "benchmark_mapping"
+    __table_args__ = (
+        UniqueConstraint("member_id", name="benchmark_mapping_member_id_uniq"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    member_id: Mapped[str] = mapped_column(String(500), nullable=False)
+    readable_name: Mapped[Optional[str]] = mapped_column(String(500))
+    source: Mapped[Optional[str]] = mapped_column(String(20))  # taxonomy_label, filing_html, manual
+    first_seen_cik: Mapped[Optional[str]] = mapped_column(String(10))
+    first_seen_date: Mapped[Optional[date]] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class FeeExpense(Base):
     __tablename__ = "fee_expense"
     __table_args__ = (

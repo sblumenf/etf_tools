@@ -8,6 +8,7 @@ from edgar import Company
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from etf_pipeline.benchmark_labels import resolve_benchmark_label
 from etf_pipeline.db import get_engine
 from etf_pipeline.models import ETF, Performance
 from etf_pipeline.parser_utils import (
@@ -242,6 +243,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                         benchmark_axis_values = benchmark_facts_deduped['dim_oef_BroadBasedIndexAxis'].dropna().unique()
                         if len(benchmark_axis_values) > 0:
                             benchmark_name = _extract_benchmark_name(benchmark_axis_values[0])
+                            resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
 
                         # Extract benchmark returns
                         for _, row in benchmark_facts_deduped.iterrows():
@@ -281,6 +283,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                         additional_axis_values = additional_facts_deduped['dim_oef_AdditionalIndexAxis'].dropna().unique()
                         if len(additional_axis_values) > 0:
                             benchmark_name = _extract_benchmark_name(additional_axis_values[0])
+                            resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
 
                         for _, row in additional_facts_deduped.iterrows():
                             concept = row['concept']

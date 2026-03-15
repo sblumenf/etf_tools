@@ -235,8 +235,16 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
                         alpha=alpha,
                     )
                 )
+        # Resolve benchmark to readable name
+        benchmark_display = perf.benchmark_name
+        if perf.benchmark_name:
+            from etf_pipeline.models import BenchmarkMapping
+            mapping = db.query(BenchmarkMapping).filter_by(member_id=perf.benchmark_name).first()
+            if mapping and mapping.readable_name:
+                benchmark_display = mapping.readable_name
+
         perf_data = PerformanceData(
-            benchmark_name=perf.benchmark_name,
+            benchmark_name=benchmark_display,
             turnover_rate=float(perf.portfolio_turnover) if perf.portfolio_turnover is not None else None,
             intervals=intervals,
         )
