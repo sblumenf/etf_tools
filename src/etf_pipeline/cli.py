@@ -584,6 +584,18 @@ def run_all(limit):
                     click.echo(f"  Warning: SEC filing date check failed for CIK {cik}, will attempt unprocessed parsers")
 
                 stale_parsers = get_stale_parsers(session, cik, latest_sec_filings)
+
+                # When SEC check failed, also include parsers with stale log entries (>7 days old)
+                if check_failed:
+                    from datetime import datetime, timedelta
+                    cutoff = datetime.now() - timedelta(days=7)
+                    rows = session.execute(
+                        select(ProcessingLog).where(ProcessingLog.cik == cik)
+                    ).scalars().all()
+                    for row in rows:
+                        if row.parser_type not in stale_parsers and row.last_run_at < cutoff:
+                            stale_parsers.append(row.parser_type)
+
                 has_any_log = session.execute(
                     select(ProcessingLog).where(ProcessingLog.cik == cik).limit(1)
                 ).scalar_one_or_none() is not None
@@ -617,7 +629,12 @@ def run_all(limit):
 
                 if proc.is_alive():
                     proc.terminate()
-                    proc.join()
+                    proc.join(timeout=30)
+                    if proc.is_alive():
+                        proc.kill()
+                        proc.join(timeout=5)
+                    getattr(result_queue, "cancel_join_thread", lambda: None)()
+                    getattr(result_queue, "close", lambda: None)()
                     click.echo(f"  Process timed out for CIK {cik} parser {parser_type} ({duration:.1f}s, timeout={timeout}s)")
                     failed_parsers.append(f"{parser_type}({cik})")
                     cik_process_failed = True
@@ -627,6 +644,7 @@ def run_all(limit):
                     click.echo(f"  Process crashed for CIK {cik} parser {parser_type} (exit code: {proc.exitcode}, {duration:.1f}s)")
                     failed_parsers.append(f"{parser_type}({cik})")
                     cik_process_failed = True
+                    getattr(result_queue, "close", lambda: None)()
                     continue
 
                 try:
@@ -635,7 +653,10 @@ def run_all(limit):
                     click.echo(f"  No result received from subprocess for CIK {cik} parser {parser_type} ({duration:.1f}s)")
                     failed_parsers.append(f"{parser_type}({cik})")
                     cik_process_failed = True
+                    getattr(result_queue, "close", lambda: None)()
                     continue
+
+                getattr(result_queue, "close", lambda: None)()
 
                 if result["status"] == "failed":
                     click.echo(f"  Failed parser: {parser_type}({cik}) ({duration:.1f}s)")

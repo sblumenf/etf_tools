@@ -107,7 +107,6 @@ def _extract_label_from_xbrl(xbrl_obj, member_id: str) -> Optional[str]:
     if member_id in catalog:
         return _get_best_label(catalog[member_id])
 
-    # Build a bare_key -> catalog_key reverse index once, then do O(1) lookup
     bare_to_key = {}
     for k in catalog:
         bare = k.split('_', 1)[-1] if '_' in k else k.split(':', 1)[-1] if ':' in k else k
@@ -207,5 +206,6 @@ def resolve_benchmark_label(
             session.flush()
         except Exception:
             session.rollback()
+            logger.warning("Failed to record unresolved benchmark mapping for %s", member_id)
 
     return None

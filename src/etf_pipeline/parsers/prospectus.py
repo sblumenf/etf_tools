@@ -5,10 +5,10 @@ which uses the RR (Risk/Return) XBRL taxonomy. Data is embedded in HTML using
 inline XBRL (iXBRL) tags.
 """
 
+import concurrent.futures
 import gc
 import logging
 import re
-import signal
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
@@ -22,13 +22,6 @@ logger = logging.getLogger(__name__)
 
 LOOKBACK_DAYS = 547  # 18-month window for prospectus filings
 
-
-class HtmlFetchTimeout(Exception):
-    pass
-
-
-def _html_timeout_handler(signum, frame):
-    raise HtmlFetchTimeout("filing.html() timed out")
 
 
 def parse_contexts(soup: BeautifulSoup) -> dict[str, dict[str, Optional[str]]]:
@@ -1007,7 +1000,7 @@ def _extract_performance_data(
 def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optional[str] = None):
     """Factory that returns a _process_cik_prospectus function with optional date range for backfill."""
     from etf_pipeline.parser_utils import build_filing_date_filter
-    backfill_mode = from_date is not None or to_date is not None
+    backfill_mode = from_date is not None and to_date is not None
     filing_date_filter = build_filing_date_filter(from_date, to_date)
 
     def _process_cik_prospectus(session, cik: str) -> bool:
@@ -1091,17 +1084,13 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
 
                 # Get HTML content
                 try:
-                    old_handler = signal.signal(signal.SIGALRM, _html_timeout_handler)
-                    signal.alarm(120)  # 120 second timeout
-                    html = filing.html()
-                    signal.alarm(0)  # Cancel alarm
-                    signal.signal(signal.SIGALRM, old_handler)  # Restore handler
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(filing.html)
+                        html = future.result(timeout=120)
                     if not html:
                         logger.warning(f"CIK {cik}: Filing {filing_idx} returned empty HTML, skipping")
                         continue
-                except (HtmlFetchTimeout, Exception) as e:
-                    signal.alarm(0)  # Cancel alarm on error
-                    signal.signal(signal.SIGALRM, old_handler)
+                except Exception as e:
                     logger.warning(f"CIK {cik}: Filing {filing_idx} HTML fetch failed: {e}, skipping")
                     continue
 

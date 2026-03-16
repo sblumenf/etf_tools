@@ -378,7 +378,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                             fiscal_year_end = parse_date(period_ends.iloc[0])
 
                     if fiscal_year_end:
-                        key = (etf.ticker, fiscal_year_end)
+                        key = (etf.class_id or etf.ticker, fiscal_year_end)
                         if key not in satisfied:
                             returns_data = {}
                             expense_ratio = None

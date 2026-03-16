@@ -104,6 +104,10 @@ def _process_cik(session_factory, cik_int: int, entries: list[dict]) -> None:
         except Exception as e:
             logger.warning(f"CIK {cik_padded}: Failed to extract series mapping from {filing_type}: {e}")
 
+    unresolved = needed_series_ids - set(series_mapping.keys())
+    if unresolved:
+        logger.warning(f"CIK {cik_padded}: {len(unresolved)} series IDs unresolved, will use issuer name as fallback: {unresolved}")
+
     logger.info(f"CIK {cik_padded}: issuer_name = {issuer_name}")
 
     inserted_count = 0

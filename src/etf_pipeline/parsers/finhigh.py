@@ -408,7 +408,7 @@ def _make_process_cik_finhigh(from_date: Optional[str] = None, to_date: Optional
                 for fund_name, class_name, table_html_str in table_tuples:
                     try:
                         if not fund_name or not class_name:
-                            logger.debug(
+                            logger.warning(
                                 f"CIK {cik}: Could not extract context from table (fund={fund_name}, class={class_name})"
                             )
                             continue

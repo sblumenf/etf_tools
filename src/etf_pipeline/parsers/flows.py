@@ -41,7 +41,7 @@ def _extract_flow_data_from_xml(xml_content: str, cik: str) -> Optional[dict]:
     """
     try:
         root = ET.fromstring(xml_content)
-    except ET.ParseError as e:
+    except (ET.ParseError, TypeError, ValueError) as e:
         logger.warning(f"CIK {cik}: Failed to parse XML: {e}")
         return None
 

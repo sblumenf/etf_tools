@@ -1013,7 +1013,7 @@ def _process_etf(
                         session.add(derivative_option)
 
                     # Check for swaption (option on swap) - also creates DerivativeOption
-                    if investment.derivative_info and investment.derivative_info.swaption_derivative:
+                    elif investment.derivative_info and investment.derivative_info.swaption_derivative:
                         swaption = investment.derivative_info.swaption_derivative
                         derivative_option = _build_derivative_option(swaption, derivative.id)
                         session.add(derivative_option)

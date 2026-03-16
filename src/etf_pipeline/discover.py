@@ -2,7 +2,10 @@
 
 import json
 import logging
+import os
+import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -15,6 +18,21 @@ DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 FILTERED_FILE = DATA_DIR / "etf_tickers.json"
 
 log = logging.getLogger(__name__)
+
+
+def _fetch_with_retry(url, headers, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req) as resp:
+                return resp.read()
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+            if attempt == max_retries - 1:
+                raise
+            wait = 2 ** attempt
+            log.warning("Fetch %s failed (attempt %d/%d): %s, retrying in %ds", url, attempt + 1, max_retries, e, wait)
+            time.sleep(wait)
+
 
 EXCHANGE_NAMES = {"NYSE", "NASDAQ", "NYSE ARCA", "NYSEARCA", "BATS", "CBOE", "NYSE MKT", "NYSE American"}
 
@@ -39,9 +57,11 @@ def _fetch_uit_etfs():
 
     while True:
         url = f"{EFTS_S6_URL}&from={start}&size={page_size}"
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read())
+        try:
+            data = json.loads(_fetch_with_retry(url, headers))
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+            log.warning("EFTS page fetch failed at offset %d: %s, stopping pagination", start, e)
+            break
 
         hits = data.get("hits", {}).get("hits", [])
         total = data.get("hits", {}).get("total", {}).get("value", 0)
@@ -106,9 +126,7 @@ def fetch():
     DATA_DIR.mkdir(exist_ok=True)
 
     identity = EDGAR_IDENTITY
-    req = urllib.request.Request(SEC_TICKERS_URL, headers={"User-Agent": identity})
-    with urllib.request.urlopen(req) as resp:
-        raw = json.loads(resp.read())
+    raw = json.loads(_fetch_with_retry(SEC_TICKERS_URL, {"User-Agent": identity}))
 
     fields = raw["fields"]
     ci, si, cli, syi = fields.index("cik"), fields.index("seriesId"), fields.index("classId"), fields.index("symbol")
@@ -137,5 +155,12 @@ def fetch():
             etfs.append(entry)
             existing_tickers.add(entry["ticker"])
 
-    FILTERED_FILE.write_text(json.dumps(etfs, indent=2))
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=str(DATA_DIR), suffix=".tmp")
+    try:
+        with os.fdopen(tmp_fd, "w") as tmp_f:
+            json.dump(etfs, tmp_f, indent=2)
+        os.replace(tmp_path, str(FILTERED_FILE))
+    except BaseException:
+        os.unlink(tmp_path)
+        raise
     return etfs
