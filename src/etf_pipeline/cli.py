@@ -369,7 +369,8 @@ def resolve_benchmarks_cmd(limit, dry_run):
 
     from etf_pipeline.db import get_engine
     from etf_pipeline.models import Performance, BenchmarkMapping, ETF
-    from etf_pipeline.benchmark_labels import resolve_benchmark_label, _heuristic_label
+    from etf_pipeline.benchmark_labels import resolve_benchmark_label, _heuristic_label, SOURCE_HEURISTIC
+    from etf_pipeline.parser_utils import upsert_benchmark_mapping
 
     _configure_logging()
 
@@ -419,16 +420,7 @@ def resolve_benchmarks_cmd(limit, dry_run):
                 resolved += 1
                 logger.info("heuristic: %s -> %s", member_id, label)
                 if not dry_run:
-                    existing = session.query(BenchmarkMapping).filter_by(member_id=member_id).first()
-                    if existing:
-                        existing.readable_name = label
-                        existing.source = "heuristic"
-                    else:
-                        session.add(BenchmarkMapping(
-                            member_id=member_id,
-                            readable_name=label,
-                            source="heuristic",
-                        ))
+                    upsert_benchmark_mapping(session, member_id, label, SOURCE_HEURISTIC)
             else:
                 needs_xbrl.append(member_id)
 
@@ -443,18 +435,18 @@ def resolve_benchmarks_cmd(limit, dry_run):
         if needs_xbrl:
             from edgar import Company
 
-            # Group by CIK to minimise EDGAR API calls
+            # Group by CIK to minimise EDGAR API calls (single batch query)
+            rows = session.query(Performance.benchmark_name, ETF.cik).join(ETF).filter(
+                Performance.benchmark_name.in_(needs_xbrl)
+            ).distinct().all()
             cik_to_members = defaultdict(list)
+            for bname, cik in rows:
+                cik_to_members[cik].append(bname)
+
+            # Count members with no CIK found
+            found_members = {bname for bname, _ in rows}
             for member_id in needs_xbrl:
-                perf = (
-                    session.query(Performance)
-                    .join(ETF)
-                    .filter(Performance.benchmark_name == member_id)
-                    .first()
-                )
-                if perf and perf.etf:
-                    cik_to_members[perf.etf.cik].append(member_id)
-                else:
+                if member_id not in found_members:
                     failed += 1
                     logger.warning("No ETF found for benchmark_name=%s", member_id)
 
@@ -524,104 +516,6 @@ def resolve_benchmarks_cmd(limit, dry_run):
             f"({heuristic_resolved} heuristic, {xbrl_resolved} XBRL, {failed} failed)"
         )
 
-
-@main.command("backfill-benchmarks")
-@click.option("--limit", default=0, help="Max benchmarks to process (0=all)")
-def backfill_benchmarks(limit):
-    """Backfill readable names for unmapped benchmark entries."""
-    from sqlalchemy.orm import sessionmaker
-    from etf_pipeline.db import get_engine
-    from etf_pipeline.models import Performance, BenchmarkMapping
-    from etf_pipeline.benchmark_labels import resolve_benchmark_label
-    from edgar import Company
-
-    engine = get_engine()
-    Session = sessionmaker(bind=engine)
-
-    with Session() as session:
-        # Find unmapped benchmark names
-        from sqlalchemy import distinct, select, and_, not_, exists
-
-        mapped_subq = select(BenchmarkMapping.member_id).where(
-            BenchmarkMapping.readable_name.isnot(None)
-        ).scalar_subquery()
-
-        unmapped = (
-            session.query(distinct(Performance.benchmark_name))
-            .filter(
-                Performance.benchmark_name.isnot(None),
-                ~Performance.benchmark_name.in_(mapped_subq),
-            )
-            .all()
-        )
-        unmapped_names = [r[0] for r in unmapped]
-
-        if limit > 0:
-            unmapped_names = unmapped_names[:limit]
-
-        logger.info(f"Found {len(unmapped_names)} unmapped benchmark names")
-        if not unmapped_names:
-            click.echo("All benchmarks already mapped.")
-            return
-
-        resolved = 0
-        failed = 0
-
-        # Group unmapped names by CIK to avoid redundant EDGAR API calls
-        from collections import defaultdict
-        from etf_pipeline.models import ETF
-
-        cik_to_members = defaultdict(list)
-        for member_id in unmapped_names:
-            perf = (
-                session.query(Performance)
-                .join(ETF)
-                .filter(Performance.benchmark_name == member_id)
-                .first()
-            )
-            if perf:
-                cik_to_members[perf.etf.cik].append(member_id)
-            else:
-                failed += 1
-
-        total = len(unmapped_names)
-        progress = 0
-        for cik, members in cik_to_members.items():
-            try:
-                company = Company(cik)
-                filings = company.get_filings(form="N-CSR")
-                if not filings or len(filings) == 0:
-                    failed += len(members)
-                    progress += len(members)
-                    continue
-
-                filing = filings[0]
-                if not filing.is_inline_xbrl:
-                    failed += len(members)
-                    progress += len(members)
-                    continue
-
-                xbrl_obj = filing.xbrl()
-                for member_id in members:
-                    progress += 1
-                    label = resolve_benchmark_label(
-                        session, member_id, xbrl_obj=xbrl_obj, cik=cik
-                    )
-                    if label:
-                        resolved += 1
-                        logger.info(f"[{progress}/{total}] {member_id} -> {label}")
-                    else:
-                        failed += 1
-                        logger.info(f"[{progress}/{total}] {member_id} -> (no label found)")
-
-                session.commit()
-            except Exception as e:
-                logger.warning(f"CIK {cik}: backfill failed: {e}")
-                session.rollback()
-                failed += len(members)
-                progress += len(members)
-
-        click.echo(f"Backfill complete: {resolved} resolved, {failed} failed, {total} total")
 
 
 @main.command()

@@ -12,10 +12,13 @@ from etf_pipeline.parsers.prospectus import (
     parse_contexts,
     parse_date_tag,
     strip_html_to_text,
-    _parse_html_fee_value,
+    _parse_html_pct_value,
     _match_fee_row_label,
     _extract_fees_from_html_table,
 )
+
+def _parse_html_fee_value(text):
+    return _parse_html_pct_value(text, take_abs=True)
 
 
 @pytest.fixture
@@ -1981,7 +1984,7 @@ class TestExtractPerformanceData:
         from etf_pipeline.parsers.prospectus import _extract_performance_data, build_tag_index, parse_contexts
         soup = BeautifulSoup(self._make_rr_filing(include_benchmark=False), 'lxml')
         context_map = parse_contexts(soup)
-        tag_index = build_tag_index(soup)
+        tag_index, _ = build_tag_index(soup)
 
         result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_fund', 'rr')
 
@@ -1996,7 +1999,7 @@ class TestExtractPerformanceData:
         from etf_pipeline.parsers.prospectus import _extract_performance_data, build_tag_index, parse_contexts
         soup = BeautifulSoup(self._make_rr_filing(include_benchmark=True), 'lxml')
         context_map = parse_contexts(soup)
-        tag_index = build_tag_index(soup)
+        tag_index, _ = build_tag_index(soup)
 
         result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_fund', 'rr')
 
@@ -2024,7 +2027,7 @@ class TestExtractPerformanceData:
         </html>"""
         soup = BeautifulSoup(html, 'lxml')
         context_map = parse_contexts(soup)
-        tag_index = build_tag_index(soup)
+        tag_index, _ = build_tag_index(soup)
 
         result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_fund', 'rr')
 
@@ -2059,7 +2062,7 @@ class TestExtractPerformanceData:
         </html>"""
         soup = BeautifulSoup(html, 'lxml')
         context_map = parse_contexts(soup)
-        tag_index = build_tag_index(soup)
+        tag_index, _ = build_tag_index(soup)
 
         result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_1yr', 'oef')
 
@@ -2096,7 +2099,7 @@ class TestExtractPerformanceData:
         </html>"""
         soup = BeautifulSoup(html, 'lxml')
         context_map = parse_contexts(soup)
-        tag_index = build_tag_index(soup)
+        tag_index, _ = build_tag_index(soup)
 
         result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_1yr', 'oef')
 

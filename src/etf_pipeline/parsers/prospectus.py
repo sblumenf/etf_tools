@@ -16,7 +16,7 @@ from typing import Any, Optional
 from bs4 import BeautifulSoup
 
 from etf_pipeline.models import FeeExpense, Performance
-from etf_pipeline.parser_utils import upsert_record
+from etf_pipeline.parser_utils import map_return_period, upsert_record
 
 logger = logging.getLogger(__name__)
 
@@ -237,19 +237,24 @@ def strip_html_to_text(html_fragment: str) -> str:
     return text.strip()
 
 
-def build_tag_index(soup: BeautifulSoup) -> dict[tuple[str, str], Any]:
+def build_tag_index(soup: BeautifulSoup) -> tuple[dict[tuple[str, str], Any], Optional[str]]:
     """Build an index of all iXBRL tags keyed by (tag_name, context_id).
 
     This pre-indexes all ix:nonfraction and ix:nonnumeric elements to enable
     O(1) lookups instead of O(n) scans for each field extraction.
 
+    Also detects the namespace prefix ('rr' or 'oef') as a side effect of
+    the iteration, avoiding two additional full-document scans.
+
     Args:
         soup: BeautifulSoup object of the filing
 
     Returns:
-        Dict mapping (tag_name, context_id) to BeautifulSoup element
+        Tuple of (tag_index, detected_prefix) where detected_prefix is 'rr',
+        'oef', or None if neither prefix is found.
     """
     tag_index = {}
+    detected_prefix = None
 
     # Find all iXBRL tags once
     for element in soup.find_all(['ix:nonfraction', 'ix:nonnumeric']):
@@ -262,7 +267,14 @@ def build_tag_index(soup: BeautifulSoup) -> dict[tuple[str, str], Any]:
             if key not in tag_index:
                 tag_index[key] = element
 
-    return tag_index
+        # Detect prefix as a side effect (first match wins)
+        if detected_prefix is None and tag_name:
+            if tag_name.startswith('rr:'):
+                detected_prefix = 'rr'
+            elif tag_name.startswith('oef:'):
+                detected_prefix = 'oef'
+
+    return tag_index, detected_prefix
 
 
 def extract_tag_value(
@@ -393,32 +405,24 @@ def _apply_net_expense_fallback(fee: dict) -> None:
             fee['total_expense_net'] = fee['total_expense_gross'] - waiver
 
 
-def _parse_html_fee_value(cell_text: str) -> Optional[Decimal]:
-    """Parse a fee percentage value from an HTML table cell.
+def _parse_html_pct_value(cell_text: str, take_abs: bool = False) -> Optional[Decimal]:
+    """Parse a percentage value from an HTML table cell.
 
-    Handles:
-    - "0.70%" → Decimal('0.0070')
-    - "(0.10)%" → Decimal('0.0010')  (parentheses = negative, absolute taken)
-    - "None" / "—" / "-" → None
-    - "0.00" or "0.00%" → Decimal('0.0000')
+    Always divides by 100 (display percentages with or without the "%" suffix).
+    Handles parenthetical negatives, bare dashes, and N/A.
 
-    Unlike parse_decimal(pct=True) which only divides by 100 when "%" is present,
-    this function ALWAYS divides by 100 because HTML fee tables display human-readable
-    percentages with or without the "%" suffix. Always takes abs() of negatives
-    (fee waivers in parentheses are stored as positive).
+    If take_abs=True, returns the absolute value (used for fee waivers stored as positive).
     """
     text = cell_text.strip()
 
     if not text or text.lower() in ('none', '—', '–', '-', 'n/a'):
         return None
 
-    # Handle parentheses for negative values: (0.10)
     negative = False
     if text.startswith('(') and ')' in text:
         negative = True
         text = text.replace('(', '').replace(')', '')
 
-    # Strip % and whitespace
     text = text.replace('%', '').replace(',', '').strip()
 
     if not text or text in ('—', '–', '-'):
@@ -430,9 +434,11 @@ def _parse_html_fee_value(cell_text: str) -> Optional[Decimal]:
         return None
 
     if negative:
+        value = -value
+
+    if take_abs:
         value = abs(value)
 
-    # Convert display percentage to decimal: 0.70 → 0.0070
     return value * Decimal('0.01')
 
 
@@ -605,7 +611,7 @@ def _extract_fees_from_html_table(
             value = None
             for cell in cells[1:]:
                 cell_text = cell.get_text().strip()
-                parsed = _parse_html_fee_value(cell_text)
+                parsed = _parse_html_pct_value(cell_text, take_abs=True)
                 if parsed is not None or cell_text.lower() in ('none', '—', '–', '-'):
                     value = parsed
                     break
@@ -638,42 +644,6 @@ def _extract_fees_from_html_table(
 
     return processed_class_ids
 
-
-def _parse_html_return_value(cell_text: str) -> Optional[Decimal]:
-    """Parse a return percentage value from an HTML performance table cell.
-
-    Handles: "8.50%" → Decimal('0.0850'), "-1.23%" → Decimal('-0.0123'),
-    "None" / "—" / "-" → None. Always divides by 100 (display percentages).
-    """
-    text = cell_text.strip()
-
-    if not text or text.lower() in ('none', '—', '–', 'n/a'):
-        return None
-
-    # Handle parentheses for negative: (1.23)%
-    negative = False
-    if text.startswith('(') and ')' in text:
-        negative = True
-        text = text.replace('(', '').replace(')', '')
-
-    text = text.replace('%', '').replace(',', '').strip()
-
-    if not text or text in ('—', '–'):
-        return None
-
-    # A bare "-" means zero or N/A in some tables — treat as None
-    if text == '-':
-        return None
-
-    try:
-        value = Decimal(text)
-    except (ValueError, InvalidOperation):
-        return None
-
-    if negative:
-        value = -abs(value)
-
-    return value * Decimal('0.01')
 
 
 _RETURN_LABEL_PATTERNS = [
@@ -797,7 +767,7 @@ def _extract_performance_from_html_table(
                     if cell_text and not re.search(r'^\s*[-–]?\s*\d+', cell_text):
                         vertical_col_headers[i] = cell_text
                         col_labels_found = True
-                    elif cell_text and _parse_html_return_value(cell_text) is None:
+                    elif cell_text and _parse_html_pct_value(cell_text) is None:
                         vertical_col_headers[i] = cell_text
                         col_labels_found = True
                 if col_labels_found:
@@ -818,7 +788,7 @@ def _extract_performance_from_html_table(
                 for col_idx, col_label in vertical_col_headers.items():
                     if col_idx >= len(cells):
                         continue
-                    val = _parse_html_return_value(cells[col_idx].get_text())
+                    val = _parse_html_pct_value(cells[col_idx].get_text())
                     is_bm = bool(_BENCHMARK_LABEL_PATTERNS.search(col_label))
                     if not is_bm:
                         if not fund_set and val is not None:
@@ -834,7 +804,7 @@ def _extract_performance_from_html_table(
             else:
                 # No column headers detected — first non-empty value cell is the fund return
                 for cell in cells[1:]:
-                    val = _parse_html_return_value(cell.get_text())
+                    val = _parse_html_pct_value(cell.get_text())
                     if val is not None:
                         result[matched_field] = val
                         break
@@ -848,14 +818,14 @@ def _extract_performance_from_html_table(
                 horizontal_fund_row_seen = True
                 for col_idx, field in col_to_field.items():
                     if col_idx < len(cells) and result.get(field) is None:
-                        val = _parse_html_return_value(cells[col_idx].get_text())
+                        val = _parse_html_pct_value(cells[col_idx].get_text())
                         if val is not None:
                             result[field] = val
             elif benchmark_name is None and _BENCHMARK_LABEL_PATTERNS.search(label):
                 benchmark_name = label
                 for col_idx, field in col_to_field.items():
                     if col_idx < len(cells):
-                        val = _parse_html_return_value(cells[col_idx].get_text())
+                        val = _parse_html_pct_value(cells[col_idx].get_text())
                         if val is not None:
                             bfield = field.replace('return_', 'benchmark_return_')
                             if bfield.startswith('benchmark_return_') and 'since' not in bfield:
@@ -912,24 +882,6 @@ def _write_uit_html_performance(session, cik, etf, soup, filing_date, satisfied)
     except Exception as e:
         logger.warning(f"CIK {cik}: HTML performance fallback failed for UIT: {e}")
 
-
-def _map_return_period_prospectus(period_start: date, period_end: date) -> Optional[str]:
-    """Map date range to return period field name using +/- 30 day tolerance."""
-    if not period_start or not period_end:
-        return None
-    days = (period_end - period_start).days
-    years = days / 365.25
-    tolerance = 30 / 365.25
-    if abs(years - 1) <= tolerance:
-        return "return_1yr"
-    elif abs(years - 5) <= tolerance:
-        return "return_5yr"
-    elif abs(years - 10) <= tolerance:
-        return "return_10yr"
-    elif years > 10 + tolerance:
-        return "return_since_inception"
-    else:
-        return None
 
 
 def _extract_performance_data(
@@ -1025,7 +977,7 @@ def _extract_performance_data(
                 if period_start_str and period_end_str:
                     ps = _parse_date(period_start_str)
                     pe = _parse_date(period_end_str)
-                    field = _map_return_period_prospectus(ps, pe)
+                    field = map_return_period(ps, pe)
                     if field:
                         result[field] = val
                     else:
@@ -1040,7 +992,7 @@ def _extract_performance_data(
                     if period_start_str and period_end_str:
                         ps = _parse_date(period_start_str)
                         pe = _parse_date(period_end_str)
-                        field = _map_return_period_prospectus(ps, pe)
+                        field = map_return_period(ps, pe)
                         if field and field in ('return_1yr', 'return_5yr', 'return_10yr'):
                             bfield = field.replace('return_', 'benchmark_return_')
                             benchmark_returns[bfield] = val
@@ -1159,17 +1111,11 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                 # Extract contexts
                 context_map = parse_contexts(soup)
 
-                # Detect which namespace prefix is in use (rr: or oef:)
-                rr_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('rr:'))
-                oef_tags = soup.find_all(lambda tag: tag.get('name', '').startswith('oef:'))
+                # Build tag index for O(1) lookups; prefix detection is a side effect
+                tag_index, tag_prefix = build_tag_index(soup)
 
-                if rr_tags:
-                    tag_prefix = 'rr'
-                elif oef_tags:
-                    tag_prefix = 'oef'
-                else:
+                if not tag_prefix:
                     logger.info(f"CIK {cik}: Filing {filing_idx} has no iXBRL tags, trying HTML table fallback")
-                    del rr_tags, oef_tags
                     html_matched = _extract_fees_from_html_table(
                         soup, session, class_id_to_etf, series_id_to_etfs,
                         None, filing_date, cik
@@ -1186,14 +1132,9 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                         else:
                             _write_uit_html_performance(session, cik, target_etf, soup, filing_date, satisfied)
 
-                    del soup, html
+                    del tag_index, soup, html
                     gc.collect()
                     continue
-
-                del rr_tags, oef_tags
-
-                # Build tag index for O(1) lookups (performance optimization)
-                tag_index = build_tag_index(soup)
 
                 # Find the base context (no dimensions) for effective_date
                 base_context_id = None
@@ -1318,11 +1259,10 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                     target_etf = uit_etfs[0] if len(uit_etfs) == 1 else None
                     if target_etf is None:
                         logger.warning(f"CIK {cik}: Multiple UIT ETFs found, cannot assign HTML performance unambiguously")
-                    else:
+                    elif f"__UIT__{target_etf.id}" not in satisfied:
                         _write_uit_html_performance(session, cik, target_etf, soup, filing_date, satisfied)
 
                 # Extract narrative text (series-level, not class-level)
-                all_nonnumeric = soup.find_all('ix:nonnumeric')
 
                 # Build series_id -> context_id mapping (plain series contexts only, no class dimension)
                 series_context_map = {}
@@ -1345,6 +1285,24 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                     if sid:
                         context_to_series[ctx_id] = sid
 
+                # Pre-group risk text blocks by series_id (single pass outside the series loop)
+                risk_blocks_by_series: dict = {}
+                for element in soup.find_all('ix:nonnumeric'):
+                    tag_name = element.get('name', '')
+                    if 'risktextblock' not in tag_name.lower() and 'risknarrativetextblock' not in tag_name.lower():
+                        continue
+                    element_context_ref = element.get('contextref', '')
+                    sid = context_to_series.get(element_context_ref)
+                    if sid is None:
+                        continue
+                    escape_attr = element.get('escape')
+                    if escape_attr == 'true':
+                        risk_text = strip_html_to_text(element.decode_contents())
+                    else:
+                        risk_text = element.get_text().strip()
+                    if risk_text:
+                        risk_blocks_by_series.setdefault(sid, []).append(risk_text)
+
                 # Iterate known series from the database to avoid redundant RiskAxis-dimensioned iterations
                 for series_id, etf_list in series_id_to_etfs.items():
                     context_id = series_context_map.get(series_id)
@@ -1355,23 +1313,7 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                         objective_text = extract_tag_value(tag_index, f'{tag_prefix}:ObjectivePrimaryTextBlock', context_id)
                         strategy_text = extract_tag_value(tag_index, f'{tag_prefix}:StrategyNarrativeTextBlock', context_id)
 
-                    risk_blocks = []
-
-                    for element in all_nonnumeric:
-                        tag_name = element.get('name', '')
-                        element_context_ref = element.get('contextref', '')
-
-                        if ('risktextblock' in tag_name.lower() or 'risknarrativetextblock' in tag_name.lower()) and context_to_series.get(element_context_ref) == series_id:
-                            escape_attr = element.get('escape')
-                            if escape_attr == 'true':
-                                inner_html = element.decode_contents()
-                                risk_text = strip_html_to_text(inner_html)
-                            else:
-                                risk_text = element.get_text().strip()
-
-                            if risk_text:
-                                risk_blocks.append(risk_text)
-
+                    risk_blocks = risk_blocks_by_series.get(series_id, [])
                     principal_risks = '\n\n'.join(risk_blocks) if risk_blocks else None
 
                     if not etf_list:
@@ -1399,7 +1341,7 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                             etf.filing_url = filing_url
                             logger.debug(f"CIK {cik}: Updated filing_url for {etf.ticker}")
 
-                del all_nonnumeric, soup, html
+                del soup, html
                 gc.collect()
                 session.commit()
                 session.expunge_all()

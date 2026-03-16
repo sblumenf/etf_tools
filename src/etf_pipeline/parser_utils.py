@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from typing import Optional
 
-from etf_pipeline.models import ETF, ProcessingLog
+from etf_pipeline.models import ETF, ProcessingLog, BenchmarkMapping
 
 logger = logging.getLogger(__name__)
 
@@ -171,4 +171,51 @@ def update_processing_log(session: Session, cik: str, parser_type: str, filing_d
             parser_type=parser_type,
             last_run_at=datetime.now(),
             latest_filing_date_seen=filing_date,
+        ))
+
+
+def map_return_period(period_start: date, period_end: date) -> Optional[str]:
+    """Map a date range to a return period field name.
+
+    Uses +/- 30 day tolerance for 1yr/5yr/10yr matching.
+    Maps to since_inception only if years > 10 (with tolerance).
+    Returns None for unrecognized periods.
+    """
+    if not period_start or not period_end:
+        return None
+    days = (period_end - period_start).days
+    years = days / 365.25
+    tolerance = 30 / 365.25
+    if abs(years - 1) <= tolerance:
+        return "return_1yr"
+    elif abs(years - 5) <= tolerance:
+        return "return_5yr"
+    elif abs(years - 10) <= tolerance:
+        return "return_10yr"
+    elif years > 10 + tolerance:
+        return "return_since_inception"
+    else:
+        return None
+
+
+def upsert_benchmark_mapping(
+    session,
+    member_id: str,
+    label: str,
+    source: str,
+    cik: Optional[str] = None,
+    filing_date=None,
+) -> None:
+    """Upsert a BenchmarkMapping record for the given member_id."""
+    existing = session.query(BenchmarkMapping).filter_by(member_id=member_id).first()
+    if existing:
+        existing.readable_name = label
+        existing.source = source
+    else:
+        session.add(BenchmarkMapping(
+            member_id=member_id,
+            readable_name=label,
+            source=source,
+            first_seen_cik=cik,
+            first_seen_date=filing_date,
         ))

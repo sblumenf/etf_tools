@@ -8,8 +8,14 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from etf_pipeline.models import BenchmarkMapping
+from etf_pipeline.parser_utils import upsert_benchmark_mapping
 
 logger = logging.getLogger(__name__)
+
+SOURCE_TAXONOMY = "taxonomy_label"
+SOURCE_HEURISTIC = "heuristic"
+SOURCE_HTML = "filing_html"
+SOURCE_MANUAL = "manual"
 
 # Substitutions applied in order before CamelCase splitting.
 # Each entry is (pattern, replacement) passed to re.sub.
@@ -101,12 +107,14 @@ def _extract_label_from_xbrl(xbrl_obj, member_id: str) -> Optional[str]:
     if member_id in catalog:
         return _get_best_label(catalog[member_id])
 
-    # Try with common namespace prefixes (suffix match)
-    for key in catalog:
-        # Match on the part after the namespace prefix (after underscore or colon)
-        bare_key = key.split('_', 1)[-1] if '_' in key else key.split(':', 1)[-1] if ':' in key else key
-        if bare_key == member_id:
-            return _get_best_label(catalog[key])
+    # Build a bare_key -> catalog_key reverse index once, then do O(1) lookup
+    bare_to_key = {}
+    for k in catalog:
+        bare = k.split('_', 1)[-1] if '_' in k else k.split(':', 1)[-1] if ':' in k else k
+        bare_to_key.setdefault(bare, k)
+    key = bare_to_key.get(member_id)
+    if key is not None:
+        return _get_best_label(catalog[key])
 
     return None
 
@@ -176,20 +184,7 @@ def resolve_benchmark_label(
     label = _extract_label_from_xbrl(xbrl_obj, member_id)
 
     if label:
-        # Upsert to mapping table
-        if existing:
-            existing.readable_name = label
-            existing.source = "taxonomy_label"
-        else:
-            mapping = BenchmarkMapping(
-                member_id=member_id,
-                readable_name=label,
-                source="taxonomy_label",
-                first_seen_cik=cik,
-                first_seen_date=filing_date,
-            )
-            session.add(mapping)
-
+        upsert_benchmark_mapping(session, member_id, label, SOURCE_TAXONOMY, cik=cik, filing_date=filing_date)
         try:
             session.flush()
         except Exception:

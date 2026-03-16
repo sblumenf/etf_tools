@@ -15,6 +15,7 @@ from etf_pipeline.parser_utils import (
     build_filing_date_filter,
     clear_and_log_cache,
     ensure_date,
+    map_return_period,
     parse_date,
     parse_decimal,
     resolve_cik_list,
@@ -79,52 +80,6 @@ def _extract_benchmark_name(member_value: str) -> Optional[str]:
 
     return member_value if member_value else None
 
-
-def _calculate_period_years(period_start: date, period_end: date) -> Optional[float]:
-    """Calculate the number of years between two dates.
-
-    Args:
-        period_start: Start date
-        period_end: End date
-
-    Returns:
-        Number of years as float, or None if calculation fails
-    """
-    if not period_start or not period_end:
-        return None
-
-    days = (period_end - period_start).days
-    return days / 365.25
-
-
-def _map_return_period(period_start: date, period_end: date) -> Optional[str]:
-    """Map date range to return period field name.
-
-    Uses +/- 30 day tolerance for period matching.
-
-    Args:
-        period_start: Period start date
-        period_end: Period end date
-
-    Returns:
-        One of: "return_1yr", "return_5yr", "return_10yr", "return_since_inception"
-        or None if dates are invalid
-    """
-    years = _calculate_period_years(period_start, period_end)
-    if years is None:
-        return None
-
-    # Allow +/- 30 days when matching return periods (1yr, 5yr, 10yr)
-    tolerance = 30 / 365.25
-
-    if abs(years - 1) <= tolerance:
-        return "return_1yr"
-    elif abs(years - 5) <= tolerance:
-        return "return_5yr"
-    elif abs(years - 10) <= tolerance:
-        return "return_10yr"
-    else:
-        return "return_since_inception"
 
 
 def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[str] = None):
@@ -271,7 +226,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                                     period_start = parse_date(period_start)
                                     period_end = parse_date(period_end)
 
-                                    field_name = _map_return_period(period_start, period_end)
+                                    field_name = map_return_period(period_start, period_end)
                                     if field_name:
                                         # Map to benchmark field name
                                         benchmark_field = field_name.replace('return_', 'benchmark_return_')
@@ -310,7 +265,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                                     period_start = parse_date(period_start)
                                     period_end = parse_date(period_end)
 
-                                    field_name = _map_return_period(period_start, period_end)
+                                    field_name = map_return_period(period_start, period_end)
                                     if field_name:
                                         benchmark_field = field_name.replace('return_', 'benchmark_return_')
                                         if benchmark_field in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
@@ -375,7 +330,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                                 period_start = parse_date(period_start)
                                 period_end = parse_date(period_end)
 
-                                field_name = _map_return_period(period_start, period_end)
+                                field_name = map_return_period(period_start, period_end)
                                 if field_name:
                                     returns_data[field_name] = parse_decimal(numeric_value)
 
@@ -441,7 +396,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                                         period_start = parse_date(period_start)
                                         period_end = parse_date(period_end)
 
-                                        field_name = _map_return_period(period_start, period_end)
+                                        field_name = map_return_period(period_start, period_end)
                                         if field_name:
                                             returns_data[field_name] = parse_decimal(numeric_value)
 

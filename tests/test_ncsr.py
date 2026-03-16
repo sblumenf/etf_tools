@@ -9,13 +9,14 @@ import pytest
 from sqlalchemy import select
 
 from etf_pipeline.models import ETF, Performance
+from etf_pipeline.parser_utils import map_return_period
 from etf_pipeline.parsers.ncsr import (
-    _calculate_period_years,
     _extract_class_id,
-    _map_return_period,
     _parse_decimal,
     parse_ncsr,
 )
+
+_map_return_period = map_return_period
 
 
 @pytest.fixture
@@ -108,24 +109,22 @@ class TestPeriodMapping:
         assert _map_return_period(start, end) == "return_10yr"
 
     def test_map_since_inception(self):
-        """Test since inception mapping (non-standard period)."""
-        start = date(2020, 3, 15)
+        """Test since inception mapping (period > 10 years)."""
+        start = date(2010, 3, 15)
         end = date(2024, 10, 31)
         assert _map_return_period(start, end) == "return_since_inception"
+
+    def test_map_unrecognized_period_returns_none(self):
+        """Test that a non-standard period (e.g. ~4.6 years) returns None."""
+        start = date(2020, 3, 15)
+        end = date(2024, 10, 31)
+        assert _map_return_period(start, end) is None
 
     def test_map_with_none_dates(self):
         """Test mapping with None dates."""
         assert _map_return_period(None, date(2024, 10, 31)) is None
         assert _map_return_period(date(2023, 10, 31), None) is None
         assert _map_return_period(None, None) is None
-
-    def test_calculate_period_years(self):
-        """Test year calculation."""
-        start = date(2023, 10, 31)
-        end = date(2024, 10, 31)
-        years = _calculate_period_years(start, end)
-        assert years is not None
-        assert abs(years - 1.0) < 0.01
 
 
 class TestDecimalParsing:
