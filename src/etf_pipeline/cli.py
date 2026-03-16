@@ -352,6 +352,179 @@ def backfill(from_date, to_date, cik, limit, parsers):
             click.echo(f"  FAILED: {line}")
 
 
+@main.command("resolve-benchmarks")
+@click.option("--limit", type=int, default=0, help="Max benchmark names to process (0=all)")
+@click.option("--dry-run", is_flag=True, default=False, help="Show what would be resolved without writing to DB")
+def resolve_benchmarks_cmd(limit, dry_run):
+    """Resolve raw XBRL benchmark member IDs to human-readable names.
+
+    First tries a cheap heuristic (CamelCase cleanup, known abbreviations).
+    Falls back to fetching the ETF's most recent N-CSR filing from EDGAR and
+    extracting the label from the XBRL taxonomy. Rate-limited to 10 req/sec.
+    """
+    import time
+    from collections import defaultdict
+
+    from sqlalchemy.orm import sessionmaker
+
+    from etf_pipeline.db import get_engine
+    from etf_pipeline.models import Performance, BenchmarkMapping, ETF
+    from etf_pipeline.benchmark_labels import resolve_benchmark_label, _heuristic_label
+
+    _configure_logging()
+
+    engine = get_engine()
+    Session = sessionmaker(bind=engine)
+
+    with Session() as session:
+        mapped_subq = (
+            session.query(BenchmarkMapping.member_id)
+            .filter(BenchmarkMapping.readable_name.isnot(None))
+            .scalar_subquery()
+        )
+
+        from sqlalchemy import distinct
+
+        unmapped_rows = (
+            session.query(distinct(Performance.benchmark_name))
+            .filter(
+                Performance.benchmark_name.isnot(None),
+                ~Performance.benchmark_name.in_(mapped_subq),
+            )
+            .all()
+        )
+        unmapped_names = [r[0] for r in unmapped_rows]
+
+        if limit and limit > 0:
+            unmapped_names = unmapped_names[:limit]
+
+        total = len(unmapped_names)
+        if total == 0:
+            click.echo("No unresolved benchmark names found.")
+            return
+
+        click.echo(f"Found {total} unresolved benchmark name(s). dry_run={dry_run}")
+
+        resolved = 0
+        heuristic_resolved = 0
+        xbrl_resolved = 0
+        failed = 0
+
+        # --- Pass 1: heuristic ---
+        needs_xbrl = []
+        for member_id in unmapped_names:
+            label = _heuristic_label(member_id)
+            if label:
+                heuristic_resolved += 1
+                resolved += 1
+                logger.info("heuristic: %s -> %s", member_id, label)
+                if not dry_run:
+                    existing = session.query(BenchmarkMapping).filter_by(member_id=member_id).first()
+                    if existing:
+                        existing.readable_name = label
+                        existing.source = "heuristic"
+                    else:
+                        session.add(BenchmarkMapping(
+                            member_id=member_id,
+                            readable_name=label,
+                            source="heuristic",
+                        ))
+            else:
+                needs_xbrl.append(member_id)
+
+        if not dry_run and heuristic_resolved > 0:
+            try:
+                session.commit()
+            except Exception as exc:
+                logger.warning("Failed to commit heuristic mappings: %s", exc)
+                session.rollback()
+
+        # --- Pass 2: XBRL fetch for remainder ---
+        if needs_xbrl:
+            from edgar import Company
+
+            # Group by CIK to minimise EDGAR API calls
+            cik_to_members = defaultdict(list)
+            for member_id in needs_xbrl:
+                perf = (
+                    session.query(Performance)
+                    .join(ETF)
+                    .filter(Performance.benchmark_name == member_id)
+                    .first()
+                )
+                if perf and perf.etf:
+                    cik_to_members[perf.etf.cik].append(member_id)
+                else:
+                    failed += 1
+                    logger.warning("No ETF found for benchmark_name=%s", member_id)
+
+            last_request_time = 0.0
+            MIN_INTERVAL = 0.1  # 10 req/sec
+
+            for cik, members in cik_to_members.items():
+                # Rate limiting
+                elapsed = time.monotonic() - last_request_time
+                if elapsed < MIN_INTERVAL:
+                    time.sleep(MIN_INTERVAL - elapsed)
+
+                try:
+                    company = Company(cik)
+                    filings = company.get_filings(form="N-CSR")
+                    last_request_time = time.monotonic()
+
+                    if not filings or len(filings) == 0:
+                        logger.warning("CIK %s: no N-CSR filings found", cik)
+                        failed += len(members)
+                        continue
+
+                    filing = filings[0]
+                    if not getattr(filing, 'is_inline_xbrl', False):
+                        logger.warning("CIK %s: most recent N-CSR has no inline XBRL", cik)
+                        failed += len(members)
+                        continue
+
+                    xbrl_obj = filing.xbrl()
+
+                    for member_id in members:
+                        if dry_run:
+                            from etf_pipeline.benchmark_labels import _extract_label_from_xbrl
+                            label = _extract_label_from_xbrl(xbrl_obj, member_id)
+                            if label:
+                                xbrl_resolved += 1
+                                resolved += 1
+                                logger.info("xbrl (dry-run): %s -> %s", member_id, label)
+                            else:
+                                failed += 1
+                                logger.info("xbrl (dry-run): %s -> (no label)", member_id)
+                        else:
+                            label = resolve_benchmark_label(
+                                session, member_id, xbrl_obj=xbrl_obj, cik=cik
+                            )
+                            if label:
+                                xbrl_resolved += 1
+                                resolved += 1
+                                logger.info("xbrl: %s -> %s", member_id, label)
+                            else:
+                                failed += 1
+                                logger.info("xbrl: %s -> (no label)", member_id)
+
+                    if not dry_run:
+                        try:
+                            session.commit()
+                        except Exception as exc:
+                            logger.warning("CIK %s: commit failed: %s", cik, exc)
+                            session.rollback()
+
+                except Exception as exc:
+                    logger.warning("CIK %s: XBRL fetch failed: %s", cik, exc)
+                    failed += len(members)
+
+        click.echo(
+            f"Resolved {resolved} of {total} benchmark names "
+            f"({heuristic_resolved} heuristic, {xbrl_resolved} XBRL, {failed} failed)"
+        )
+
+
 @main.command("backfill-benchmarks")
 @click.option("--limit", default=0, help="Max benchmarks to process (0=all)")
 def backfill_benchmarks(limit):

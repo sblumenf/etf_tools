@@ -145,9 +145,18 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                 if etf.class_id:
                     class_id_to_etf[etf.class_id] = etf
 
+            uit_fallback_etf = None
             if not class_id_to_etf:
-                logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
-                return True
+                null_class_id_etfs = [e for e in etfs if not e.class_id]
+                if len(null_class_id_etfs) == 1:
+                    uit_fallback_etf = null_class_id_etfs[0]
+                    logger.info(f"CIK {cik}: No ETFs with class_id; using UIT fallback ETF {uit_fallback_etf.ticker}")
+                elif len(null_class_id_etfs) > 1:
+                    logger.warning(f"CIK {cik}: No ETFs with class_id and multiple NULL class_id ETFs found — ambiguous, skipping")
+                    return True
+                else:
+                    logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
+                    return True
 
             needed_class_ids = set(class_id_to_etf.keys())
             # Track (class_id, fiscal_year_end) pairs already processed -- first match wins
@@ -169,8 +178,9 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
 
             num_filings = len(filings) if backfill_mode else min(len(filings), MAX_FILINGS)
             for filing_idx in range(num_filings):
-                # In normal mode, stop early if all class_ids have been satisfied
-                if not backfill_mode and not (needed_class_ids - {cid for cid, _ in satisfied}):
+                # In normal mode, stop early if all class_ids have been satisfied.
+                # Skip this check for UIT fallback (needed_class_ids is empty but we still want to process).
+                if not backfill_mode and needed_class_ids and not (needed_class_ids - {cid for cid, _ in satisfied}):
                     logger.debug(f"CIK {cik}: All class_ids satisfied after {filing_idx} filing(s)")
                     break
 
@@ -216,8 +226,11 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                     continue
 
                 if 'dim_oef_ClassAxis' not in df_filtered.columns:
-                    logger.warning(f"CIK {cik}: Filing {filing_idx} has no ClassAxis dimension")
-                    continue
+                    if uit_fallback_etf is None:
+                        logger.warning(f"CIK {cik}: Filing {filing_idx} has no ClassAxis dimension")
+                        continue
+                    # UIT fallback: no ClassAxis means single-fund filing — add synthetic NULL column
+                    df_filtered['dim_oef_ClassAxis'] = None
 
                 # Extract benchmark data BEFORE per-class loop (benchmarks never have ClassAxis)
                 benchmark_name = None
@@ -311,12 +324,16 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                     if not class_id:
                         continue
 
-                    # Look up ETF by class_id
+                    # Look up ETF by class_id, fall back to UIT ETF if available
                     etf = class_id_to_etf.get(class_id)
                     if not etf:
-                        logger.debug(f"CIK {cik}: class_id {class_id} not found in database, skipping")
-                        skipped_etfs += 1
-                        continue
+                        if uit_fallback_etf is not None:
+                            etf = uit_fallback_etf
+                            logger.debug(f"CIK {cik}: class_id {class_id} not in database, using UIT fallback ETF {etf.ticker}")
+                        else:
+                            logger.debug(f"CIK {cik}: class_id {class_id} not found in database, skipping")
+                            skipped_etfs += 1
+                            continue
 
                     # Get all facts for this class (fund facts only - no benchmark axis)
                     class_facts = df_filtered[df_filtered['dim_oef_ClassAxis'] == class_axis_value].copy()
@@ -392,6 +409,70 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
 
                     satisfied.add(key)
                     processed_etfs += 1
+
+                # UIT fallback: if no ClassAxis rows were found but we have a fallback ETF,
+                # treat all non-benchmark facts as belonging to that ETF
+                if uit_fallback_etf is not None and df_filtered['dim_oef_ClassAxis'].isna().all():
+                    etf = uit_fallback_etf
+                    fund_facts = df_filtered[df_filtered['dim_oef_BroadBasedIndexAxis'].isna()].copy() if has_benchmark_axis else df_filtered.copy()
+
+                    fiscal_year_end = None
+                    if 'period_end' in fund_facts.columns:
+                        period_ends = fund_facts['period_end'].dropna()
+                        if not period_ends.empty:
+                            fiscal_year_end = parse_date(period_ends.iloc[0])
+
+                    if fiscal_year_end:
+                        key = (etf.ticker, fiscal_year_end)
+                        if key not in satisfied:
+                            returns_data = {}
+                            expense_ratio = None
+                            portfolio_turnover = None
+
+                            for _, row in fund_facts.iterrows():
+                                concept = row['concept']
+                                numeric_value = row.get('numeric_value')
+
+                                if concept == 'oef:AvgAnnlRtrPct':
+                                    period_start = row.get('period_start')
+                                    period_end = row.get('period_end')
+
+                                    if period_start and period_end:
+                                        period_start = parse_date(period_start)
+                                        period_end = parse_date(period_end)
+
+                                        field_name = _map_return_period(period_start, period_end)
+                                        if field_name:
+                                            returns_data[field_name] = parse_decimal(numeric_value)
+
+                                elif concept == 'oef:ExpenseRatioPct':
+                                    expense_ratio = parse_decimal(numeric_value)
+
+                                elif concept == 'us-gaap:InvestmentCompanyPortfolioTurnover':
+                                    portfolio_turnover = parse_decimal(numeric_value)
+
+                            data_kwargs = {
+                                **returns_data,
+                                "expense_ratio_actual": expense_ratio,
+                                "portfolio_turnover": portfolio_turnover,
+                            }
+                            if benchmark_name is not None:
+                                data_kwargs["benchmark_name"] = benchmark_name
+                                data_kwargs.update(benchmark_returns)
+                            upsert_record(
+                                session,
+                                Performance,
+                                filter_kwargs={
+                                    "etf_id": etf.id,
+                                    "fiscal_year_end": fiscal_year_end,
+                                    "filing_date": filing_date,
+                                },
+                                data_kwargs=data_kwargs,
+                            )
+                            logger.info(f"CIK {cik}: Upserted UIT performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
+
+                            satisfied.add(key)
+                            processed_etfs += 1
 
                 # In backfill mode, commit after each filing
                 if backfill_mode:

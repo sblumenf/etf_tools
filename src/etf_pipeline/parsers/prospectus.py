@@ -15,7 +15,7 @@ from typing import Any, Optional
 
 from bs4 import BeautifulSoup
 
-from etf_pipeline.models import FeeExpense
+from etf_pipeline.models import FeeExpense, Performance
 from etf_pipeline.parser_utils import upsert_record
 
 logger = logging.getLogger(__name__)
@@ -77,9 +77,10 @@ def parse_contexts(soup: BeautifulSoup) -> dict[str, dict[str, Optional[str]]]:
                 except ValueError:
                     logger.warning(f"Invalid CIK format: {cik_text}")
 
-        # Extract series_id and class_id from segment dimensions
+        # Extract series_id, class_id, and performance_measure from segment dimensions
         series_id = None
         class_id = None
+        performance_measure = None
 
         segment = context.find('xbrli:segment')
         if segment:
@@ -96,16 +97,42 @@ def parse_contexts(soup: BeautifulSoup) -> dict[str, dict[str, Optional[str]]]:
                         series_id = match.group(1).upper()
 
                 # Extract class_id from ProspectusShareClassAxis (RR) or ClassAxis (OEF)
-                elif 'prospectusshare' in dimension.lower() or 'classaxis' in dimension.lower():
+                elif 'prospectusshare' in dimension.lower() or ('classaxis' in dimension.lower() and 'performancemeasure' not in dimension.lower()):
                     # Format: "rr01:C000014542Member" or "C000014542Member"
                     match = re.search(r'(C\d+)Member', member_value, re.IGNORECASE)
                     if match:
                         class_id = match.group(1).upper()
 
+                # Extract benchmark name from PerformanceMeasureAxis
+                elif 'performancemeasureaxis' in dimension.lower():
+                    # Strip namespace prefix, keep raw member name
+                    if ':' in member_value:
+                        performance_measure = member_value.split(':', 1)[1]
+                    else:
+                        performance_measure = member_value
+
+        # Extract period start/end dates (needed for OEF period-based return mapping)
+        period_start = None
+        period_end = None
+        period_el = context.find('xbrli:period')
+        if period_el:
+            start_el = period_el.find('xbrli:startdate')
+            end_el = period_el.find('xbrli:enddate')
+            instant_el = period_el.find('xbrli:instant')
+            if start_el:
+                period_start = start_el.get_text().strip() or None
+            if end_el:
+                period_end = end_el.get_text().strip() or None
+            elif instant_el:
+                period_end = instant_el.get_text().strip() or None
+
         context_map[context_id] = {
             'cik': cik,
             'series_id': series_id,
             'class_id': class_id,
+            'performance_measure': performance_measure,
+            'period_start': period_start,
+            'period_end': period_end,
         }
 
     return context_map
@@ -612,6 +639,419 @@ def _extract_fees_from_html_table(
     return processed_class_ids
 
 
+def _parse_html_return_value(cell_text: str) -> Optional[Decimal]:
+    """Parse a return percentage value from an HTML performance table cell.
+
+    Handles: "8.50%" → Decimal('0.0850'), "-1.23%" → Decimal('-0.0123'),
+    "None" / "—" / "-" → None. Always divides by 100 (display percentages).
+    """
+    text = cell_text.strip()
+
+    if not text or text.lower() in ('none', '—', '–', 'n/a'):
+        return None
+
+    # Handle parentheses for negative: (1.23)%
+    negative = False
+    if text.startswith('(') and ')' in text:
+        negative = True
+        text = text.replace('(', '').replace(')', '')
+
+    text = text.replace('%', '').replace(',', '').strip()
+
+    if not text or text in ('—', '–'):
+        return None
+
+    # A bare "-" means zero or N/A in some tables — treat as None
+    if text == '-':
+        return None
+
+    try:
+        value = Decimal(text)
+    except (ValueError, InvalidOperation):
+        return None
+
+    if negative:
+        value = -abs(value)
+
+    return value * Decimal('0.01')
+
+
+_RETURN_LABEL_PATTERNS = [
+    (re.compile(r'since\s+inception', re.IGNORECASE), 'return_since_inception'),
+    (re.compile(r'\b10[\s-]*year', re.IGNORECASE), 'return_10yr'),
+    (re.compile(r'\b5[\s-]*year', re.IGNORECASE), 'return_5yr'),
+    (re.compile(r'\b1[\s-]*year', re.IGNORECASE), 'return_1yr'),
+]
+
+_BENCHMARK_LABEL_PATTERNS = re.compile(
+    r'index|benchmark|s&p|russell|msci|bloomberg|barclays|dow jones|nasdaq|djia',
+    re.IGNORECASE,
+)
+
+# Known UIT fund labels to skip (not benchmark rows)
+_UIT_FUND_LABEL_PATTERNS = re.compile(
+    r'(spdr|spider|trust|the\s+fund|fund\s+return)',
+    re.IGNORECASE,
+)
+
+
+def _extract_performance_from_html_table(
+    soup: BeautifulSoup,
+    filing_date,
+) -> Optional[dict]:
+    """Extract performance data from plain HTML average annual returns table.
+
+    Scans all tables for an "Average Annual" header, then extracts return values
+    from rows labelled "1 Year", "5 Year(s)", "10 Year(s)", "Since Inception".
+    Also extracts the first benchmark row found.
+
+    Returns a dict with keys from: return_1yr, return_5yr, return_10yr,
+    return_since_inception, benchmark_name, benchmark_return_1yr,
+    benchmark_return_5yr, benchmark_return_10yr.
+    Returns None if no performance table is found.
+    """
+    # Detect performance tables by looking for:
+    # 1. "Average Annual" in a heading immediately preceding the table, OR
+    # 2. Period labels ("1 Year", "5 Year", "10 Year") inside the table itself
+    _period_label_re = re.compile(r'\b(?:1|5|10)\s*[-–]?\s*year', re.IGNORECASE)
+
+    perf_tables = []
+    for table in soup.find_all('table'):
+        table_text = table.get_text()
+
+        # Check period labels inside the table
+        if _period_label_re.search(table_text):
+            perf_tables.append(table)
+            continue
+
+        # Check preceding elements (headings) for "Average Annual"
+        prev = table.find_previous_sibling()
+        if prev and re.search(r'average\s+annual', prev.get_text(), re.IGNORECASE):
+            perf_tables.append(table)
+
+    if not perf_tables:
+        return None
+
+    # Use the first matching table
+    table = perf_tables[0]
+
+    result: dict = {}
+    benchmark_name: Optional[str] = None
+    benchmark_returns: dict = {}
+
+    # Two table layouts exist:
+    # VERTICAL: first column = period label ("1 Year"), other columns = fund/benchmark values
+    #   Header row may have column names ("Fund", "S&P 500 Index")
+    # HORIZONTAL: first column = entity name (fund or benchmark), other columns = period values
+    #   Header row has period names ("1 Year", "5 Years", "10 Years")
+
+    # For vertical layout: detect column header → entity name mapping
+    # col_idx → entity label (fund or benchmark name)
+    vertical_col_headers: dict[int, str] = {}
+
+    # For horizontal layout: detect column header → field name mapping
+    col_to_field: dict[int, str] = {}  # column index → return field name
+
+    header_parsed = False
+    horizontal_fund_row_seen = False  # first data row in horizontal layout = fund
+
+    rows = table.find_all('tr')
+    for row in rows:
+        cells = row.find_all(['td', 'th'])
+        if not cells:
+            continue
+
+        label = cells[0].get_text().strip()
+        label_lower = label.lower()
+
+        # Try to detect a header row with period labels in non-first cells (horizontal layout)
+        if not header_parsed:
+            header_found = False
+            for i, cell in enumerate(cells[1:], start=1):
+                cell_text = cell.get_text().strip()
+                for pat, field in _RETURN_LABEL_PATTERNS:
+                    if pat.search(cell_text):
+                        col_to_field[i] = field
+                        header_found = True
+                        break
+            if header_found:
+                header_parsed = True
+                continue
+
+        # Check if this is a vertical layout header row (non-period labels in columns)
+        # e.g., <th>Period</th><th>Fund</th><th>S&P 500 Index</th>
+        # Detect: first cell looks like a header label (not a period), and remaining cells
+        # are entity/column names (not percentage values)
+        if not header_parsed and not col_to_field and not vertical_col_headers:
+            non_period_header = True
+            for pat, _ in _RETURN_LABEL_PATTERNS:
+                if pat.search(label):
+                    non_period_header = False
+                    break
+            if non_period_header and not re.search(r'average\s+annual', label_lower, re.IGNORECASE):
+                # Check that other cells contain text (not percentages) — column headers
+                col_labels_found = False
+                for i, cell in enumerate(cells[1:], start=1):
+                    cell_text = cell.get_text().strip()
+                    # If cell has text but not a parseable percentage, treat as column header
+                    if cell_text and not re.search(r'^\s*[-–]?\s*\d+', cell_text):
+                        vertical_col_headers[i] = cell_text
+                        col_labels_found = True
+                    elif cell_text and _parse_html_return_value(cell_text) is None:
+                        vertical_col_headers[i] = cell_text
+                        col_labels_found = True
+                if col_labels_found:
+                    continue  # skip this header row
+
+        # Check if this is a row with a period label in the first column (vertical layout)
+        matched_field = None
+        for pat, field in _RETURN_LABEL_PATTERNS:
+            if pat.search(label):
+                matched_field = field
+                break
+
+        if matched_field:
+            if vertical_col_headers:
+                # Extract values for each known column
+                # First non-benchmark column → fund return; benchmark column → benchmark return
+                fund_set = False
+                for col_idx, col_label in vertical_col_headers.items():
+                    if col_idx >= len(cells):
+                        continue
+                    val = _parse_html_return_value(cells[col_idx].get_text())
+                    is_bm = bool(_BENCHMARK_LABEL_PATTERNS.search(col_label))
+                    if not is_bm:
+                        if not fund_set and val is not None:
+                            result[matched_field] = val
+                            fund_set = True
+                    else:
+                        if benchmark_name is None:
+                            benchmark_name = col_label
+                        if col_label == benchmark_name and val is not None:
+                            bfield = matched_field.replace('return_', 'benchmark_return_')
+                            if 'since' not in bfield:
+                                benchmark_returns[bfield] = val
+            else:
+                # No column headers detected — first non-empty value cell is the fund return
+                for cell in cells[1:]:
+                    val = _parse_html_return_value(cell.get_text())
+                    if val is not None:
+                        result[matched_field] = val
+                        break
+            continue
+
+        # If we have a column header map, this is a data row (horizontal layout)
+        if col_to_field and label and not re.search(r'average\s+annual', label_lower, re.IGNORECASE):
+            # First data row is always treated as the fund row (regardless of name)
+            # Subsequent rows that look like benchmarks are captured as benchmark
+            if not horizontal_fund_row_seen:
+                horizontal_fund_row_seen = True
+                for col_idx, field in col_to_field.items():
+                    if col_idx < len(cells) and result.get(field) is None:
+                        val = _parse_html_return_value(cells[col_idx].get_text())
+                        if val is not None:
+                            result[field] = val
+            elif benchmark_name is None and _BENCHMARK_LABEL_PATTERNS.search(label):
+                benchmark_name = label
+                for col_idx, field in col_to_field.items():
+                    if col_idx < len(cells):
+                        val = _parse_html_return_value(cells[col_idx].get_text())
+                        if val is not None:
+                            bfield = field.replace('return_', 'benchmark_return_')
+                            if bfield.startswith('benchmark_return_') and 'since' not in bfield:
+                                benchmark_returns[bfield] = val
+
+    if benchmark_name:
+        result['benchmark_name'] = benchmark_name
+        result.update(benchmark_returns)
+
+    if not any(result.get(k) is not None for k in (
+        'return_1yr', 'return_5yr', 'return_10yr', 'return_since_inception'
+    )):
+        return None
+
+    return result
+
+
+_UIT_PERF_FIELDS = (
+    'return_1yr', 'return_5yr', 'return_10yr',
+    'return_since_inception', 'benchmark_name',
+    'benchmark_return_1yr', 'benchmark_return_5yr',
+    'benchmark_return_10yr',
+)
+
+
+def _write_uit_html_performance(session, cik, etf, soup, filing_date, satisfied):
+    """Extract HTML performance for a single UIT ETF and upsert to DB."""
+    from etf_pipeline.benchmark_labels import resolve_benchmark_label
+    perf_html = _extract_performance_from_html_table(soup, filing_date)
+    if not perf_html:
+        logger.debug(f"CIK {cik}: No HTML performance table found for UIT ETF(s)")
+        return
+    try:
+        if perf_html.get('benchmark_name'):
+            resolve_benchmark_label(
+                session,
+                perf_html['benchmark_name'],
+                xbrl_obj=None,
+                cik=cik,
+                filing_date=filing_date,
+            )
+        upsert_record(
+            session,
+            Performance,
+            filter_kwargs={
+                'etf_id': etf.id,
+                'fiscal_year_end': filing_date,
+                'filing_date': filing_date,
+            },
+            data_kwargs={k: perf_html[k] for k in _UIT_PERF_FIELDS if k in perf_html},
+        )
+        logger.info(f"CIK {cik}: HTML performance fallback upserted for UIT {etf.ticker}")
+        satisfied.add(f"__UIT__{etf.id}")
+    except Exception as e:
+        logger.warning(f"CIK {cik}: HTML performance fallback failed for UIT: {e}")
+
+
+def _map_return_period_prospectus(period_start: date, period_end: date) -> Optional[str]:
+    """Map date range to return period field name using +/- 30 day tolerance."""
+    if not period_start or not period_end:
+        return None
+    days = (period_end - period_start).days
+    years = days / 365.25
+    tolerance = 30 / 365.25
+    if abs(years - 1) <= tolerance:
+        return "return_1yr"
+    elif abs(years - 5) <= tolerance:
+        return "return_5yr"
+    elif abs(years - 10) <= tolerance:
+        return "return_10yr"
+    elif years > 10 + tolerance:
+        return "return_since_inception"
+    else:
+        return None
+
+
+def _extract_performance_data(
+    tag_index: dict,
+    context_map: dict,
+    class_id: str,
+    context_id: str,
+    tag_prefix: str,
+) -> dict:
+    """Extract performance data for a given class context.
+
+    For RR taxonomy (older filings): looks up fixed-period AverageAnnualReturn tags
+    directly on the fund context and benchmark contexts (same class_id + PerformanceMeasureAxis).
+
+    For OEF taxonomy (newer filings): looks up oef:AvgAnnlRtrPct across all contexts
+    for this class_id, using context period start/end dates (captured in context_map)
+    to map each value to the correct return period field.
+
+    Returns dict with any subset of: return_1yr, return_5yr, return_10yr,
+    return_since_inception, benchmark_name, benchmark_return_1yr, benchmark_return_5yr,
+    benchmark_return_10yr, portfolio_turnover.
+    """
+    from etf_pipeline.parser_utils import parse_date as _parse_date
+
+    result: dict = {}
+
+    if tag_prefix == 'rr':
+        # Fund returns: use the class-level context (no PerformanceMeasureAxis)
+        result['return_1yr'] = extract_tag_value(tag_index, 'rr:AverageAnnualReturnYear01', context_id)
+        result['return_5yr'] = extract_tag_value(tag_index, 'rr:AverageAnnualReturnYear05', context_id)
+        result['return_10yr'] = extract_tag_value(tag_index, 'rr:AverageAnnualReturnYear10', context_id)
+        result['return_since_inception'] = extract_tag_value(tag_index, 'rr:AverageAnnualReturnSinceInception', context_id)
+        result['portfolio_turnover'] = extract_tag_value(tag_index, 'rr:PortfolioTurnoverRate', context_id)
+
+        # Benchmark returns: find contexts with same class_id AND PerformanceMeasureAxis
+        benchmark_name = None
+        benchmark_returns: dict = {}
+
+        for ctx_id, ctx_data in context_map.items():
+            if ctx_data.get('class_id') != class_id:
+                continue
+            pm = ctx_data.get('performance_measure')
+            if not pm:
+                continue
+
+            if benchmark_name is None:
+                benchmark_name = pm
+
+            # Only collect returns for the first benchmark encountered
+            if pm == benchmark_name:
+                val_1yr = extract_tag_value(tag_index, 'rr:AverageAnnualReturnYear01', ctx_id)
+                val_5yr = extract_tag_value(tag_index, 'rr:AverageAnnualReturnYear05', ctx_id)
+                val_10yr = extract_tag_value(tag_index, 'rr:AverageAnnualReturnYear10', ctx_id)
+
+                if val_1yr is not None:
+                    benchmark_returns['benchmark_return_1yr'] = val_1yr
+                if val_5yr is not None:
+                    benchmark_returns['benchmark_return_5yr'] = val_5yr
+                if val_10yr is not None:
+                    benchmark_returns['benchmark_return_10yr'] = val_10yr
+
+        if benchmark_name is not None:
+            result['benchmark_name'] = benchmark_name
+            result.update(benchmark_returns)
+
+    elif tag_prefix == 'oef':
+        # OEF fund returns: oef:AvgAnnlRtrPct and oef:PortfolioTurnoverRate are duration-typed;
+        # each distinct context carries a different period. Scan all fund contexts for this class.
+        benchmark_name = None
+        benchmark_returns: dict = {}
+
+        for ctx_id, ctx_data in context_map.items():
+            if ctx_data.get('class_id') != class_id:
+                continue
+
+            pm = ctx_data.get('performance_measure')
+            period_start_str = ctx_data.get('period_start')
+            period_end_str = ctx_data.get('period_end')
+
+            # Check for PortfolioTurnoverRate on any fund context (no benchmark axis)
+            if pm is None and result.get('portfolio_turnover') is None:
+                turnover = extract_tag_value(tag_index, 'oef:PortfolioTurnoverRate', ctx_id)
+                if turnover is not None:
+                    result['portfolio_turnover'] = turnover
+
+            # Check for AvgAnnlRtrPct
+            val = extract_tag_value(tag_index, 'oef:AvgAnnlRtrPct', ctx_id)
+            if val is None:
+                continue
+
+            if pm is None:
+                # Fund return — map via period dates
+                if period_start_str and period_end_str:
+                    ps = _parse_date(period_start_str)
+                    pe = _parse_date(period_end_str)
+                    field = _map_return_period_prospectus(ps, pe)
+                    if field:
+                        result[field] = val
+                    else:
+                        logger.debug(f"OEF prospectus: could not map period {period_start_str}..{period_end_str} to return field, skipping")
+                else:
+                    logger.debug(f"OEF prospectus: oef:AvgAnnlRtrPct in context {ctx_id} has no period info, skipping")
+            else:
+                # Benchmark return — only use the first benchmark
+                if benchmark_name is None:
+                    benchmark_name = pm
+                if pm == benchmark_name:
+                    if period_start_str and period_end_str:
+                        ps = _parse_date(period_start_str)
+                        pe = _parse_date(period_end_str)
+                        field = _map_return_period_prospectus(ps, pe)
+                        if field and field in ('return_1yr', 'return_5yr', 'return_10yr'):
+                            bfield = field.replace('return_', 'benchmark_return_')
+                            benchmark_returns[bfield] = val
+
+        if benchmark_name is not None:
+            result['benchmark_name'] = benchmark_name
+            result.update(benchmark_returns)
+
+    return result
+
+
 def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optional[str] = None):
     """Factory that returns a _process_cik_prospectus function with optional date range for backfill."""
     from etf_pipeline.parser_utils import build_filing_date_filter
@@ -638,11 +1078,21 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                         series_id_to_etfs[etf.series_id] = []
                     series_id_to_etfs[etf.series_id].append(etf)
 
-            if not class_id_to_etf:
+            if not class_id_to_etf and not etfs:
+                logger.warning(f"CIK {cik}: No ETFs found in database")
+                return True
+
+            # UITs have class_id=None — collect them separately for HTML fallback
+            uit_etfs = [e for e in etfs if not e.class_id]
+
+            if not class_id_to_etf and not uit_etfs:
                 logger.warning(f"CIK {cik}: No ETFs with class_id found in database")
                 return True
 
             needed_class_ids = set(class_id_to_etf.keys())
+            # Add sentinels for UIT ETFs so the early-exit check doesn't skip them
+            uit_sentinel_ids = {f"__UIT__{e.id}" for e in uit_etfs}
+            needed_class_ids.update(uit_sentinel_ids)
             satisfied = set()
             latest_filing_date = None
 
@@ -727,6 +1177,15 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                     if html_matched:
                         logger.info(f"CIK {cik}: HTML fallback extracted fees for {len(html_matched)} ETF(s)")
                         satisfied.update(html_matched)
+
+                    # For UITs (no class_id), try HTML performance fallback
+                    if uit_etfs:
+                        target_etf = uit_etfs[0] if len(uit_etfs) == 1 else None
+                        if target_etf is None:
+                            logger.warning(f"CIK {cik}: Multiple UIT ETFs found, cannot assign HTML performance unambiguously")
+                        else:
+                            _write_uit_html_performance(session, cik, target_etf, soup, filing_date, satisfied)
+
                     del soup, html
                     gc.collect()
                     continue
@@ -759,10 +1218,14 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                 # Track which ETFs had data extracted in this filing
                 etfs_with_data_this_filing = set()
 
-                # Process each context that has a class_id
+                # Process each context that has a class_id (fund-level only, not benchmark)
                 for context_id, context_data in context_map.items():
                     class_id = context_data.get('class_id')
                     if not class_id:
+                        continue
+
+                    # Skip benchmark contexts (they have both class_id and performance_measure)
+                    if context_data.get('performance_measure'):
                         continue
 
                     # In normal mode: skip if already satisfied (avoid overwriting with older data)
@@ -810,8 +1273,53 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
 
                         etfs_with_data_this_filing.add(etf.id)
 
+                    # Extract and upsert Performance data
+                    try:
+                        from etf_pipeline.benchmark_labels import resolve_benchmark_label
+                        perf_data = _extract_performance_data(
+                            tag_index, context_map, class_id, context_id, tag_prefix
+                        )
+                        fiscal_year_end = effective_date
+
+                        perf_fields = ('return_1yr', 'return_5yr', 'return_10yr',
+                                       'return_since_inception', 'benchmark_name',
+                                       'benchmark_return_1yr', 'benchmark_return_5yr',
+                                       'benchmark_return_10yr', 'portfolio_turnover')
+
+                        if any(perf_data.get(k) is not None for k in perf_fields):
+                            if perf_data.get('benchmark_name'):
+                                resolve_benchmark_label(
+                                    session,
+                                    perf_data['benchmark_name'],
+                                    xbrl_obj=None,
+                                    cik=cik,
+                                    filing_date=filing_date,
+                                )
+                            upsert_record(
+                                session,
+                                Performance,
+                                filter_kwargs={
+                                    'etf_id': etf.id,
+                                    'fiscal_year_end': fiscal_year_end,
+                                    'filing_date': filing_date,
+                                },
+                                data_kwargs={k: perf_data[k] for k in perf_fields if k in perf_data},
+                            )
+                            logger.debug(f"CIK {cik}: Upserted performance data for {etf.ticker}")
+                    except Exception as e:
+                        logger.warning(f"CIK {cik}: Failed to extract/upsert performance data for {etf.ticker}: {e}")
+
                     # Mark this class_id as satisfied (used in normal mode for early exit)
                     satisfied.add(class_id)
+
+                # For UIT ETFs (no class_id), try HTML performance fallback
+                # They are not present in the XBRL context map, so the per-class loop misses them
+                if uit_etfs:
+                    target_etf = uit_etfs[0] if len(uit_etfs) == 1 else None
+                    if target_etf is None:
+                        logger.warning(f"CIK {cik}: Multiple UIT ETFs found, cannot assign HTML performance unambiguously")
+                    else:
+                        _write_uit_html_performance(session, cik, target_etf, soup, filing_date, satisfied)
 
                 # Extract narrative text (series-level, not class-level)
                 all_nonnumeric = soup.find_all('ix:nonnumeric')
@@ -903,6 +1411,7 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                     sid: [session.merge(etf_obj) for etf_obj in etf_list]
                     for sid, etf_list in series_id_to_etfs.items()
                 }
+                uit_etfs = [session.merge(e) for e in uit_etfs]
                 logger.debug(f"CIK {cik}: Committed data for filing {filing_idx}")
 
             # Update processing log after successful processing

@@ -1830,3 +1830,704 @@ class TestHtmlFallbackIntegration:
         assert fee.total_expense_net == pytest.approx(Decimal('0.0055'))  # fallback: net=gross
         assert fee.effective_date == date(2022, 11, 3)  # uses filing_date as fallback
         assert fee.filing_date == date(2022, 11, 3)
+
+
+class TestParseContextsPerformanceMeasure:
+    """Test that parse_contexts captures PerformanceMeasureAxis and period dates."""
+
+    def test_performance_measure_extracted(self):
+        """Test that PerformanceMeasureAxis member is extracted from context segment."""
+        html = """
+        <html>
+        <ix:resources>
+          <xbrli:context id="ctx_fund_benchmark">
+            <xbrli:entity>
+              <xbrli:identifier scheme="http://www.sec.gov/CIK">0001314612</xbrli:identifier>
+              <xbrli:segment>
+                <xbrldi:explicitMember dimension="dei:LegalEntityAxis">rr01:S000014796Member</xbrldi:explicitMember>
+                <xbrldi:explicitMember dimension="rr:ProspectusShareClassAxis">rr01:C000014542Member</xbrldi:explicitMember>
+                <xbrldi:explicitMember dimension="rr:PerformanceMeasureAxis">rr01:SP500IndexMember</xbrldi:explicitMember>
+              </xbrli:segment>
+            </xbrli:entity>
+            <xbrli:period>
+              <xbrli:startDate>2021-11-03</xbrli:startDate>
+              <xbrli:endDate>2022-11-03</xbrli:endDate>
+            </xbrli:period>
+          </xbrli:context>
+        </ix:resources>
+        </html>
+        """
+        soup = BeautifulSoup(html, 'lxml')
+        context_map = parse_contexts(soup)
+
+        assert "ctx_fund_benchmark" in context_map
+        ctx = context_map["ctx_fund_benchmark"]
+        assert ctx["class_id"] == "C000014542"
+        assert ctx["performance_measure"] == "SP500IndexMember"
+        assert ctx["period_start"] == "2021-11-03"
+        assert ctx["period_end"] == "2022-11-03"
+
+    def test_fund_context_has_no_performance_measure(self):
+        """Test that a plain fund context has performance_measure=None."""
+        html = """
+        <html>
+        <ix:resources>
+          <xbrli:context id="ctx_fund">
+            <xbrli:entity>
+              <xbrli:identifier scheme="http://www.sec.gov/CIK">0001314612</xbrli:identifier>
+              <xbrli:segment>
+                <xbrldi:explicitMember dimension="dei:LegalEntityAxis">rr01:S000014796Member</xbrldi:explicitMember>
+                <xbrldi:explicitMember dimension="rr:ProspectusShareClassAxis">rr01:C000014542Member</xbrldi:explicitMember>
+              </xbrli:segment>
+            </xbrli:entity>
+            <xbrli:period>
+              <xbrli:startDate>2021-11-03</xbrli:startDate>
+              <xbrli:endDate>2022-11-03</xbrli:endDate>
+            </xbrli:period>
+          </xbrli:context>
+        </ix:resources>
+        </html>
+        """
+        soup = BeautifulSoup(html, 'lxml')
+        context_map = parse_contexts(soup)
+
+        assert "ctx_fund" in context_map
+        ctx = context_map["ctx_fund"]
+        assert ctx["class_id"] == "C000014542"
+        assert ctx["performance_measure"] is None
+        assert ctx["period_start"] == "2021-11-03"
+        assert ctx["period_end"] == "2022-11-03"
+
+    def test_performance_measure_strips_namespace_prefix(self):
+        """Test that namespace prefix is stripped from PerformanceMeasureAxis member."""
+        html = """
+        <html>
+        <ix:resources>
+          <xbrli:context id="ctx_bm">
+            <xbrli:entity>
+              <xbrli:identifier scheme="http://www.sec.gov/CIK">0001314612</xbrli:identifier>
+              <xbrli:segment>
+                <xbrldi:explicitMember dimension="rr:ProspectusShareClassAxis">rr01:C000014542Member</xbrldi:explicitMember>
+                <xbrldi:explicitMember dimension="rr:PerformanceMeasureAxis">ns:BloombergAggMember</xbrldi:explicitMember>
+              </xbrli:segment>
+            </xbrli:entity>
+            <xbrli:period>
+              <xbrli:startDate>2021-11-03</xbrli:startDate>
+              <xbrli:endDate>2022-11-03</xbrli:endDate>
+            </xbrli:period>
+          </xbrli:context>
+        </ix:resources>
+        </html>
+        """
+        soup = BeautifulSoup(html, 'lxml')
+        context_map = parse_contexts(soup)
+        ctx = context_map["ctx_bm"]
+        assert ctx["performance_measure"] == "BloombergAggMember"
+
+
+class TestExtractPerformanceData:
+    """Unit tests for _extract_performance_data() helper."""
+
+    def _make_rr_filing(self, include_benchmark=True):
+        """Build minimal RR iXBRL with fund and benchmark performance tags."""
+        benchmark_context = ""
+        benchmark_tags = ""
+        if include_benchmark:
+            benchmark_context = """
+            <xbrli:context id="ctx_bm">
+              <xbrli:entity>
+                <xbrli:identifier>0001314612</xbrli:identifier>
+                <xbrli:segment>
+                  <xbrldi:explicitMember dimension="rr:ProspectusShareClassAxis">rr01:C000014542Member</xbrldi:explicitMember>
+                  <xbrldi:explicitMember dimension="rr:PerformanceMeasureAxis">rr01:SP500IndexMember</xbrldi:explicitMember>
+                </xbrli:segment>
+              </xbrli:entity>
+              <xbrli:period>
+                <xbrli:startDate>2021-11-03</xbrli:startDate>
+                <xbrli:endDate>2022-11-03</xbrli:endDate>
+              </xbrli:period>
+            </xbrli:context>"""
+            benchmark_tags = """
+            <ix:nonfraction name="rr:AverageAnnualReturnYear01" contextRef="ctx_bm" scale="-2" unitRef="Ratio">9.10</ix:nonfraction>
+            <ix:nonfraction name="rr:AverageAnnualReturnYear05" contextRef="ctx_bm" scale="-2" unitRef="Ratio">13.50</ix:nonfraction>
+            <ix:nonfraction name="rr:AverageAnnualReturnYear10" contextRef="ctx_bm" scale="-2" unitRef="Ratio">15.20</ix:nonfraction>"""
+        return f"""
+        <html>
+        <ix:resources>
+          <xbrli:context id="ctx_fund">
+            <xbrli:entity>
+              <xbrli:identifier>0001314612</xbrli:identifier>
+              <xbrli:segment>
+                <xbrldi:explicitMember dimension="rr:ProspectusShareClassAxis">rr01:C000014542Member</xbrldi:explicitMember>
+              </xbrli:segment>
+            </xbrli:entity>
+            <xbrli:period>
+              <xbrli:startDate>2012-11-03</xbrli:startDate>
+              <xbrli:endDate>2022-11-03</xbrli:endDate>
+            </xbrli:period>
+          </xbrli:context>
+          {benchmark_context}
+          <xbrli:unit id="Ratio"><xbrli:measure>xbrli:pure</xbrli:measure></xbrli:unit>
+        </ix:resources>
+        <ix:nonfraction name="rr:AverageAnnualReturnYear01" contextRef="ctx_fund" scale="-2" unitRef="Ratio">8.50</ix:nonfraction>
+        <ix:nonfraction name="rr:AverageAnnualReturnYear05" contextRef="ctx_fund" scale="-2" unitRef="Ratio">12.30</ix:nonfraction>
+        <ix:nonfraction name="rr:AverageAnnualReturnYear10" contextRef="ctx_fund" scale="-2" unitRef="Ratio">14.75</ix:nonfraction>
+        <ix:nonfraction name="rr:AverageAnnualReturnSinceInception" contextRef="ctx_fund" scale="-2" unitRef="Ratio">11.20</ix:nonfraction>
+        <ix:nonfraction name="rr:PortfolioTurnoverRate" contextRef="ctx_fund" scale="-2" unitRef="Ratio">45.00</ix:nonfraction>
+        {benchmark_tags}
+        </html>"""
+
+    def test_rr_fund_returns(self):
+        from etf_pipeline.parsers.prospectus import _extract_performance_data, build_tag_index, parse_contexts
+        soup = BeautifulSoup(self._make_rr_filing(include_benchmark=False), 'lxml')
+        context_map = parse_contexts(soup)
+        tag_index = build_tag_index(soup)
+
+        result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_fund', 'rr')
+
+        assert result['return_1yr'] == Decimal('0.0850')
+        assert result['return_5yr'] == Decimal('0.1230')
+        assert result['return_10yr'] == Decimal('0.1475')
+        assert result['return_since_inception'] == Decimal('0.1120')
+        assert result['portfolio_turnover'] == Decimal('0.4500')
+        assert result.get('benchmark_name') is None
+
+    def test_rr_benchmark_returns(self):
+        from etf_pipeline.parsers.prospectus import _extract_performance_data, build_tag_index, parse_contexts
+        soup = BeautifulSoup(self._make_rr_filing(include_benchmark=True), 'lxml')
+        context_map = parse_contexts(soup)
+        tag_index = build_tag_index(soup)
+
+        result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_fund', 'rr')
+
+        assert result['return_1yr'] == Decimal('0.0850')
+        assert result['benchmark_name'] == 'SP500IndexMember'
+        assert result['benchmark_return_1yr'] == Decimal('0.0910')
+        assert result['benchmark_return_5yr'] == Decimal('0.1350')
+        assert result['benchmark_return_10yr'] == Decimal('0.1520')
+
+    def test_rr_no_performance_tags_returns_empty(self):
+        from etf_pipeline.parsers.prospectus import _extract_performance_data, build_tag_index, parse_contexts
+        html = """
+        <html>
+        <ix:resources>
+          <xbrli:context id="ctx_fund">
+            <xbrli:entity><xbrli:identifier>0001314612</xbrli:identifier>
+              <xbrli:segment>
+                <xbrldi:explicitMember dimension="rr:ProspectusShareClassAxis">rr01:C000014542Member</xbrldi:explicitMember>
+              </xbrli:segment>
+            </xbrli:entity>
+            <xbrli:period><xbrli:startDate>2021-11-03</xbrli:startDate><xbrli:endDate>2022-11-03</xbrli:endDate></xbrli:period>
+          </xbrli:context>
+        </ix:resources>
+        <ix:nonfraction name="rr:ManagementFeesOverAssets" contextRef="ctx_fund" scale="-2">0.70</ix:nonfraction>
+        </html>"""
+        soup = BeautifulSoup(html, 'lxml')
+        context_map = parse_contexts(soup)
+        tag_index = build_tag_index(soup)
+
+        result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_fund', 'rr')
+
+        assert result.get('return_1yr') is None
+        assert result.get('benchmark_name') is None
+
+    def test_oef_fund_returns_with_period_mapping(self):
+        from etf_pipeline.parsers.prospectus import _extract_performance_data, build_tag_index, parse_contexts
+        html = """
+        <html xmlns:oef="http://xbrl.sec.gov/oef-rr/2025" xmlns:oef01="http://oef01/20221103">
+        <ix:resources>
+          <xbrli:context id="ctx_1yr">
+            <xbrli:entity><xbrli:identifier>0001314612</xbrli:identifier>
+              <xbrli:segment>
+                <xbrldi:explicitMember dimension="oef:ClassAxis">oef01:C000014542Member</xbrldi:explicitMember>
+              </xbrli:segment>
+            </xbrli:entity>
+            <xbrli:period><xbrli:startDate>2021-11-03</xbrli:startDate><xbrli:endDate>2022-11-03</xbrli:endDate></xbrli:period>
+          </xbrli:context>
+          <xbrli:context id="ctx_5yr">
+            <xbrli:entity><xbrli:identifier>0001314612</xbrli:identifier>
+              <xbrli:segment>
+                <xbrldi:explicitMember dimension="oef:ClassAxis">oef01:C000014542Member</xbrldi:explicitMember>
+              </xbrli:segment>
+            </xbrli:entity>
+            <xbrli:period><xbrli:startDate>2017-11-03</xbrli:startDate><xbrli:endDate>2022-11-03</xbrli:endDate></xbrli:period>
+          </xbrli:context>
+          <xbrli:unit id="Ratio"><xbrli:measure>xbrli:pure</xbrli:measure></xbrli:unit>
+        </ix:resources>
+        <ix:nonfraction name="oef:AvgAnnlRtrPct" contextRef="ctx_1yr" scale="-2" unitRef="Ratio">8.50</ix:nonfraction>
+        <ix:nonfraction name="oef:AvgAnnlRtrPct" contextRef="ctx_5yr" scale="-2" unitRef="Ratio">12.30</ix:nonfraction>
+        </html>"""
+        soup = BeautifulSoup(html, 'lxml')
+        context_map = parse_contexts(soup)
+        tag_index = build_tag_index(soup)
+
+        result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_1yr', 'oef')
+
+        assert result['return_1yr'] == Decimal('0.0850')
+        assert result['return_5yr'] == Decimal('0.1230')
+        assert result.get('benchmark_name') is None
+
+    def test_oef_benchmark_return(self):
+        from etf_pipeline.parsers.prospectus import _extract_performance_data, build_tag_index, parse_contexts
+        html = """
+        <html xmlns:oef="http://xbrl.sec.gov/oef-rr/2025" xmlns:oef01="http://oef01/20221103">
+        <ix:resources>
+          <xbrli:context id="ctx_1yr">
+            <xbrli:entity><xbrli:identifier>0001314612</xbrli:identifier>
+              <xbrli:segment>
+                <xbrldi:explicitMember dimension="oef:ClassAxis">oef01:C000014542Member</xbrldi:explicitMember>
+              </xbrli:segment>
+            </xbrli:entity>
+            <xbrli:period><xbrli:startDate>2021-11-03</xbrli:startDate><xbrli:endDate>2022-11-03</xbrli:endDate></xbrli:period>
+          </xbrli:context>
+          <xbrli:context id="ctx_bm_1yr">
+            <xbrli:entity><xbrli:identifier>0001314612</xbrli:identifier>
+              <xbrli:segment>
+                <xbrldi:explicitMember dimension="oef:ClassAxis">oef01:C000014542Member</xbrldi:explicitMember>
+                <xbrldi:explicitMember dimension="oef:PerformanceMeasureAxis">oef01:SP500IndexMember</xbrldi:explicitMember>
+              </xbrli:segment>
+            </xbrli:entity>
+            <xbrli:period><xbrli:startDate>2021-11-03</xbrli:startDate><xbrli:endDate>2022-11-03</xbrli:endDate></xbrli:period>
+          </xbrli:context>
+          <xbrli:unit id="Ratio"><xbrli:measure>xbrli:pure</xbrli:measure></xbrli:unit>
+        </ix:resources>
+        <ix:nonfraction name="oef:AvgAnnlRtrPct" contextRef="ctx_1yr" scale="-2" unitRef="Ratio">8.50</ix:nonfraction>
+        <ix:nonfraction name="oef:AvgAnnlRtrPct" contextRef="ctx_bm_1yr" scale="-2" unitRef="Ratio">9.10</ix:nonfraction>
+        </html>"""
+        soup = BeautifulSoup(html, 'lxml')
+        context_map = parse_contexts(soup)
+        tag_index = build_tag_index(soup)
+
+        result = _extract_performance_data(tag_index, context_map, 'C000014542', 'ctx_1yr', 'oef')
+
+        assert result['return_1yr'] == Decimal('0.0850')
+        assert result['benchmark_name'] == 'SP500IndexMember'
+        assert result['benchmark_return_1yr'] == Decimal('0.0910')
+
+
+class TestIntegrationPerformanceRR:
+    """Integration tests for performance extraction in _process_cik_prospectus (RR namespace)."""
+
+    def test_performance_extracted_rr_namespace(self, session):
+        """Test that Performance record is written for RR namespace filing with perf data."""
+        from datetime import date
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, Performance
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from pathlib import Path
+
+        fixture_path = Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos_perf.html"
+
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A',
+            issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+        etf_id = etf.id
+
+        with open(fixture_path) as f:
+            html_content = f.read()
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        perf = session.query(Performance).filter_by(etf_id=etf_id).one()
+        assert perf.return_1yr == pytest.approx(Decimal('0.0850'))
+        assert perf.return_5yr == pytest.approx(Decimal('0.1230'))
+        assert perf.return_10yr == pytest.approx(Decimal('0.1475'))
+        assert perf.return_since_inception == pytest.approx(Decimal('0.1120'))
+        assert perf.portfolio_turnover == pytest.approx(Decimal('0.4500'))
+        assert perf.benchmark_name == 'SP500IndexMember'
+        assert perf.benchmark_return_1yr == pytest.approx(Decimal('0.0910'))
+        assert perf.benchmark_return_5yr == pytest.approx(Decimal('0.1350'))
+        assert perf.benchmark_return_10yr == pytest.approx(Decimal('0.1520'))
+        assert perf.fiscal_year_end == date(2022, 11, 3)
+        assert perf.filing_date == date(2022, 11, 3)
+
+    def test_benchmark_context_skipped_for_fees(self, session):
+        """Test that benchmark contexts (class_id + PerformanceMeasureAxis) do not create FeeExpense."""
+        from datetime import date
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, FeeExpense
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from pathlib import Path
+
+        fixture_path = Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos_perf.html"
+
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A',
+            issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+        etf_id = etf.id
+
+        with open(fixture_path) as f:
+            html_content = f.read()
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+        # Only one FeeExpense record (from the fund context, not the benchmark context)
+        assert session.query(FeeExpense).filter_by(etf_id=etf_id).count() == 1
+
+
+class TestIntegrationPerformanceOEF:
+    """Integration tests for performance extraction with OEF namespace."""
+
+    def test_performance_extracted_oef_namespace(self, session):
+        """Test that Performance record is written for OEF namespace filing with perf data."""
+        from datetime import date
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, Performance
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from pathlib import Path
+
+        fixture_path = Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos_oef_perf.html"
+
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A',
+            issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+        etf_id = etf.id
+
+        with open(fixture_path) as f:
+            html_content = f.read()
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+
+        perf = session.query(Performance).filter_by(etf_id=etf_id).one()
+        assert perf.return_1yr == pytest.approx(Decimal('0.0850'))
+        assert perf.return_5yr == pytest.approx(Decimal('0.1230'))
+        assert perf.return_10yr == pytest.approx(Decimal('0.1475'))
+        assert perf.portfolio_turnover == pytest.approx(Decimal('0.4500'))
+        assert perf.benchmark_name == 'SP500IndexMember'
+        assert perf.benchmark_return_1yr == pytest.approx(Decimal('0.0910'))
+        assert perf.fiscal_year_end == date(2022, 11, 3)
+        assert perf.filing_date == date(2022, 11, 3)
+
+    def test_no_performance_data_no_record(self, session):
+        """Test that no Performance record is written when filing has no performance tags."""
+        from datetime import date
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, Performance
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+        from pathlib import Path
+
+        # Use the original RR fixture which has no performance tags
+        fixture_path = Path(__file__).parent / "fixtures" / "prospectus" / "sample_485bpos.html"
+
+        etf = ETF(
+            cik='0001314612',
+            ticker='TESTA',
+            fund_name='Test Fund - Class A',
+            issuer_name='Test Issuer',
+            series_id='S000014796',
+            class_id='C000014542',
+        )
+        session.add(etf)
+        session.commit()
+        etf_id = etf.id
+
+        with open(fixture_path) as f:
+            html_content = f.read()
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_content
+        mock_filing.filing_date = date(2022, 11, 3)
+        mock_filing.document.url = 'https://www.sec.gov/test/filing.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0001314612')
+
+        assert result is True
+        # No performance data in fixture → no Performance record
+        assert session.query(Performance).filter_by(etf_id=etf_id).count() == 0
+
+
+class TestExtractPerformanceFromHtmlTable:
+    """Unit tests for _extract_performance_from_html_table()."""
+
+    from etf_pipeline.parsers.prospectus import _extract_performance_from_html_table
+
+    VERTICAL_LAYOUT = """
+    <html><body>
+    <h3>Average Annual Total Returns</h3>
+    <table>
+      <tr><th>Period</th><th>Fund</th><th>S&amp;P 500 Index</th></tr>
+      <tr><td>1 Year</td><td>8.50%</td><td>9.10%</td></tr>
+      <tr><td>5 Years</td><td>12.30%</td><td>13.50%</td></tr>
+      <tr><td>10 Years</td><td>14.75%</td><td>15.20%</td></tr>
+      <tr><td>Since Inception</td><td>11.20%</td><td></td></tr>
+    </table>
+    </body></html>
+    """
+
+    HORIZONTAL_LAYOUT = """
+    <html><body>
+    <h3>Average Annual Total Returns as of December 31</h3>
+    <table>
+      <thead>
+        <tr><th></th><th>1 Year</th><th>5 Years</th><th>10 Years</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>SPDR S&amp;P 500 ETF Trust</td><td>8.50%</td><td>12.30%</td><td>14.75%</td></tr>
+        <tr><td>S&amp;P 500 Index</td><td>9.10%</td><td>13.50%</td><td>15.20%</td></tr>
+      </tbody>
+    </table>
+    </body></html>
+    """
+
+    NO_PERFORMANCE_TABLE = """
+    <html><body>
+    <table>
+      <tr><td>Management Fees</td><td>0.0945%</td></tr>
+      <tr><td>Total Annual Fund Operating Expenses</td><td>0.0945%</td></tr>
+    </table>
+    </body></html>
+    """
+
+    def test_vertical_layout_fund_returns(self):
+        from datetime import date
+        from etf_pipeline.parsers.prospectus import _extract_performance_from_html_table
+        soup = BeautifulSoup(self.VERTICAL_LAYOUT, 'lxml')
+        result = _extract_performance_from_html_table(soup, date(2022, 12, 31))
+
+        assert result is not None
+        assert result['return_1yr'] == Decimal('0.0850')
+        assert result['return_5yr'] == Decimal('0.1230')
+        assert result['return_10yr'] == Decimal('0.1475')
+        assert result['return_since_inception'] == Decimal('0.1120')
+
+    def test_vertical_layout_benchmark(self):
+        from datetime import date
+        from etf_pipeline.parsers.prospectus import _extract_performance_from_html_table
+        soup = BeautifulSoup(self.VERTICAL_LAYOUT, 'lxml')
+        result = _extract_performance_from_html_table(soup, date(2022, 12, 31))
+
+        assert result is not None
+        assert result.get('benchmark_name') == 'S&P 500 Index'
+        assert result['benchmark_return_1yr'] == Decimal('0.0910')
+        assert result['benchmark_return_5yr'] == Decimal('0.1350')
+        assert result['benchmark_return_10yr'] == Decimal('0.1520')
+
+    def test_horizontal_layout_fund_returns(self):
+        from datetime import date
+        from etf_pipeline.parsers.prospectus import _extract_performance_from_html_table
+        soup = BeautifulSoup(self.HORIZONTAL_LAYOUT, 'lxml')
+        result = _extract_performance_from_html_table(soup, date(2022, 12, 31))
+
+        assert result is not None
+        assert result['return_1yr'] == Decimal('0.0850')
+        assert result['return_5yr'] == Decimal('0.1230')
+        assert result['return_10yr'] == Decimal('0.1475')
+
+    def test_horizontal_layout_benchmark(self):
+        from datetime import date
+        from etf_pipeline.parsers.prospectus import _extract_performance_from_html_table
+        soup = BeautifulSoup(self.HORIZONTAL_LAYOUT, 'lxml')
+        result = _extract_performance_from_html_table(soup, date(2022, 12, 31))
+
+        assert result is not None
+        assert result.get('benchmark_name') == 'S&P 500 Index'
+        assert result['benchmark_return_1yr'] == Decimal('0.0910')
+        assert result['benchmark_return_5yr'] == Decimal('0.1350')
+        assert result['benchmark_return_10yr'] == Decimal('0.1520')
+
+    def test_no_performance_table_returns_none(self):
+        from datetime import date
+        from etf_pipeline.parsers.prospectus import _extract_performance_from_html_table
+        soup = BeautifulSoup(self.NO_PERFORMANCE_TABLE, 'lxml')
+        result = _extract_performance_from_html_table(soup, date(2022, 12, 31))
+        assert result is None
+
+    def test_negative_return_value(self):
+        from datetime import date
+        from etf_pipeline.parsers.prospectus import _extract_performance_from_html_table
+        html = """
+        <html><body>
+        <h3>Average Annual Total Returns</h3>
+        <table>
+          <tr><td>1 Year</td><td>(2.50)%</td></tr>
+          <tr><td>5 Years</td><td>8.00%</td></tr>
+          <tr><td>10 Years</td><td>11.00%</td></tr>
+        </table>
+        </body></html>
+        """
+        soup = BeautifulSoup(html, 'lxml')
+        result = _extract_performance_from_html_table(soup, date(2022, 12, 31))
+        assert result is not None
+        assert result['return_1yr'] == Decimal('-0.0250')
+        assert result['return_5yr'] == Decimal('0.0800')
+
+
+class TestUitHtmlPerformanceFallback:
+    """Integration tests for UIT HTML performance fallback in _process_cik_prospectus."""
+
+    UIT_PERF_HTML = """
+    <html><body>
+    <h3>Average Annual Total Returns</h3>
+    <table>
+      <tr><th>Period</th><th>SPY</th><th>S&amp;P 500 Index</th></tr>
+      <tr><td>1 Year</td><td>25.02%</td><td>25.02%</td></tr>
+      <tr><td>5 Years</td><td>15.68%</td><td>15.69%</td></tr>
+      <tr><td>10 Years</td><td>13.07%</td><td>13.09%</td></tr>
+    </table>
+    </body></html>
+    """
+
+    def test_uit_html_performance_extracted_no_ixbrl(self, session):
+        """UIT (no class_id) gets Performance record via HTML fallback when no iXBRL present."""
+        from datetime import date
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, Performance
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+
+        etf = ETF(
+            cik='0000884394',
+            ticker='SPY',
+            fund_name='SPDR S&P 500 ETF Trust',
+            issuer_name='State Street',
+            series_id=None,
+            class_id=None,
+        )
+        session.add(etf)
+        session.commit()
+        etf_id = etf.id
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = self.UIT_PERF_HTML
+        mock_filing.filing_date = date(2024, 3, 1)
+        mock_filing.document.url = 'https://www.sec.gov/test/spy.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0000884394')
+
+        assert result is True
+        perf = session.query(Performance).filter_by(etf_id=etf_id).one()
+        assert perf.return_1yr == pytest.approx(Decimal('0.2502'))
+        assert perf.return_5yr == pytest.approx(Decimal('0.1568'))
+        assert perf.return_10yr == pytest.approx(Decimal('0.1307'))
+        assert perf.filing_date == date(2024, 3, 1)
+
+    def test_uit_no_performance_table_no_record(self, session):
+        """UIT with plain HTML but no performance table writes no Performance record."""
+        from datetime import date
+        from unittest.mock import Mock, patch
+        from etf_pipeline.models import ETF, Performance
+        from etf_pipeline.parsers.prospectus import _process_cik_prospectus
+
+        etf = ETF(
+            cik='0000884394',
+            ticker='SPY',
+            fund_name='SPDR S&P 500 ETF Trust',
+            issuer_name='State Street',
+            series_id=None,
+            class_id=None,
+        )
+        session.add(etf)
+        session.commit()
+        etf_id = etf.id
+
+        html_no_perf = """
+        <html><body>
+        <table>
+          <tr><td>Management Fees</td><td>0.0945%</td></tr>
+        </table>
+        </body></html>
+        """
+
+        mock_filing = Mock()
+        mock_filing.html.return_value = html_no_perf
+        mock_filing.filing_date = date(2024, 3, 1)
+        mock_filing.document.url = 'https://www.sec.gov/test/spy.htm'
+
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(return_value=mock_filing)
+        mock_filings.__len__ = Mock(return_value=1)
+        mock_filings.empty = False
+
+        mock_company = Mock()
+        mock_company.get_filings.return_value = mock_filings
+
+        with patch('edgar.Company', return_value=mock_company):
+            result = _process_cik_prospectus(session, '0000884394')
+
+        assert result is True
+        assert session.query(Performance).filter_by(etf_id=etf_id).count() == 0

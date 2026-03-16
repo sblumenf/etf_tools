@@ -1064,3 +1064,214 @@ class TestNCSRParser:
         assert perf.benchmark_return_1yr == Decimal('0.1100')
         assert perf.benchmark_return_5yr == Decimal('0.0800')
         assert perf.benchmark_return_10yr == Decimal('0.0880')
+
+
+class TestNCSRUITFallback:
+    """Test N-CSR parser UIT fallback for ETFs with NULL class_id."""
+
+    @pytest.fixture
+    def uit_etf(self, session):
+        """Create a single UIT ETF with NULL class_id."""
+        etf = ETF(
+            ticker="SPY",
+            cik="0000884394",
+            series_id=None,
+            class_id=None,
+            issuer_name="SPDR S&P 500 ETF Trust",
+            fund_name="SPDR S&P 500 ETF Trust",
+        )
+        session.add(etf)
+        session.commit()
+        return etf
+
+    @pytest.fixture
+    def uit_etf_two_funds(self, session):
+        """Create two UIT ETFs with NULL class_id under the same CIK (ambiguous case)."""
+        etfs = [
+            ETF(
+                ticker="SPY",
+                cik="0000884394",
+                series_id=None,
+                class_id=None,
+                issuer_name="SPDR S&P 500 ETF Trust",
+                fund_name="SPDR S&P 500 ETF Trust",
+            ),
+            ETF(
+                ticker="SPY2",
+                cik="0000884394",
+                series_id=None,
+                class_id=None,
+                issuer_name="SPDR S&P 500 ETF Trust",
+                fund_name="Another fund same CIK",
+            ),
+        ]
+        for etf in etfs:
+            session.add(etf)
+        session.commit()
+        return etfs
+
+    def _make_mock_filing(self, df, filing_date=date(2024, 9, 30)):
+        mock_filing = Mock()
+        mock_filing.filing_date = filing_date
+        mock_filing.is_inline_xbrl = True
+        mock_xbrl = Mock()
+        mock_facts = Mock()
+        mock_facts.to_dataframe.return_value = df
+        mock_xbrl.facts = mock_facts
+        mock_filing.xbrl.return_value = mock_xbrl
+        return mock_filing
+
+    def _mock_filings(self, filings_list):
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(side_effect=lambda i: filings_list[i])
+        mock_filings.__len__ = Mock(return_value=len(filings_list))
+        mock_filings.__bool__ = Mock(return_value=True)
+        mock_filings.empty = False
+        return mock_filings
+
+    def test_uit_fallback_no_class_axis_column(self, session, uit_etf, mock_ncsr_db):
+        """UIT filing with no ClassAxis column uses fallback ETF for all facts."""
+        data = {
+            'concept': [
+                'oef:AvgAnnlRtrPct',
+                'oef:AvgAnnlRtrPct',
+                'oef:ExpenseRatioPct',
+            ],
+            'numeric_value': [
+                Decimal('0.2650'),
+                Decimal('0.1450'),
+                Decimal('0.0009'),
+            ],
+            'period_start': [
+                date(2023, 9, 30),
+                date(2019, 9, 30),
+                None,
+            ],
+            'period_end': [
+                date(2024, 9, 30),
+                date(2024, 9, 30),
+                date(2024, 9, 30),
+            ],
+            # No dim_oef_ClassAxis column at all
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0000884394", clear_cache=False)
+
+        stmt = select(Performance).where(Performance.etf_id == uit_etf.id)
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        assert perf.fiscal_year_end == date(2024, 9, 30)
+        assert perf.return_1yr == Decimal('0.2650')
+        assert perf.return_5yr == Decimal('0.1450')
+        assert perf.expense_ratio_actual == Decimal('0.0009')
+
+    def test_uit_fallback_all_null_class_axis(self, session, uit_etf, mock_ncsr_db):
+        """UIT filing where ClassAxis column exists but all values are NULL."""
+        data = {
+            'concept': [
+                'oef:AvgAnnlRtrPct',
+                'oef:ExpenseRatioPct',
+            ],
+            'numeric_value': [
+                Decimal('0.2650'),
+                Decimal('0.0009'),
+            ],
+            'period_start': [
+                date(2023, 9, 30),
+                None,
+            ],
+            'period_end': [
+                date(2024, 9, 30),
+                date(2024, 9, 30),
+            ],
+            'dim_oef_ClassAxis': [None, None],
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0000884394", clear_cache=False)
+
+        stmt = select(Performance).where(Performance.etf_id == uit_etf.id)
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        assert perf.return_1yr == Decimal('0.2650')
+        assert perf.expense_ratio_actual == Decimal('0.0009')
+
+    def test_uit_fallback_with_benchmark(self, session, uit_etf, mock_ncsr_db):
+        """UIT filing with no ClassAxis extracts benchmark data correctly."""
+        data = {
+            'concept': [
+                'oef:AvgAnnlRtrPct',
+                'oef:AvgAnnlRtrPct',
+            ],
+            'numeric_value': [
+                Decimal('0.2650'),
+                Decimal('0.2600'),
+            ],
+            'period_start': [
+                date(2023, 9, 30),
+                date(2023, 9, 30),
+            ],
+            'period_end': [
+                date(2024, 9, 30),
+                date(2024, 9, 30),
+            ],
+            'dim_oef_BroadBasedIndexAxis': [
+                None,
+                'ist:SP500TotalReturnIndexMember',
+            ],
+            # No dim_oef_ClassAxis column
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0000884394", clear_cache=False)
+
+        stmt = select(Performance).where(Performance.etf_id == uit_etf.id)
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        assert perf.return_1yr == Decimal('0.2650')
+        assert perf.benchmark_name == "SP500TotalReturnIndexMember"
+        assert perf.benchmark_return_1yr == Decimal('0.2600')
+
+    def test_uit_ambiguous_multiple_null_class_id(self, session, uit_etf_two_funds, mock_ncsr_db):
+        """Multiple ETFs with NULL class_id under same CIK are skipped as ambiguous."""
+        data = {
+            'concept': ['oef:AvgAnnlRtrPct'],
+            'numeric_value': [Decimal('0.2650')],
+            'period_start': [date(2023, 9, 30)],
+            'period_end': [date(2024, 9, 30)],
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0000884394", clear_cache=False)
+
+        stmt = select(Performance)
+        results = session.execute(stmt).scalars().all()
+        assert len(results) == 0

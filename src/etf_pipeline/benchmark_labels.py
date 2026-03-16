@@ -1,6 +1,7 @@
 """Benchmark label resolution from XBRL extension taxonomies."""
 
 import logging
+import re
 from datetime import date
 from typing import Optional
 
@@ -9,6 +10,71 @@ from sqlalchemy.orm import Session
 from etf_pipeline.models import BenchmarkMapping
 
 logger = logging.getLogger(__name__)
+
+# Substitutions applied in order before CamelCase splitting.
+# Each entry is (pattern, replacement) passed to re.sub.
+_ABBREV_SUBS = [
+    # SP500 must come before SP so it isn't partially replaced
+    (r'SP500', 'S&P 500'),
+    # SP followed by an uppercase letter that has more characters after it -> S&P
+    # Requires at least 2 chars after SP to avoid false positives on tickers like SPY.
+    # Negative lookbehind prevents matching mid-word (e.g. "ESPN").
+    (r'(?<![A-Za-z])SP(?=[A-Z][A-Za-z])', 'S&P '),
+]
+
+# Suffixes to strip from raw member IDs before processing (case-sensitive, longest first).
+_STRIP_SUFFIXES = [
+    'BroadBasedIndexMember',
+    'AdditionalIndexMember',
+    'IndexMember',
+    'Member',
+]
+
+
+def _heuristic_label(member_id: str) -> Optional[str]:
+    """Attempt to produce a human-readable label from a raw XBRL member ID.
+
+    Steps:
+    1. Strip known trailing suffixes (e.g. 'Member', 'BroadBasedIndexMember').
+    2. Insert spaces before capital letters (CamelCase -> words).
+    3. Apply known abbreviation fixups (e.g. 'SP500' -> 'S&P 500').
+    4. Collapse whitespace and strip.
+
+    Returns None if the result is an empty string or looks like it was not
+    meaningfully transformed (fewer than 3 characters).
+    """
+    if not member_id:
+        return None
+
+    text = member_id
+
+    # Strip known suffixes
+    for suffix in _STRIP_SUFFIXES:
+        if text.endswith(suffix):
+            text = text[: -len(suffix)]
+            break
+
+    if not text:
+        return None
+
+    # Apply abbreviation subs before splitting (they may contain digits/symbols)
+    for pattern, replacement in _ABBREV_SUBS:
+        text = re.sub(pattern, replacement, text)
+
+    # Insert a space before each capital letter that follows a lowercase letter or digit
+    # e.g. "BloombergUSAggregate" -> "Bloomberg U S Aggregate"
+    text = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', text)
+    # Also split before a capital followed by lowercase when preceded by consecutive caps
+    # e.g. "USAggregate" -> "US Aggregate"
+    text = re.sub(r'(?<=[A-Z])(?=[A-Z][a-z])', ' ', text)
+
+    # Collapse multiple spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    if len(text) < 3:
+        return None
+
+    return text
 
 TERSE_LABEL_ROLE = "http://www.xbrl.org/2003/role/terseLabel"
 STANDARD_LABEL_ROLE = "http://www.xbrl.org/2003/role/label"
