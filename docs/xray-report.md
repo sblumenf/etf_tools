@@ -56,7 +56,6 @@ When analyzing a portfolio of ETFs, X-Ray aggregates all holdings across all fun
 - **Stale data**: Holdings are often 45+ days old by the time filings hit EDGAR
 - **No derivatives exposure**: The consumer tool does not surface derivative positions
 - **No securities lending data**: Hidden revenue is invisible
-- **No liquidity classification**: Users cannot see how liquid the fund's holdings really are
 - **No historical tracking**: X-Ray is a point-in-time snapshot with no drift or evolution analysis
 - **No fund flow data**: No visibility into whether money is flowing in or out of the fund
 
@@ -70,14 +69,14 @@ Your database contains 13 core tables plus 4 derivative detail tables, sourced f
 
 | Filing Type | What It Contains | Frequency | Historical Depth |
 |-------------|-----------------|-----------|-----------------|
-| **N-PORT** (quarterly) | Holdings, derivatives, risk metrics, liquidity, monthly returns/flows | Quarterly | Q1 2020 onward (backfillable) |
+| **N-PORT** (quarterly) | Holdings, derivatives, risk metrics, monthly returns/flows | Quarterly | Q1 2020 onward (backfillable) |
 | **N-CSR** (annual) | Performance returns, benchmarks, turnover, per-share data | Annual | FY 2021+ (backfillable to 2015) |
 | **485BPOS** (prospectus) | Fees, waivers, investment objectives, strategy narratives, risk disclosures | Ad-hoc | Aug 2024+ (backfillable to ~2010) |
 | **24F-2NT** (annual) | Fund sales, redemptions, net flows at issuer level | Annual | FY 2021+ (backfillable to 2015) |
 
 ### Key Data Assets
 
-**Portfolio composition** (from N-PORT): Every holding with name, CUSIP, ISIN, ticker, value in USD, percent of net assets, asset category, issuer category, country, currency, liquidity classification, and fair value hierarchy level.
+**Portfolio composition** (from N-PORT): Every holding with name, CUSIP, ISIN, ticker, value in USD, percent of net assets, asset category, issuer category, country, currency, and fair value hierarchy level.
 
 **Risk metrics** (from N-PORT): Interest rate sensitivity (DV01) across five maturity buckets and multiple currencies. Credit spread sensitivity (CS01) for investment-grade and high-yield bonds. These are professional-grade risk measures that retail tools never show.
 
@@ -120,26 +119,15 @@ N-PORT uses standardized codes: EC (equity common), EP (equity preferred), DBT (
 
 Group holdings by `country` (ISO 3-letter codes) and show top countries by allocation. This surfaces geographic concentration that fund names often obscure. A "Global Equity" fund might be 60% US.
 
-### 3.4 Liquidity Profile
-
-N-PORT requires funds to classify every holding into one of four liquidity buckets:
-
-- **Highly Liquid (HLI)**: Can be converted to cash in 3 business days or fewer without significantly changing the market value
-- **Moderately Liquid (MLI)**: Can be converted in 3 business days or fewer, but conversion may affect market value
-- **Less Liquid (LLI)**: Cannot be sold or disposed of within 7 calendar days without significant impact
-- **Illiquid (ILI)**: Cannot be sold or disposed of within 7 calendar days without significant impact AND there is no reliable market price
-
-This is data that Morningstar does not surface. A fund with 15% in less-liquid or illiquid assets behaves very differently in a market sell-off than one with 98% highly liquid holdings.
-
-### 3.5 Fee Structure Card
+### 3.4 Fee Structure Card
 
 Show management fee, 12b-1 fee, other expenses, and acquired fund fees. Display both gross and net expense ratios. Highlight fee waivers with their expiration dates — a waiver expiring in 3 months means the fund's effective cost is about to increase.
 
-### 3.6 Performance vs. Benchmark
+### 3.5 Performance vs. Benchmark
 
 Display 1-year, 5-year, 10-year, and since-inception returns alongside benchmark returns. Calculate alpha (fund return minus benchmark return) at each interval. Show portfolio turnover rate and actual expense ratio from the shareholder report.
 
-### 3.7 Fund Health Dashboard
+### 3.6 Fund Health Dashboard
 
 Combine several data points into a single health assessment:
 
@@ -148,7 +136,7 @@ Combine several data points into a single health assessment:
 - **Leverage ratio**: Total borrowings relative to total assets (from fund_snapshot)
 - **Cash position**: How much cash is the fund holding? High cash can indicate defensive positioning or inflows waiting to be deployed.
 
-### 3.8 Concentration Analysis
+### 3.7 Concentration Analysis
 
 Calculate the percentage of portfolio value held in the top 5, top 10, and top 20 positions. Compute a Herfindahl-Hirschman Index (HHI) for a single number summarizing concentration. A fully diversified 500-stock index fund will have an HHI near 20; a concentrated 30-stock fund might have an HHI of 500+.
 
@@ -217,19 +205,13 @@ Some funds participate in securities lending programs, lending out their holding
 
 **Application**: Calculate the "effective expense ratio" — the advertised expense ratio minus securities lending revenue. Show investors which ETFs are earning money on the side and which are not.
 
-### 5.4 Liquidity Stress Testing
-
-Using the liquidity classification data (HLI/MLI/LLI/ILI), model what happens to the portfolio if it needs to liquidate quickly. Highly liquid assets can be sold immediately; less liquid and illiquid assets may need to be sold at a discount or cannot be sold at all.
-
-**Application**: Show a "liquidity under stress" metric — what percentage of the portfolio could be liquidated in 3 days, 7 days, and 30 days?
-
-### 5.5 Fee Waiver Expiration Alerts
+### 5.4 Fee Waiver Expiration Alerts
 
 Your prospectus data includes fee waiver expiration dates. Many new ETFs launch with fee waivers to attract assets, then quietly let the waivers expire.
 
 **Application**: Alert investors when a fee waiver in their portfolio is expiring within the next 6 months. Show the projected cost increase.
 
-### 5.6 Fair Value Hierarchy Breakdown
+### 5.5 Fair Value Hierarchy Breakdown
 
 N-PORT classifies every holding by GAAP fair value level:
 
@@ -449,12 +431,11 @@ A command-line or web interface that takes one ticker and produces a comprehensi
 1. **Holdings card**: Top 10 + "other" with weights
 2. **Asset allocation**: Pie chart by asset category
 3. **Geographic map**: Top countries by allocation
-4. **Liquidity profile**: Bar chart of HLI/MLI/LLI/ILI distribution
-5. **Fee card**: Expense ratio breakdown with waiver status
-6. **Performance card**: Returns vs. benchmark with alpha
-7. **Risk card**: DV01 and CS01 sensitivity (for bond funds)
-8. **Fund health**: AUM, flows, leverage, cash position
-9. **Concentration**: HHI and top-10 weight
+4. **Fee card**: Expense ratio breakdown with waiver status
+5. **Performance card**: Returns vs. benchmark with alpha
+6. **Risk card**: DV01 and CS01 sensitivity (for bond funds)
+7. **Fund health**: AUM, flows, leverage, cash position
+8. **Concentration**: HHI and top-10 weight
 
 This is achievable with nothing but the data in your database today.
 
@@ -484,11 +465,10 @@ Using backfilled data:
 ### Tier 4: Advanced Analytics and Alerts
 
 1. **Derivative leverage dashboard**: Gross notional as percent of NAV, by derivative type
-2. **Liquidity stress test**: "What percentage of the portfolio can be liquidated in N days?"
-3. **Fee waiver expiration calendar**: Upcoming cost increases across the portfolio
-4. **Portfolio optimizer**: Given the overlap analysis, suggest which ETFs to keep and which to replace
-5. **Rebalancing signals**: When drift from target allocation exceeds a threshold
-6. **AI-generated commentary**: Natural language summary of portfolio characteristics, risks, and notable changes
+2. **Fee waiver expiration calendar**: Upcoming cost increases across the portfolio
+3. **Portfolio optimizer**: Given the overlap analysis, suggest which ETFs to keep and which to replace
+4. **Rebalancing signals**: When drift from target allocation exceeds a threshold
+5. **AI-generated commentary**: Natural language summary of portfolio characteristics, risks, and notable changes
 
 ### Creative Application Ideas
 
@@ -497,8 +477,6 @@ Using backfilled data:
 **Fund Comparison Tool**: Side-by-side comparison of two ETFs across all dimensions — holdings overlap, fee comparison, performance comparison, risk profile differences. Directly answers: "Should I own ETF A or ETF B?"
 
 **Portfolio Construction Assistant**: Given a target allocation (e.g., 60/40 stocks/bonds, 70% US / 30% international), suggest which ETFs from the database would best achieve that target with minimal overlap and lowest total cost.
-
-**Liquidation Risk Score**: Combine liquidity classification, AUM size, flow trends, and leverage into a single score that estimates how likely a fund is to face liquidation pressure. Small funds with persistent outflows and illiquid holdings are at highest risk.
 
 **Hidden Cost Calculator**: For each ETF, compute a "true cost" that includes the stated expense ratio, the cost impact of portfolio turnover, and any fee waivers that are about to expire. Express this as a single annual dollar amount for a given investment size.
 
@@ -543,6 +521,6 @@ Add a web frontend or interactive dashboard. The underlying analytics are more i
 
 ## Summary
 
-Your SEC filing data gives you a foundation that is, in several dimensions, richer than what Morningstar X-Ray exposed to retail investors. Morningstar had better sector classification and real-time pricing, but you have derivatives exposure, liquidity classifications, fee waiver details, securities lending data, interest rate and credit spread sensitivity, fund flow data, and the ability to track all of these over time with historical backfill.
+Your SEC filing data gives you a foundation that is, in several dimensions, richer than what Morningstar X-Ray exposed to retail investors. Morningstar had better sector classification and real-time pricing, but you have derivatives exposure, fee waiver details, securities lending data, interest rate and credit spread sensitivity, fund flow data, and the ability to track all of these over time with historical backfill.
 
-The most differentiated features — the ones no consumer tool currently provides — are derivatives leverage transparency, liquidity stress analysis, counterparty aggregation, fee waiver monitoring, and historical drift detection. These are institutional-grade analytics built from publicly available SEC data.
+The most differentiated features — the ones no consumer tool currently provides — are derivatives leverage transparency, counterparty aggregation, fee waiver monitoring, and historical drift detection. These are institutional-grade analytics built from publicly available SEC data.

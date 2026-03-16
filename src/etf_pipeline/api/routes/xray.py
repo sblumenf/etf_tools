@@ -16,15 +16,13 @@ from etf_pipeline.api.schemas.xray import (
     GeographicData,
     HoldingItem,
     HoldingsData,
-    LiquidityData,
-    LiquidityItem,
     PerformanceData,
     PerformanceInterval,
     XRayResponse,
 )
 from etf_pipeline.xray import service
 from etf_pipeline.xray.calculations import compute_hhi, compute_top_n_weight
-from etf_pipeline.xray.service import ASSET_CATEGORY_MAP, LIQUIDITY_MAP, resolve_country_name
+from etf_pipeline.xray.service import ASSET_CATEGORY_MAP, resolve_country_name
 
 router = APIRouter(prefix="/api/v1/xray", tags=["xray"])
 
@@ -58,7 +56,6 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
     concentration_data = None
     asset_allocation_data = None
     geographic_data = None
-    liquidity_data = None
 
     if holdings:
         total_count = len(holdings)
@@ -128,28 +125,6 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
                 for code, pct in sorted(country_groups.items(), key=lambda x: -x[1])[:20]
             ]
             geographic_data = GeographicData(items=country_items)
-
-        # liquidity
-        liquidity_groups: dict[str, float] = defaultdict(float)
-        for h in holdings:
-            liq = h.liquidity_classification
-            if liq:
-                liquidity_groups[liq] += float(h.pct_val or 0)
-        if liquidity_groups:
-            liq_order = ["HLI", "MLI", "LLI", "ILI"]
-            items = []
-            for code in liq_order:
-                if code in liquidity_groups:
-                    display, color = LIQUIDITY_MAP.get(code, (code, "gray"))
-                    items.append(
-                        LiquidityItem(
-                            code=code,
-                            display_name=display,
-                            color=color,
-                            pct=round(liquidity_groups[code], 4),
-                        )
-                    )
-            liquidity_data = LiquidityData(items=items)
 
         # concentration
         weights = [float(h.pct_val or 0) for h in holdings]
@@ -276,8 +251,9 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
         else:
             leverage = None
 
-        # cash_not_reported is the closest field for uninvested cash
-        cash_pct = _cash_pct(snapshot.cash_not_reported, net_assets)
+        stiv_value = sum(float(h.value_usd or 0) for h in holdings if h.asset_category == "STIV")
+        total_cash = stiv_value + (float(snapshot.cash_not_reported) if snapshot.cash_not_reported else 0)
+        cash_pct = (total_cash / float(net_assets) * 100) if net_assets and float(net_assets) > 0 and total_cash > 0 else None
 
         fund_health_data = FundHealthData(
             total_net_assets=net_assets_f,
@@ -292,7 +268,6 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
         fees=fees_data is not None,
         performance=perf_data is not None,
         fund_health=fund_health_data is not None,
-        liquidity=liquidity_data is not None,
         geographic=geographic_data is not None,
         concentration=concentration_data is not None,
     )
@@ -315,7 +290,6 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
         holdings=holdings_data,
         asset_allocation=asset_allocation_data,
         geographic=geographic_data,
-        liquidity=liquidity_data,
         fees=fees_data,
         performance=perf_data,
         fund_health=fund_health_data,

@@ -37,9 +37,7 @@ def mock_nport_db(engine):
     with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
         with patch("etf_pipeline.parsers.nport.sessionmaker") as mock_sm:
             mock_sm.return_value = sessionmaker(bind=engine)
-            # Patch XML parser to return empty dict (tests don't provide real XML)
-            with patch("etf_pipeline.parsers.nport.parse_nport_investments_xml", return_value={}):
-                yield
+            yield
 
 
 @pytest.fixture
@@ -75,7 +73,7 @@ def _add_mock_fund_info(mock_report):
     fund_info.total_assets = Decimal("10000000.00")
     fund_info.total_liabilities = Decimal("500000.00")
     fund_info.net_assets = Decimal("9500000.00")
-    fund_info.cash_not_reported = Decimal("50000.00")
+    fund_info.cash_not_report_in_cor_d = Decimal("50000.00")
     fund_info.assets_invested = Decimal("9800000.00")
     fund_info.assets_misc_sec = Decimal("150000.00")
     fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
@@ -88,6 +86,6 @@ def _add_mock_fund_info(mock_report):
     fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
     fund_info.delay_deliv = Decimal("0.00")
     fund_info.stand_by_commit = Decimal("0.00")
-    fund_info.liquidity_pref = Decimal("0.00")
+
     fund_info.is_non_cash_collateral = False
     mock_report.fund_info = fund_info

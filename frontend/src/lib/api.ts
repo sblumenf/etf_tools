@@ -5,7 +5,6 @@ export interface DataCompleteness {
   fees: boolean;
   performance: boolean;
   fund_health: boolean;
-  liquidity: boolean;
   geographic: boolean;
   concentration: boolean;
 }
@@ -41,17 +40,6 @@ export interface CountryItem {
 
 export interface GeographicData {
   items: CountryItem[];
-}
-
-export interface LiquidityItem {
-  code: string;
-  display_name: string;
-  color: string;
-  pct: number;
-}
-
-export interface LiquidityData {
-  items: LiquidityItem[];
 }
 
 export interface FeeData {
@@ -103,7 +91,6 @@ export interface XRayResponse {
   holdings: HoldingsData | null;
   asset_allocation: AssetAllocationData | null;
   geographic: GeographicData | null;
-  liquidity: LiquidityData | null;
   fees: FeeData | null;
   performance: PerformanceData | null;
   fund_health: FundHealthData | null;

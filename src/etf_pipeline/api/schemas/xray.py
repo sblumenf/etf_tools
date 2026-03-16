@@ -7,7 +7,6 @@ class DataCompleteness(BaseModel):
     fees: bool
     performance: bool
     fund_health: bool
-    liquidity: bool
     geographic: bool
     concentration: bool
 
@@ -43,17 +42,6 @@ class CountryItem(BaseModel):
 
 class GeographicData(BaseModel):
     items: list[CountryItem]
-
-
-class LiquidityItem(BaseModel):
-    code: str
-    display_name: str
-    color: str
-    pct: float
-
-
-class LiquidityData(BaseModel):
-    items: list[LiquidityItem]
 
 
 class FeeData(BaseModel):
@@ -105,7 +93,6 @@ class XRayResponse(BaseModel):
     holdings: HoldingsData | None
     asset_allocation: AssetAllocationData | None
     geographic: GeographicData | None
-    liquidity: LiquidityData | None
     fees: FeeData | None
     performance: PerformanceData | None
     fund_health: FundHealthData | None

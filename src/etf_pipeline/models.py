@@ -110,8 +110,6 @@ class Holding(Base):
     exchange_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6))
     holding_key: Mapped[str] = mapped_column(String(500), nullable=False)
     borrower_name: Mapped[Optional[str]] = mapped_column(String(500))
-    liquidity_classification: Mapped[Optional[str]] = mapped_column(String(50))
-
     etf: Mapped["ETF"] = relationship(back_populates="holdings")
     debt_security_detail: Mapped[Optional["DebtSecurityDetail"]] = relationship(
         back_populates="holding", cascade="all, delete-orphan", uselist=False
@@ -531,7 +529,6 @@ class FundSnapshot(Base):
     amt_pay_aft_one_yr_other: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
     delay_deliv: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
     stand_by_commit: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
-    liquidity_pref: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
     is_non_cash_collateral: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 

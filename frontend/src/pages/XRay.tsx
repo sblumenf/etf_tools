@@ -3,7 +3,6 @@ import { useXRayData } from "../hooks/useXRayData";
 import { HoldingsCard } from "../components/cards/HoldingsCard";
 import { AssetAllocationCard } from "../components/cards/AssetAllocationCard";
 import { GeographicCard } from "../components/cards/GeographicCard";
-import { LiquidityCard } from "../components/cards/LiquidityCard";
 import { FeeCard } from "../components/cards/FeeCard";
 import { PerformanceCard } from "../components/cards/PerformanceCard";
 import { FundHealthCard } from "../components/cards/FundHealthCard";
@@ -73,7 +72,6 @@ export function XRay() {
         <HoldingsCard data={data.holdings} />
         <AssetAllocationCard data={data.asset_allocation} />
         <GeographicCard data={data.geographic} />
-        <LiquidityCard data={data.liquidity} />
         <FeeCard data={data.fees} />
         <PerformanceCard data={data.performance} />
         <FundHealthCard data={data.fund_health} />

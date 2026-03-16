@@ -40,8 +40,6 @@ from etf_pipeline.parser_utils import (
     parse_decimal,
     update_processing_log,
 )
-from etf_pipeline.parsers.nport_xml import parse_nport_investments_xml
-
 logger = logging.getLogger(__name__)
 
 NPORT_NS = {'nport': 'http://www.sec.gov/edgar/nport'}
@@ -439,7 +437,7 @@ def _extract_fund_snapshot(
         total_assets=getattr(fi, 'total_assets', None),
         total_liabilities=getattr(fi, 'total_liabilities', None),
         net_assets=getattr(fi, 'net_assets', None),
-        cash_not_reported=getattr(fi, 'cash_not_reported', None),
+        cash_not_reported=getattr(fi, 'cash_not_report_in_cor_d', None),
         assets_invested=getattr(fi, 'assets_invested', None),
         assets_misc_sec=getattr(fi, 'assets_misc_sec', None),
         amt_pay_one_yr_banks_borr=getattr(fi, 'amt_pay_one_yr_banks_borr', None),
@@ -452,7 +450,6 @@ def _extract_fund_snapshot(
         amt_pay_aft_one_yr_other=getattr(fi, 'amt_pay_aft_one_yr_other', None),
         delay_deliv=getattr(fi, 'delay_deliv', None),
         stand_by_commit=getattr(fi, 'stand_by_commit', None),
-        liquidity_pref=getattr(fi, 'liquidity_pref', None),
         is_non_cash_collateral=is_non_cash_collateral,
     )
     session.add(snapshot)
@@ -948,15 +945,12 @@ def _process_etf(
     if credit_spread_risk:
         session.add(credit_spread_risk)
 
-    # Parse XML for custom fields not exposed by edgartools
-    xml_custom_fields = parse_nport_investments_xml(xml_text)
-
     holdings_count = 0
     seen_holding_keys = set()
     dup_holdings_count = 0
     for investment in (fund_report.non_derivatives or []):
         try:
-            holding = _map_investment_to_holding(etf, investment, report_date, filing_date, xml_custom_fields)
+            holding = _map_investment_to_holding(etf, investment, report_date, filing_date)
             # Note: filing_date and etf_id are constant per _process_etf call;
             # DB constraint (etf_id, report_date, holding_key, filing_date) covers them at insert time.
             dedup_key = holding.holding_key
@@ -1050,7 +1044,7 @@ def _process_etf(
 
 
 def _map_investment_to_holding(
-    etf: ETF, investment, report_date, filing_date, xml_custom_fields: dict
+    etf: ETF, investment, report_date, filing_date
 ) -> Holding:
     """Map an InvestmentOrSecurity to a Holding model instance."""
     identifiers = investment.identifiers
@@ -1103,7 +1097,6 @@ def _map_investment_to_holding(
     isin_clean = clean_str(isin)
     name_clean = clean_str(investment.name) or ""
     lei_clean = clean_str(investment.lei)
-    cusip_for_xml = cusip_clean  # preserve original for xml_key lookup
     if cusip_clean in PLACEHOLDER_CUSIPS:
         cusip_clean = None
     holding_key = cusip_clean or isin_clean or name_clean
@@ -1111,12 +1104,6 @@ def _map_investment_to_holding(
         raw = f"{getattr(investment, 'balance', '')}|{getattr(investment, 'value_usd', '')}|{getattr(investment, 'units', '')}|{getattr(investment, 'asset_cat', '')}|{getattr(investment, 'country', '')}|{getattr(investment, 'title', '')}|{getattr(investment, 'payoff_profile', '')}"
         holding_key = f"__unknown_{hashlib.md5(raw.encode()).hexdigest()[:12]}__"
         logger.debug("Generated fallback holding_key for unnamed security in %s", etf.ticker)
-
-    # Extract custom XML fields using holding key
-    # Build XML holding key (name|cusip|lei as used in nport_xml.py)
-    xml_key = f"{name_clean}|{cusip_for_xml or ''}|{lei_clean or ''}"
-    custom_fields = xml_custom_fields.get(xml_key, {})
-    liquidity_classification = custom_fields.get("liquidity_classification")
 
     # Warn if value may not be in USD
     if currency and currency.upper() != 'USD':
@@ -1150,7 +1137,6 @@ def _map_investment_to_holding(
         payoff_profile=payoff_profile,
         exchange_rate=exchange_rate,
         holding_key=holding_key,
-        liquidity_classification=liquidity_classification,
     )
 
 

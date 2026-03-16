@@ -61,7 +61,6 @@ def test_xray_zero_holdings_holdings_derived_fields_are_none(zero_holdings_clien
     assert data["holdings"] is None
     assert data["concentration"] is None
     assert data["geographic"] is None
-    assert data["liquidity"] is None
     assert data["asset_allocation"] is None
 
 

@@ -81,19 +81,11 @@ Individual portfolio holdings from NPORT-P filings.
 | `exchange_rate` | Numeric(12,6) | | FX rate used for USD valuation |
 | `holding_key` | String(500) | NOT NULL | Unique identifier: COALESCE(cusip, isin, name) |
 | `borrower_name` | String(500) | | Borrower name for repurchase agreements (typically NULL) |
-| `liquidity_classification` | String(50) | | SEC liquidity classification (HLI/MLI/LLI/ILI) |
 
-**Unique:** `(etf_id, report_date, holding_key, liquidity_classification, filing_date)`
+**Unique:** `(etf_id, report_date, holding_key, filing_date)`
 **Indexes:** `(etf_id, report_date)`, `(cusip)`, `(report_date)`
 
 > **Note**: `holding_key` is computed as the first non-null value among cusip, isin, and name. This ensures foreign holdings without CUSIP identifiers can be uniquely identified without constraint violations on NULL cusip values.
-
-> **Liquidity Classification**: Extracted from NPORT XML `<fundCat>` or `<fundCats>` elements. Values:
-> - **HLI**: Highly Liquid Investments
-> - **MLI**: Moderately Liquid Investments
-> - **LLI**: Less Liquid Investments
-> - **ILI**: Illiquid Investments
-> - **NULL**: Not classified or N/A
 
 > **Borrower Name**: Per NPORT-P schema, borrower information is stored at the fund level (not per-holding) in `<fundInfo><borrowers>` elements. This field is included for API completeness but will typically be NULL. Fund-level borrower tracking may be added in a future enhancement.
 
@@ -263,7 +255,6 @@ Fund-level balance sheet snapshot from NPORT-P filings.
 | `amt_pay_aft_one_yr_other` | Numeric(20,2) | | Amounts payable after one year to other parties |
 | `delay_deliv` | Numeric(20,2) | | Delayed delivery commitments |
 | `stand_by_commit` | Numeric(20,2) | | Standby commitments |
-| `liquidity_pref` | Numeric(20,2) | | Liquidity preference of outstanding preferred stock |
 | `is_non_cash_collateral` | Boolean | NOT NULL, default=False | Whether fund holds non-cash collateral |
 
 **Unique:** `(cik, report_date, filing_date)`
@@ -460,7 +451,7 @@ Tracks when each parser was last run for each CIK, enabling incremental pipeline
 | etf | — | UNIQUE | `ticker` |
 | etf | — | INDEX | `cik` |
 | etf | — | INDEX | `class_id` |
-| holding | `holding_uniq` | UNIQUE | `etf_id, report_date, holding_key, liquidity_classification, filing_date` |
+| holding | `holding_uniq` | UNIQUE | `etf_id, report_date, holding_key, filing_date` |
 | holding | `holding_etf_report_idx` | INDEX | `etf_id, report_date` |
 | holding | `holding_cusip_idx` | INDEX | `cusip` |
 | holding | `holding_report_date_idx` | INDEX | `report_date` |

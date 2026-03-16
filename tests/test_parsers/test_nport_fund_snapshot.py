@@ -17,7 +17,7 @@ def _make_fund_report(total_assets="1000000.00"):
     fi.total_assets = Decimal(total_assets)
     fi.total_liabilities = Decimal("50000.00")
     fi.net_assets = Decimal("950000.00")
-    fi.cash_not_reported = Decimal("5000.00")
+    fi.cash_not_report_in_cor_d = Decimal("5000.00")
     fi.assets_invested = Decimal("980000.00")
     fi.assets_misc_sec = Decimal("15000.00")
     fi.amt_pay_one_yr_banks_borr = Decimal("10000.00")
@@ -30,7 +30,7 @@ def _make_fund_report(total_assets="1000000.00"):
     fi.amt_pay_aft_one_yr_other = Decimal("10000.00")
     fi.delay_deliv = Decimal("0.00")
     fi.stand_by_commit = Decimal("0.00")
-    fi.liquidity_pref = Decimal("0.00")
+
     fi.is_non_cash_collateral = False
 
     report = Mock()

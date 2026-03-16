@@ -646,8 +646,7 @@ def test_parse_nport_placeholder_cusip_falls_through_to_name(session, engine, sa
 def test_parse_nport_deduplicates_holdings_with_same_cusip(
     session, engine, sample_etfs, mock_nport_db, caplog
 ):
-    """Test that holdings with the same CUSIP are deduplicated by holding_key,
-    regardless of liquidity_classification."""
+    """Test that holdings with the same CUSIP are deduplicated by holding_key."""
     import logging
     caplog.set_level(logging.INFO)
 
@@ -679,12 +678,8 @@ def test_parse_nport_deduplicates_holdings_with_same_cusip(
 
     # Two names, same CUSIP — holding_key is derived from CUSIP so both map to the same key.
     CUSIP = "037833100"
-    xml_fields = {
-        f"Apple Inc HLI|{CUSIP}|": {"liquidity_classification": "HLI"},
-        f"Apple Inc LLI|{CUSIP}|": {"liquidity_classification": "LLI"},
-    }
 
-    def create_report_with_different_liquidity(series_id):
+    def create_report_with_same_cusip(series_id):
         mock_report = Mock()
         mock_report.reporting_period = date(2024, 12, 31)
         mock_report.non_derivatives = [
@@ -715,14 +710,10 @@ def test_parse_nport_deduplicates_holdings_with_same_cusip(
         mock_company.return_value = company
 
         with patch(
-            "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-            return_value=xml_fields,
+            "etf_pipeline.parsers.nport.FundReport.from_filing",
+            return_value=create_report_with_same_cusip("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.FundReport.from_filing",
-                return_value=create_report_with_different_liquidity("S000002839"),
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     # Only 1 holding should be inserted — same CUSIP means same holding_key, second is deduplicated
     stmt = select(Holding)
@@ -1611,7 +1602,6 @@ def test_parse_nport_creates_fund_snapshot(session, engine, sample_etfs, mock_ed
     assert snapshot.amt_pay_aft_one_yr_other == Decimal("100000.00")
     assert snapshot.delay_deliv == Decimal("0.00")
     assert snapshot.stand_by_commit == Decimal("0.00")
-    assert snapshot.liquidity_pref == Decimal("0.00")
     assert snapshot.is_non_cash_collateral is False
 
 
@@ -2587,8 +2577,7 @@ def test_parse_nport_na_cusip_falls_through_to_name(session, engine, sample_etfs
 def test_parse_nport_dedup_same_name_different_value_usd_is_deduped(
     session, engine, sample_etfs, mock_nport_db
 ):
-    """Two holdings sharing the same name and liquidity_classification (None) are
-    deduped by the 2-tuple key (holding_key, liquidity_classification): only one survives."""
+    """Two holdings sharing the same name (holding_key) are deduped; only one survives."""
 
     def make_investment(name, value_usd):
         inv = Mock()
@@ -2655,15 +2644,14 @@ def test_parse_nport_dedup_same_name_different_value_usd_is_deduped(
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
 
-    # Same holding_key + same liquidity_classification → deduped; only first survives
+    # Same holding_key → deduped; only first survives
     assert len(holdings) == 1
 
 
 def test_parse_nport_dedup_same_name_same_value_usd_is_deduped(
     session, engine, sample_etfs, mock_nport_db
 ):
-    """Two holdings with identical name, liquidity_classification, and value_usd are
-    true duplicates and exactly one should be stored."""
+    """Two holdings with identical name and value_usd are true duplicates and exactly one should be stored."""
 
     def make_investment(name, value_usd):
         inv = Mock()
@@ -2730,7 +2718,7 @@ def test_parse_nport_dedup_same_name_same_value_usd_is_deduped(
     stmt = select(Holding)
     holdings = session.execute(stmt).scalars().all()
 
-    # Exact duplicate (same name, same liquidity, same value_usd) → only one stored
+    # Exact duplicate (same name, same value_usd) → only one stored
     assert len(holdings) == 1
     assert holdings[0].value_usd == Decimal("5000000")
 
@@ -2931,7 +2919,7 @@ def test_monthly_returns_single_class(session, sample_etfs, mock_nport_db):
         fund_info.total_assets = Decimal("10000000.00")
         fund_info.total_liabilities = Decimal("500000.00")
         fund_info.net_assets = Decimal("9500000.00")
-        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.cash_not_report_in_cor_d = Decimal("50000.00")
         fund_info.assets_invested = Decimal("9800000.00")
         fund_info.assets_misc_sec = Decimal("150000.00")
         fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
@@ -2944,7 +2932,7 @@ def test_monthly_returns_single_class(session, sample_etfs, mock_nport_db):
         fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
         fund_info.delay_deliv = Decimal("0.00")
         fund_info.stand_by_commit = Decimal("0.00")
-        fund_info.liquidity_pref = Decimal("0.00")
+
         fund_info.is_non_cash_collateral = False
         mock_report.fund_info = fund_info
 
@@ -3017,7 +3005,7 @@ def test_monthly_returns_multiple_classes(session, sample_etfs, mock_nport_db):
         fund_info.total_assets = Decimal("10000000.00")
         fund_info.total_liabilities = Decimal("500000.00")
         fund_info.net_assets = Decimal("9500000.00")
-        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.cash_not_report_in_cor_d = Decimal("50000.00")
         fund_info.assets_invested = Decimal("9800000.00")
         fund_info.assets_misc_sec = Decimal("150000.00")
         fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
@@ -3030,7 +3018,7 @@ def test_monthly_returns_multiple_classes(session, sample_etfs, mock_nport_db):
         fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
         fund_info.delay_deliv = Decimal("0.00")
         fund_info.stand_by_commit = Decimal("0.00")
-        fund_info.liquidity_pref = Decimal("0.00")
+
         fund_info.is_non_cash_collateral = False
         mock_report.fund_info = fund_info
 
@@ -3105,7 +3093,7 @@ def test_monthly_returns_with_na_values(session, sample_etfs, mock_nport_db):
         fund_info.total_assets = Decimal("10000000.00")
         fund_info.total_liabilities = Decimal("500000.00")
         fund_info.net_assets = Decimal("9500000.00")
-        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.cash_not_report_in_cor_d = Decimal("50000.00")
         fund_info.assets_invested = Decimal("9800000.00")
         fund_info.assets_misc_sec = Decimal("150000.00")
         fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
@@ -3118,7 +3106,7 @@ def test_monthly_returns_with_na_values(session, sample_etfs, mock_nport_db):
         fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
         fund_info.delay_deliv = Decimal("0.00")
         fund_info.stand_by_commit = Decimal("0.00")
-        fund_info.liquidity_pref = Decimal("0.00")
+
         fund_info.is_non_cash_collateral = False
         mock_report.fund_info = fund_info
 
@@ -3184,7 +3172,7 @@ def test_monthly_flows_single_class(session, sample_etfs, mock_nport_db):
         fund_info.total_assets = Decimal("10000000.00")
         fund_info.total_liabilities = Decimal("500000.00")
         fund_info.net_assets = Decimal("9500000.00")
-        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.cash_not_report_in_cor_d = Decimal("50000.00")
         fund_info.assets_invested = Decimal("9800000.00")
         fund_info.assets_misc_sec = Decimal("150000.00")
         fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
@@ -3197,7 +3185,7 @@ def test_monthly_flows_single_class(session, sample_etfs, mock_nport_db):
         fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
         fund_info.delay_deliv = Decimal("0.00")
         fund_info.stand_by_commit = Decimal("0.00")
-        fund_info.liquidity_pref = Decimal("0.00")
+
         fund_info.is_non_cash_collateral = False
         mock_report.fund_info = fund_info
 
@@ -3273,7 +3261,7 @@ def test_monthly_flows_multiple_classes(session, sample_etfs, mock_nport_db):
         fund_info.total_assets = Decimal("10000000.00")
         fund_info.total_liabilities = Decimal("500000.00")
         fund_info.net_assets = Decimal("9500000.00")
-        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.cash_not_report_in_cor_d = Decimal("50000.00")
         fund_info.assets_invested = Decimal("9800000.00")
         fund_info.assets_misc_sec = Decimal("150000.00")
         fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
@@ -3286,7 +3274,7 @@ def test_monthly_flows_multiple_classes(session, sample_etfs, mock_nport_db):
         fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
         fund_info.delay_deliv = Decimal("0.00")
         fund_info.stand_by_commit = Decimal("0.00")
-        fund_info.liquidity_pref = Decimal("0.00")
+
         fund_info.is_non_cash_collateral = False
         mock_report.fund_info = fund_info
 
@@ -3360,7 +3348,7 @@ def test_monthly_flows_with_na_values(session, sample_etfs, mock_nport_db):
         fund_info.total_assets = Decimal("10000000.00")
         fund_info.total_liabilities = Decimal("500000.00")
         fund_info.net_assets = Decimal("9500000.00")
-        fund_info.cash_not_reported = Decimal("50000.00")
+        fund_info.cash_not_report_in_cor_d = Decimal("50000.00")
         fund_info.assets_invested = Decimal("9800000.00")
         fund_info.assets_misc_sec = Decimal("150000.00")
         fund_info.amt_pay_one_yr_banks_borr = Decimal("100000.00")
@@ -3373,7 +3361,7 @@ def test_monthly_flows_with_na_values(session, sample_etfs, mock_nport_db):
         fund_info.amt_pay_aft_one_yr_other = Decimal("100000.00")
         fund_info.delay_deliv = Decimal("0.00")
         fund_info.stand_by_commit = Decimal("0.00")
-        fund_info.liquidity_pref = Decimal("0.00")
+
         fund_info.is_non_cash_collateral = False
         mock_report.fund_info = fund_info
 
@@ -3601,11 +3589,7 @@ def test_parse_nport_derivative_parent_fields_forward(session, engine, sample_et
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative)
     derivatives = session.execute(stmt).scalars().all()
@@ -3690,11 +3674,7 @@ def test_parse_nport_derivative_parent_fields_future(session, engine, sample_etf
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative)
     derivatives = session.execute(stmt).scalars().all()
@@ -3789,11 +3769,7 @@ def test_parse_nport_derivative_parent_fields_option(session, engine, sample_etf
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative)
     derivatives = session.execute(stmt).scalars().all()
@@ -3892,11 +3868,7 @@ def test_parse_nport_derivative_parent_fields_swap(session, engine, sample_etfs,
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative)
     derivatives = session.execute(stmt).scalars().all()
@@ -3986,11 +3958,7 @@ def test_parse_nport_derivative_parent_fields_swaption(session, engine, sample_e
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative)
     derivatives = session.execute(stmt).scalars().all()
@@ -4075,11 +4043,7 @@ def test_parse_nport_derivative_parent_fields_with_na_values(session, engine, sa
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     stmt = select(Derivative)
     derivatives = session.execute(stmt).scalars().all()
@@ -4200,11 +4164,7 @@ def test_parse_nport_swap_child_tables_complete_swap(session, engine, sample_etf
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     # Verify Derivative created
     stmt = select(Derivative)
@@ -4359,11 +4319,7 @@ def test_parse_nport_swap_child_tables_other_leg_type(session, engine, sample_et
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     # Verify Derivative created
     stmt = select(Derivative)
@@ -4460,11 +4416,7 @@ def test_parse_nport_swap_child_tables_no_swap_fields(session, engine, sample_et
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     # Verify Derivative created
     stmt = select(Derivative)
@@ -4564,11 +4516,7 @@ def test_parse_nport_option_child_table_regular_option(session, engine, sample_e
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     # Verify Derivative parent created
     stmt = select(Derivative)
@@ -4665,11 +4613,7 @@ def test_parse_nport_forward_child_table(session, engine, sample_etfs, mock_npor
             "etf_pipeline.parsers.nport.FundReport.from_filing",
             return_value=create_report_with_series("S000002839"),
         ):
-            with patch(
-                "etf_pipeline.parsers.nport.parse_nport_investments_xml",
-                return_value={},
-            ):
-                parse_nport(cik="36405")
+            parse_nport(cik="36405")
 
     # Verify Derivative parent created
     stmt = select(Derivative)
@@ -4821,11 +4765,10 @@ def test_parse_nport_swap_derivatives_integration(session, engine):
         mock_company.return_value = company
 
         with patch("etf_pipeline.parsers.nport.FundReport.from_filing", return_value=create_mock_report()):
-            with patch("etf_pipeline.parsers.nport.parse_nport_investments_xml", return_value={}):
-                with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
-                    with patch("etf_pipeline.parsers.nport.sessionmaker") as mock_sm:
-                        mock_sm.return_value = sessionmaker(bind=engine)
-                        parse_nport(cik=test_cik, clear_cache=False)
+            with patch("etf_pipeline.parsers.nport.get_engine", return_value=engine):
+                with patch("etf_pipeline.parsers.nport.sessionmaker") as mock_sm:
+                    mock_sm.return_value = sessionmaker(bind=engine)
+                    parse_nport(cik=test_cik, clear_cache=False)
 
     # VERIFICATION: Check that swap derivatives were parsed correctly
 
@@ -5112,7 +5055,7 @@ def test_map_investment_to_holding_fallback_holding_key(session, engine, sample_
     inv.identifiers = None
 
     holding = _map_investment_to_holding(
-        etf, inv, date(2024, 12, 31), date(2025, 1, 15), {}
+        etf, inv, date(2024, 12, 31), date(2025, 1, 15)
     )
 
     assert holding.holding_key.startswith("__unknown_"), (
@@ -5130,7 +5073,7 @@ def test_extract_fund_snapshot_uit_no_duplicate(session):
     fund_info.total_assets = Decimal("10000000.00")
     fund_info.total_liabilities = Decimal("500000.00")
     fund_info.net_assets = Decimal("9500000.00")
-    fund_info.cash_not_reported = Decimal("50000.00")
+    fund_info.cash_not_report_in_cor_d = Decimal("50000.00")
     fund_info.assets_invested = Decimal("9800000.00")
     fund_info.assets_misc_sec = Decimal("150000.00")
     fund_info.amt_pay_one_yr_banks_borr = Decimal("0.00")
@@ -5143,7 +5086,7 @@ def test_extract_fund_snapshot_uit_no_duplicate(session):
     fund_info.amt_pay_aft_one_yr_other = Decimal("0.00")
     fund_info.delay_deliv = Decimal("0.00")
     fund_info.stand_by_commit = Decimal("0.00")
-    fund_info.liquidity_pref = Decimal("0.00")
+
     fund_info.is_non_cash_collateral = False
     fund_report.fund_info = fund_info
 

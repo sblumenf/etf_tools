@@ -30,13 +30,6 @@ ASSET_CATEGORY_MAP = {
     "OTHER": "Other",
 }
 
-LIQUIDITY_MAP = {
-    "HLI": ("Highly Liquid", "green"),
-    "MLI": ("Moderately Liquid", "yellow"),
-    "LLI": ("Less Liquid", "orange"),
-    "ILI": ("Illiquid", "red"),
-}
-
 COUNTRY_NAMES = {
     "US": "United States", "USA": "United States",
     "GB": "United Kingdom", "GBR": "United Kingdom",
