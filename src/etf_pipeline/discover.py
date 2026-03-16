@@ -65,7 +65,7 @@ def _fetch_uit_etfs():
 
         hits = data.get("hits", {}).get("hits", [])
         total = data.get("hits", {}).get("total", {}).get("value", 0)
-        log.debug("EFTS S-6 search: %d total hits, fetched %d (from=%d)", total, len(hits), start)
+        log.info("EFTS S-6 search: page %d — %d/%d hits fetched", start // page_size + 1, start + len(hits), total)
 
         for hit in hits:
             src = hit.get("_source", {})
@@ -82,10 +82,12 @@ def _fetch_uit_etfs():
         if start >= total or not hits:
             break
 
-    log.debug("Found %d unique CIKs from S-6 filings", len(ciks))
+    log.info("Found %d unique CIKs from S-6 filings, checking exchange listings...", len(ciks))
 
     uit_etfs = []
-    for cik in ciks:
+    cik_list = sorted(ciks)
+    total_ciks = len(cik_list)
+    for i, cik in enumerate(cik_list, 1):
         cik_padded = str(cik).zfill(10)
         url = SUBMISSIONS_URL.format(cik=cik_padded)
         try:
@@ -93,9 +95,11 @@ def _fetch_uit_etfs():
             with urllib.request.urlopen(req) as resp:
                 sub = json.loads(resp.read())
         except Exception as exc:
-            log.warning("Failed to fetch submissions for CIK %s: %s", cik, exc)
+            log.warning("Failed to fetch submissions for CIK %s (%d/%d): %s", cik, i, total_ciks, exc)
             continue
         time.sleep(_SEC_REQUEST_DELAY)
+        if i % 50 == 0 or i == total_ciks:
+            log.info("Checked %d/%d CIKs for exchange listings", i, total_ciks)
 
         tickers = sub.get("tickers", [])
         exchanges = sub.get("exchanges", [])
