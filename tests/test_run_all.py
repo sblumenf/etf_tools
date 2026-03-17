@@ -409,8 +409,20 @@ def test_run_all_processes_multiple_ciks(
 
     mock_context, _ = _make_mock_ctx(mock_worker_fn=mock_worker)
 
+    mock_log_entry = MagicMock()
+    mock_execute_result = MagicMock()
+    mock_execute_result.scalar_one_or_none.return_value = mock_log_entry
+
+    mock_session = MagicMock()
+    mock_session.execute.return_value = mock_execute_result
+    mock_session.__enter__ = MagicMock(return_value=mock_session)
+    mock_session.__exit__ = MagicMock(return_value=False)
+
+    mock_session_factory = MagicMock(return_value=mock_session)
+
     with patch("multiprocessing.get_context", return_value=mock_context):
-        result = runner.invoke(main, ["run-all"])
+        with patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_factory):
+            result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
     assert mock_worker.call_count == 3
@@ -449,8 +461,20 @@ def test_run_all_continues_on_cik_failure(
 
     mock_context, _ = _make_mock_ctx(mock_worker_fn=mock_worker)
 
+    mock_log_entry = MagicMock()
+    mock_execute_result = MagicMock()
+    mock_execute_result.scalar_one_or_none.return_value = mock_log_entry
+
+    mock_session = MagicMock()
+    mock_session.execute.return_value = mock_execute_result
+    mock_session.__enter__ = MagicMock(return_value=mock_session)
+    mock_session.__exit__ = MagicMock(return_value=False)
+
+    mock_session_factory = MagicMock(return_value=mock_session)
+
     with patch("multiprocessing.get_context", return_value=mock_context):
-        result = runner.invoke(main, ["run-all"])
+        with patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_factory):
+            result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
     assert "3 CIKs processed" in result.output
@@ -487,8 +511,20 @@ def test_run_all_respects_limit(
 
     mock_context, _ = _make_mock_ctx(mock_worker_fn=mock_worker)
 
+    mock_log_entry = MagicMock()
+    mock_execute_result = MagicMock()
+    mock_execute_result.scalar_one_or_none.return_value = mock_log_entry
+
+    mock_session = MagicMock()
+    mock_session.execute.return_value = mock_execute_result
+    mock_session.__enter__ = MagicMock(return_value=mock_session)
+    mock_session.__exit__ = MagicMock(return_value=False)
+
+    mock_session_factory = MagicMock(return_value=mock_session)
+
     with patch("multiprocessing.get_context", return_value=mock_context):
-        result = runner.invoke(main, ["run-all", "--limit", "2"])
+        with patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_factory):
+            result = runner.invoke(main, ["run-all", "--limit", "2"])
 
     assert result.exit_code == 0
     mock_load_etfs.assert_called_once_with(limit=2)
@@ -837,26 +873,38 @@ def test_run_all_handles_empty_queue(
     mock_check_sec.return_value = ({}, False)
     mock_get_stale.return_value = ["nport"]
 
+    mock_log_entry = MagicMock()
+    mock_execute_result = MagicMock()
+    mock_execute_result.scalar_one_or_none.return_value = mock_log_entry
+
+    mock_session = MagicMock()
+    mock_session.execute.return_value = mock_execute_result
+    mock_session.__enter__ = MagicMock(return_value=mock_session)
+    mock_session.__exit__ = MagicMock(return_value=False)
+
+    mock_session_factory = MagicMock(return_value=mock_session)
+
     with patch("multiprocessing.get_context") as mock_ctx:
-        mock_result_queue = MagicMock()
-        mock_result_queue.get = MagicMock(side_effect=queue.Empty)  # Simulates empty queue
-        queues = iter([queue.Queue(), mock_result_queue])
+        with patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_factory):
+            mock_result_queue = MagicMock()
+            mock_result_queue.get = MagicMock(side_effect=queue.Empty)  # Simulates empty queue
+            queues = iter([queue.Queue(), mock_result_queue])
 
-        mock_context = MagicMock()
-        mock_context.Queue = lambda: next(queues)
+            mock_context = MagicMock()
+            mock_context.Queue = lambda: next(queues)
 
-        def mock_process_factory(target, args):
-            proc = MagicMock()
-            proc.exitcode = 0
-            proc.start = MagicMock()
-            proc.join = MagicMock()
-            proc.is_alive = MagicMock(return_value=False)
-            return proc
+            def mock_process_factory(target, args):
+                proc = MagicMock()
+                proc.exitcode = 0
+                proc.start = MagicMock()
+                proc.join = MagicMock()
+                proc.is_alive = MagicMock(return_value=False)
+                return proc
 
-        mock_context.Process = mock_process_factory
-        mock_ctx.return_value = mock_context
+            mock_context.Process = mock_process_factory
+            mock_ctx.return_value = mock_context
 
-        result = runner.invoke(main, ["run-all"])
+            result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
     assert "No result received from subprocess for CIK 0000001234 parser nport" in result.output
