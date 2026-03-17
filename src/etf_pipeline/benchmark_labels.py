@@ -118,7 +118,7 @@ def _extract_label_from_xbrl(xbrl_obj, member_id: str) -> Optional[str]:
     return None
 
 
-def _get_best_label(element) -> Optional[str]:
+def _get_best_label(element, member_id: str = None) -> Optional[str]:
     """Get the best human-readable label from an XBRL element.
 
     Prefers terseLabel (cleaner), falls back to standard label.
@@ -132,12 +132,18 @@ def _get_best_label(element) -> Optional[str]:
     # Prefer terse label (cleaner, no "[Member]" suffix typically)
     label = labels.get(TERSE_LABEL_ROLE)
     if label:
-        return _clean_label(label)
+        label = _clean_label(label)
+        if member_id and label and label.replace(' ', '').lower() == member_id.lower():
+            return None  # Label is just the member_id with spaces; fall through to heuristic
+        return label
 
     # Fall back to standard label
     label = labels.get(STANDARD_LABEL_ROLE)
     if label:
-        return _clean_label(label)
+        label = _clean_label(label)
+        if member_id and label and label.replace(' ', '').lower() == member_id.lower():
+            return None  # Label is just the member_id with spaces; fall through to heuristic
+        return label
 
     return None
 
