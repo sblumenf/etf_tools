@@ -274,11 +274,13 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
 
                 # UIT fallback for backfill mode: handle ETFs with no series_id
                 uit_etfs = [etf for etf in etfs if not etf.series_id]
-                if uit_etfs and filings:
+                if uit_etfs:
                     # Only use this path when ALL ETFs under this CIK lack series_id
                     series_etfs = [etf for etf in etfs if etf.series_id]
                     if not series_etfs:
-                        for f in filings:
+                        # Re-fetch filings since the original iterator was consumed by _get_all_filings_per_series
+                        uit_filings = company.get_filings(**kwargs)
+                        for f in uit_filings:
                             try:
                                 fr = FundReport.from_filing(f)
                             except Exception as e:

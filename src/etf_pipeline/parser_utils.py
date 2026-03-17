@@ -88,17 +88,17 @@ def ensure_date(value) -> date:
     raise TypeError(f"ensure_date expected date or datetime, got {type(value)}")
 
 
-def build_filing_date_filter(from_date: Optional[str], to_date: Optional[str]) -> Optional[tuple]:
-    """Convert from_date/to_date to edgartools filing_date tuple.
+def build_filing_date_filter(from_date: Optional[str], to_date: Optional[str]) -> Optional[str]:
+    """Convert from_date/to_date to edgartools filing_date string.
 
-    Returns None if no dates provided, or ("YYYY-MM-DD", "YYYY-MM-DD") tuple.
+    Returns None if no dates provided, or "YYYY-MM-DD:YYYY-MM-DD" string.
     Raises ValueError if only one date is provided.
     """
     if from_date is None and to_date is None:
         return None
     if from_date is None or to_date is None:
         raise ValueError("Both from_date and to_date must be provided together")
-    return (from_date, to_date)
+    return f"{from_date}:{to_date}"
 
 
 def resolve_cik_list(session, cik=None, ciks=None, limit=None):
@@ -178,8 +178,8 @@ def map_return_period(period_start: date, period_end: date) -> Optional[str]:
     """Map a date range to a return period field name.
 
     Uses +/- 30 day tolerance for 1yr/5yr/10yr matching.
-    Maps to since_inception only if years > 10 (with tolerance).
-    Returns None for unrecognized periods.
+    Maps to since_inception for any period > 1yr that doesn't match 5yr or 10yr.
+    Returns None for periods <= 1yr that don't match 1yr.
     """
     if not period_start or not period_end:
         return None

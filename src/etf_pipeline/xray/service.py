@@ -155,7 +155,7 @@ def compute_performance_from_monthly(db: Session, etf_id: int) -> dict | None:
     rows = (
         db.query(NPORTMonthlyReturn)
         .filter(NPORTMonthlyReturn.etf_id == etf_id)
-        .order_by(desc(NPORTMonthlyReturn.report_date))
+        .order_by(desc(NPORTMonthlyReturn.report_date), desc(NPORTMonthlyReturn.filing_date))
         .all()
     )
     if not rows:
