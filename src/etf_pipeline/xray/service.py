@@ -151,3 +151,60 @@ def get_latest_flow(db: Session, etf_id: int, cik: str) -> float | None:
     if flow and flow.net_sales is not None:
         return float(flow.net_sales)
     return None
+
+
+def compute_performance_from_monthly(db: Session, etf_id: int) -> dict | None:
+    rows = (
+        db.query(NPORTMonthlyReturn)
+        .filter(NPORTMonthlyReturn.etf_id == etf_id)
+        .order_by(desc(NPORTMonthlyReturn.report_date))
+        .all()
+    )
+    if not rows:
+        return None
+
+    # Build a dict of month_key (year, month) -> return value (float percent)
+    # Each filing's report_date is the end of the 3-month period.
+    # month_1 = report_date month, month_2 = 1 month prior, month_3 = 2 months prior.
+    # Process filings newest-first; skip months already seen to avoid double-counting.
+    monthly_returns: dict[tuple[int, int], float] = {}
+    for row in rows:
+        rd = row.report_date
+        for offset, val in [(0, row.month_1_return), (1, row.month_2_return), (2, row.month_3_return)]:
+            if val is None:
+                continue
+            month_date = rd - relativedelta(months=offset)
+            key = (month_date.year, month_date.month)
+            if key not in monthly_returns:
+                monthly_returns[key] = float(val)
+
+    if not monthly_returns:
+        return None
+
+    # Sort months descending (newest first)
+    sorted_months = sorted(monthly_returns.keys(), reverse=True)
+
+    def compound(keys: list[tuple[int, int]]) -> float:
+        result = 1.0
+        for k in keys:
+            result *= 1.0 + monthly_returns[k] / 100.0
+        return result - 1.0
+
+    result = {}
+
+    # 1yr: need at least 12 months
+    if len(sorted_months) >= 12:
+        keys_1yr = sorted_months[:12]
+        result["return_1yr"] = compound(keys_1yr) * 100.0
+
+    # 5yr: need at least 60 months
+    if len(sorted_months) >= 60:
+        keys_5yr = sorted_months[:60]
+        cum = compound(keys_5yr)
+        annualized = ((1.0 + cum) ** (1.0 / 5.0) - 1.0) * 100.0
+        result["return_5yr"] = annualized
+
+    if not result:
+        return None
+
+    return result
