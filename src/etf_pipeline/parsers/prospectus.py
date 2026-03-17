@@ -738,16 +738,26 @@ def _extract_performance_from_html_table(
         label = cells[0].get_text().strip()
         label_lower = label.lower()
 
+        # Bug 3c: if this row signals the Average Annual section, reset so we re-parse headers
+        row_text = row.get_text()
+        if re.search(r'average\s+annual', row_text, re.IGNORECASE):
+            header_parsed = False
+            horizontal_fund_row_seen = False
+
         # Try to detect a header row with period labels in non-first cells (horizontal layout)
         if not header_parsed:
             header_found = False
-            for i, cell in enumerate(cells[1:], start=1):
+            col_pos = 0  # track actual column position accounting for colspan
+            for cell in cells:
+                colspan = int(cell.get('colspan', 1) or 1)
                 cell_text = cell.get_text().strip()
-                for pat, field in _RETURN_LABEL_PATTERNS:
-                    if pat.search(cell_text):
-                        col_to_field[i] = field
-                        header_found = True
-                        break
+                if col_pos > 0:  # skip first column (entity label column)
+                    for pat, field in _RETURN_LABEL_PATTERNS:
+                        if pat.search(cell_text):
+                            col_to_field[col_pos] = field
+                            header_found = True
+                            break
+                col_pos += colspan
             if header_found:
                 header_parsed = True
                 continue
@@ -819,12 +829,15 @@ def _extract_performance_from_html_table(
             # First data row is always treated as the fund row (regardless of name)
             # Subsequent rows that look like benchmarks are captured as benchmark
             if not horizontal_fund_row_seen:
-                horizontal_fund_row_seen = True
+                fund_row_values_found = False
                 for col_idx, field in col_to_field.items():
                     if col_idx < len(cells) and result.get(field) is None:
                         val = _parse_html_pct_value(cells[col_idx].get_text())
                         if val is not None:
                             result[field] = val
+                            fund_row_values_found = True
+                if fund_row_values_found:
+                    horizontal_fund_row_seen = True
             elif benchmark_name is None and _BENCHMARK_LABEL_PATTERNS.search(label):
                 benchmark_name = label
                 for col_idx, field in col_to_field.items():
@@ -860,7 +873,7 @@ def _write_uit_html_performance(session, cik, etf, soup, filing_date, satisfied)
     from etf_pipeline.benchmark_labels import resolve_benchmark_label
     perf_html = _extract_performance_from_html_table(soup, filing_date)
     if not perf_html:
-        logger.debug(f"CIK {cik}: No HTML performance table found for UIT ETF(s)")
+        logger.warning(f"CIK {cik}: No HTML performance table found for UIT ETF(s)")
         return
     try:
         if perf_html.get('benchmark_name'):

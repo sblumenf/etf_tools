@@ -291,7 +291,7 @@ def test_run_all_skips_cik_with_no_new_filings(
     mock_get_stale,
     mock_worker,
 ):
-    """Test that run_all skips CIKs with no new filings."""
+    """Test that run_all skips previously-processed CIKs with no stale parsers."""
     runner = CliRunner()
 
     mock_get_all_ciks.return_value = ["0000001234", "0000005678"]
@@ -306,8 +306,23 @@ def test_run_all_skips_cik_with_no_new_filings(
 
     mock_context, _ = _make_mock_ctx(mock_worker_fn=mock_worker)
 
+    # Simulate both CIKs having existing ProcessingLog records (has_any_log=True)
+    # so neither is treated as "first-time". The first CIK should be skipped because
+    # get_stale_parsers returns [] for it.
+    mock_log_entry = MagicMock()
+    mock_execute_result = MagicMock()
+    mock_execute_result.scalar_one_or_none.return_value = mock_log_entry
+
+    mock_session = MagicMock()
+    mock_session.execute.return_value = mock_execute_result
+    mock_session.__enter__ = MagicMock(return_value=mock_session)
+    mock_session.__exit__ = MagicMock(return_value=False)
+
+    mock_session_factory = MagicMock(return_value=mock_session)
+
     with patch("multiprocessing.get_context", return_value=mock_context):
-        result = runner.invoke(main, ["run-all"])
+        with patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_factory):
+            result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
     assert "1 CIKs processed" in result.output
