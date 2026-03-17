@@ -390,12 +390,23 @@ FEE_VALUE_FIELDS = [
 ]
 
 
+_FEE_COMPONENT_FIELDS = {'management_fee', 'distribution_12b1', 'other_expenses', 'acquired_fund_fees', 'fee_waiver'}
+_FEE_TOTAL_FIELDS = {'total_expense_gross', 'total_expense_net'}
+
+
 def _apply_fee_sanity_check(fee: dict, cik: str) -> None:
-    """Correct fee values that appear to be display percentages (> 0.10 without scale)."""
+    """Correct fee values that appear to be display percentages (> threshold without scale).
+
+    Component fields use a 0.10 threshold; total fields use 0.50 to allow
+    legitimate fund-of-funds totals (e.g. 12-14%) to pass through unchanged.
+    """
     for field in FEE_VALUE_FIELDS:
         val = fee.get(field)
-        if val is not None and val > Decimal('0.10'):
-            logger.warning(f"CIK {cik}: Fee field {field}={val} exceeds 0.10, applying correction (÷100)")
+        if val is None:
+            continue
+        threshold = Decimal('0.10') if field in _FEE_COMPONENT_FIELDS else Decimal('0.50')
+        if val > threshold:
+            logger.warning(f"CIK {cik}: Fee field {field}={val} exceeds {threshold}, applying correction (÷100)")
             fee[field] = val * Decimal('0.01')
 
 

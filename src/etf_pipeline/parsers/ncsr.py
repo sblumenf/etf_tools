@@ -357,10 +357,10 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                             select(Performance).where(
                                 Performance.etf_id == etf.id,
                                 Performance.fiscal_year_end == fiscal_year_end,
-                                (Performance.return_1yr != None)
-                                | (Performance.return_5yr != None)
-                                | (Performance.return_10yr != None)
-                                | (Performance.return_since_inception != None),
+                                (Performance.return_1yr.isnot(None))
+                                | (Performance.return_5yr.isnot(None))
+                                | (Performance.return_10yr.isnot(None))
+                                | (Performance.return_since_inception.isnot(None)),
                             )
                         ).scalar_one_or_none()
                         if existing_with_returns is not None:
@@ -453,10 +453,10 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                                     select(Performance).where(
                                         Performance.etf_id == etf.id,
                                         Performance.fiscal_year_end == fiscal_year_end,
-                                        (Performance.return_1yr != None)
-                                        | (Performance.return_5yr != None)
-                                        | (Performance.return_10yr != None)
-                                        | (Performance.return_since_inception != None),
+                                        (Performance.return_1yr.isnot(None))
+                                        | (Performance.return_5yr.isnot(None))
+                                        | (Performance.return_10yr.isnot(None))
+                                        | (Performance.return_since_inception.isnot(None)),
                                     )
                                 ).scalar_one_or_none()
                                 if existing_with_returns is not None:

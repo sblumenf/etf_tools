@@ -6,49 +6,49 @@ The ETF data pipeline has 7 bugs that primarily affect large multi-fund issuers,
 
 ## Steps
 
-### Step 1: Fix `map_return_period` dead zone (parser_utils.py)
+### Step 1: Fix `map_return_period` dead zone (parser_utils.py) [DONE]
 - **File**: `src/etf_pipeline/parser_utils.py:195`
 - **Change**: Replace `years > 10 + tolerance` with a fallback that treats any unrecognized period > 1 year as `return_since_inception`
 - **Subagent**: implementer
 - **Risk**: Low. Only affects the else branch. Existing 1yr/5yr/10yr matching is untouched.
 
-### Step 2: Fix N-CSR unconditional performance upsert (ncsr.py)
+### Step 2: Fix N-CSR unconditional performance upsert (ncsr.py) [DONE]
 - **File**: `src/etf_pipeline/parsers/ncsr.py:343-362`
 - **Change**: Guard the `upsert_record` call — only write a Performance row if `returns_data` is non-empty OR no row with non-null returns already exists for that (etf_id, fiscal_year_end)
 - **Subagent**: implementer
 - **Risk**: Medium. Must preserve expense_ratio_actual and portfolio_turnover writes when they're the only data.
 
-### Step 3: Fix performance query tiebreaker (service.py)
+### Step 3: Fix performance query tiebreaker (service.py) [DONE]
 - **File**: `src/etf_pipeline/xray/service.py:108-114`
 - **Change**: Add secondary sort `desc(Performance.filing_date)` and prefer rows where return_1yr is not null
 - **Subagent**: implementer
 - **Risk**: Low. Read-only query change.
 
-### Step 4: Raise MAX_FILINGS cap (ncsr.py)
+### Step 4: Raise MAX_FILINGS cap (ncsr.py) [DONE]
 - **File**: `src/etf_pipeline/parsers/ncsr.py:91`
 - **Change**: Increase `MAX_FILINGS` from 50 to 500
 - **Subagent**: implementer
 - **Risk**: Low. Increases processing time for large CIKs but correctness is more important.
 
-### Step 5: Widen prospectus lookback window (prospectus.py)
+### Step 5: Widen prospectus lookback window (prospectus.py) [DONE]
 - **File**: `src/etf_pipeline/parsers/prospectus.py:23`
 - **Change**: Increase `LOOKBACK_DAYS` from 547 to 1095 (3 years)
 - **Subagent**: implementer
 - **Risk**: Low. One constant change. More filings processed on next run.
 
-### Step 6: Fix fee sanity check blind spot (prospectus.py)
+### Step 6: Fix fee sanity check blind spot (prospectus.py) [DONE — with split thresholds per reviewer feedback]
 - **File**: `src/etf_pipeline/parsers/prospectus.py:393-399`
 - **Change**: Lower threshold from `Decimal('0.50')` to `Decimal('0.10')` (10%). Any raw fee value > 0.10 is almost certainly mis-scaled.
 - **Subagent**: implementer
 - **Risk**: Medium. Must not double-correct values that already have correct scale. The function only runs on values that passed through convert_numeric_value, so if scale was applied correctly the value will already be small.
 
-### Step 7: Fix benchmark label guards (benchmark_labels.py)
+### Step 7: Fix benchmark label guards (benchmark_labels.py) [DONE]
 - **File**: `src/etf_pipeline/benchmark_labels.py:121-148`
 - **Change**: In `_get_best_label`, after extracting label, check if `label.replace(' ', '') == member_id` or similar — if so, return None to fall through to heuristic. In `_clean_label`, add normalization: strip "NACC2 Index:" and similar prefixes, fix "U S" -> "U.S.".
 - **Subagent**: implementer
 - **Risk**: Low. Only affects new resolutions and re-resolutions.
 
-### Step 8: Fix resolve-benchmarks CLI skip logic (cli.py)
+### Step 8: Fix resolve-benchmarks CLI skip logic (cli.py) [DONE]
 - **File**: `src/etf_pipeline/cli.py:380-400`
 - **Change**: The filter that skips entries with non-null `readable_name` should also re-process entries where `readable_name` equals `member_id` (the stuck entries).
 - **Subagent**: implementer
