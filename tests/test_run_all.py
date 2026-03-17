@@ -361,8 +361,20 @@ def test_run_all_runs_parsers_in_order(
 
     mock_context, _ = _make_mock_ctx(mock_worker_fn=mock_worker)
 
+    mock_log_entry = MagicMock()
+    mock_execute_result = MagicMock()
+    mock_execute_result.scalar_one_or_none.return_value = mock_log_entry
+
+    mock_session = MagicMock()
+    mock_session.execute.return_value = mock_execute_result
+    mock_session.__enter__ = MagicMock(return_value=mock_session)
+    mock_session.__exit__ = MagicMock(return_value=False)
+
+    mock_session_factory = MagicMock(return_value=mock_session)
+
     with patch("multiprocessing.get_context", return_value=mock_context):
-        result = runner.invoke(main, ["run-all"])
+        with patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_factory):
+            result = runner.invoke(main, ["run-all"])
 
     assert result.exit_code == 0
     # nport comes before ncsr which comes before flows in PARSER_ORDER
