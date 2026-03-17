@@ -88,7 +88,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
     backfill_mode = date_filter is not None
 
     def _process_cik_ncsr(session: Session, cik: str) -> bool:
-        MAX_FILINGS = 50  # Limit scan to 50 most recent filings per CIK
+        MAX_FILINGS = 500  # Limit scan to 50 most recent filings per CIK
 
         try:
             # Build class_id -> ETF mapping from database first

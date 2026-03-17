@@ -192,7 +192,7 @@ def map_return_period(period_start: date, period_end: date) -> Optional[str]:
         return "return_5yr"
     elif abs(years - 10) <= tolerance:
         return "return_10yr"
-    elif years > 10 + tolerance:
+    elif years > 1 + tolerance:
         return "return_since_inception"
     else:
         return None

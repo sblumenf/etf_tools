@@ -20,7 +20,7 @@ from etf_pipeline.parser_utils import map_return_period, upsert_record
 
 logger = logging.getLogger(__name__)
 
-LOOKBACK_DAYS = 547  # 18-month window for prospectus filings
+LOOKBACK_DAYS = 1095  # 3-year window for prospectus filings
 
 # SEC tax-treatment axis members that are NOT benchmark indexes —
 # these appear on the PerformanceMeasureAxis but describe return types, not benchmarks.
@@ -391,11 +391,11 @@ FEE_VALUE_FIELDS = [
 
 
 def _apply_fee_sanity_check(fee: dict, cik: str) -> None:
-    """Correct fee values that appear to be display percentages (> 0.50 without scale)."""
+    """Correct fee values that appear to be display percentages (> 0.10 without scale)."""
     for field in FEE_VALUE_FIELDS:
         val = fee.get(field)
-        if val is not None and val > Decimal('0.50'):
-            logger.warning(f"CIK {cik}: Fee field {field}={val} exceeds 0.50, applying correction (÷100)")
+        if val is not None and val > Decimal('0.10'):
+            logger.warning(f"CIK {cik}: Fee field {field}={val} exceeds 0.10, applying correction (÷100)")
             fee[field] = val * Decimal('0.01')
 
 

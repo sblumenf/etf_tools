@@ -114,11 +114,11 @@ class TestPeriodMapping:
         end = date(2024, 10, 31)
         assert _map_return_period(start, end) == "return_since_inception"
 
-    def test_map_unrecognized_period_returns_none(self):
-        """Test that a non-standard period (e.g. ~4.6 years) returns None."""
+    def test_map_non_standard_period_returns_since_inception(self):
+        """Test that a non-standard period (e.g. ~4.6 years) returns since_inception."""
         start = date(2020, 3, 15)
         end = date(2024, 10, 31)
-        assert _map_return_period(start, end) is None
+        assert _map_return_period(start, end) == "return_since_inception"
 
     def test_map_with_none_dates(self):
         """Test mapping with None dates."""
