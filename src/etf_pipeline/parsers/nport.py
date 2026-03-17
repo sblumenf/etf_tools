@@ -237,9 +237,6 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
         if backfill_mode:
             # Backfill: process all filings per series
             series_all = _get_all_filings_per_series(filings)
-            if not series_all:
-                logger.warning(f"CIK {cik}: No valid series found in filings")
-                return
 
             with session_factory() as session:
                 stmt = select(ETF).where(ETF.cik == cik)
@@ -247,29 +244,70 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
 
                 latest_filing_date = None
                 processed = 0
-                total = sum(len(v) for v in series_all.values())
 
-                for etf in etfs:
-                    if etf.series_id not in series_all:
-                        logger.warning(f"ETF {etf.ticker} (series_id={etf.series_id}): No matching NPORT-P filing found")
-                        continue
-                    filings_for_series = series_all[etf.series_id]
-                    for i, (filing, fund_report, report_date, filing_date) in enumerate(filings_for_series):
-                        # Per-filing dedup check
-                        stmt_existing = select(Holding.etf_id).where(
-                            Holding.etf_id == etf.id,
-                            Holding.report_date == report_date,
-                        ).limit(1)
-                        already_exists = session.execute(stmt_existing).scalar_one_or_none()
-                        if already_exists is not None:
-                            logger.info(f"ETF {etf.ticker}: Holdings already exist for {report_date}, skipping")
+                if series_all:
+                    total = sum(len(v) for v in series_all.values())
+
+                    for etf in etfs:
+                        if etf.series_id not in series_all:
+                            logger.warning(f"ETF {etf.ticker} (series_id={etf.series_id}): No matching NPORT-P filing found")
                             continue
-                        _process_etf(session, etf, filing, fund_report, report_date, filing_date)
-                        session.commit()
-                        processed += 1
-                        logger.info(f"CIK {cik}: Processed {processed}/{total} filings (ETF {etf.ticker}, {report_date})")
-                        if latest_filing_date is None or filing_date > latest_filing_date:
-                            latest_filing_date = filing_date
+                        filings_for_series = series_all[etf.series_id]
+                        for i, (filing, fund_report, report_date, filing_date) in enumerate(filings_for_series):
+                            # Per-filing dedup check
+                            stmt_existing = select(Holding.etf_id).where(
+                                Holding.etf_id == etf.id,
+                                Holding.report_date == report_date,
+                            ).limit(1)
+                            already_exists = session.execute(stmt_existing).scalar_one_or_none()
+                            if already_exists is not None:
+                                logger.info(f"ETF {etf.ticker}: Holdings already exist for {report_date}, skipping")
+                                continue
+                            _process_etf(session, etf, filing, fund_report, report_date, filing_date)
+                            session.commit()
+                            processed += 1
+                            logger.info(f"CIK {cik}: Processed {processed}/{total} filings (ETF {etf.ticker}, {report_date})")
+                            if latest_filing_date is None or filing_date > latest_filing_date:
+                                latest_filing_date = filing_date
+                else:
+                    logger.warning(f"CIK {cik}: No valid series found in filings")
+
+                # UIT fallback for backfill mode: handle ETFs with no series_id
+                uit_etfs = [etf for etf in etfs if not etf.series_id]
+                if uit_etfs and filings:
+                    # Only use this path when ALL ETFs under this CIK lack series_id
+                    series_etfs = [etf for etf in etfs if etf.series_id]
+                    if not series_etfs:
+                        for f in filings:
+                            try:
+                                fr = FundReport.from_filing(f)
+                            except Exception as e:
+                                logger.warning("CIK %s: filing %s failed to parse: %s", cik, f.accession_number, e)
+                                continue
+                            rp = fr.reporting_period
+                            if isinstance(rp, str):
+                                rp = date.fromisoformat(rp)
+                            report_date = ensure_date(rp)
+                            filing_date = ensure_date(f.filing_date)
+                            for etf in uit_etfs:
+                                stmt_existing = select(Holding.etf_id).where(
+                                    Holding.etf_id == etf.id,
+                                    Holding.report_date == report_date,
+                                ).limit(1)
+                                already_exists = session.execute(stmt_existing).scalar_one_or_none()
+                                if already_exists is not None:
+                                    logger.info(f"ETF {etf.ticker}: Holdings already exist for {report_date}, skipping")
+                                    continue
+                                logger.info("Processing UIT ETF %s (CIK %s) from filing dated %s", etf.ticker, cik, filing_date)
+                                try:
+                                    _process_etf(session, etf, f, fr, report_date, filing_date)
+                                    session.commit()
+                                    processed += 1
+                                    if latest_filing_date is None or filing_date > latest_filing_date:
+                                        latest_filing_date = filing_date
+                                except Exception as e:
+                                    session.rollback()
+                                    logger.error("%s: failed to process: %s", etf.ticker, e)
 
                 if latest_filing_date is not None:
                     update_processing_log(session, cik, "nport", latest_filing_date)
