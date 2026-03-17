@@ -1,5 +1,3 @@
-from datetime import date
-from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, case
 from etf_pipeline.models import ETF, Holding, FeeExpense, Performance, FundSnapshot, NPORTMonthlyFlow, FlowData, NPORTMonthlyReturn
