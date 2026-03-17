@@ -161,6 +161,10 @@ def compute_performance_from_monthly(db: Session, etf_id: int) -> dict | None:
     if not rows:
         return None
 
+    def _subtract_months(year: int, month: int, offset: int) -> tuple[int, int]:
+        total = (year * 12 + month - 1) - offset
+        return (total // 12, total % 12 + 1)
+
     # Build a dict of month_key (year, month) -> return value (float percent)
     # Each filing's report_date is the end of the 3-month period.
     # month_1 = report_date month, month_2 = 1 month prior, month_3 = 2 months prior.
@@ -171,8 +175,7 @@ def compute_performance_from_monthly(db: Session, etf_id: int) -> dict | None:
         for offset, val in [(0, row.month_1_return), (1, row.month_2_return), (2, row.month_3_return)]:
             if val is None:
                 continue
-            month_date = rd - relativedelta(months=offset)
-            key = (month_date.year, month_date.month)
+            key = _subtract_months(rd.year, rd.month, offset)
             if key not in monthly_returns:
                 monthly_returns[key] = float(val)
 
