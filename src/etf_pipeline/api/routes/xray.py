@@ -226,6 +226,25 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             turnover_rate=float(perf.portfolio_turnover) * 100 if perf.portfolio_turnover is not None else None,
             intervals=intervals,
         )
+    elif computed_perf:
+        intervals = []
+        for label, field in [("1 Year", "return_1yr"), ("5 Year", "return_5yr")]:
+            val = computed_perf.get(field)
+            if val is not None:
+                intervals.append(
+                    PerformanceInterval(
+                        label=label,
+                        fund_return=val,
+                        benchmark_return=None,
+                        alpha=None,
+                    )
+                )
+        if intervals:
+            perf_data = PerformanceData(
+                benchmark_name=None,
+                turnover_rate=None,
+                intervals=intervals,
+            )
 
     # fund health card
     # FundSnapshot uses cik (queried above), fields: net_assets, total_assets, total_liabilities,
