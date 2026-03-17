@@ -48,6 +48,9 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
     holdings = service.get_holdings(db, etf.id)
     fees = service.get_fees(db, etf.id)
     perf = service.get_performance(db, etf.id)
+    computed_perf = None
+    if not perf:
+        computed_perf = service.compute_performance_from_monthly(db, etf.id)
     holdings_report_date = holdings[0].report_date if holdings else None
     snapshot = service.get_fund_snapshot(db, etf.cik, etf.series_id or "", report_date=holdings_report_date)
     latest_flow = service.get_latest_flow(db, etf.id, etf.cik)
