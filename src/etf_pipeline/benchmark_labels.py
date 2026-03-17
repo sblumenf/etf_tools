@@ -105,7 +105,7 @@ def _extract_label_from_xbrl(xbrl_obj, member_id: str) -> Optional[str]:
 
     # Try direct lookup first
     if member_id in catalog:
-        return _get_best_label(catalog[member_id])
+        return _get_best_label(catalog[member_id], member_id)
 
     bare_to_key = {}
     for k in catalog:
@@ -113,7 +113,7 @@ def _extract_label_from_xbrl(xbrl_obj, member_id: str) -> Optional[str]:
         bare_to_key.setdefault(bare, k)
     key = bare_to_key.get(member_id)
     if key is not None:
-        return _get_best_label(catalog[key])
+        return _get_best_label(catalog[key], member_id)
 
     return None
 
@@ -152,6 +152,10 @@ def _clean_label(label: str) -> str:
     """Clean up a label string."""
     if label.endswith('[Member]'):
         label = label[:-8].strip()
+    # Strip common XBRL axis prefixes like "NACC2 Index: ", "ALLSPRING Index: ", etc.
+    label = re.sub(r'^.*? Index: ', '', label)
+    # Fix "U S" -> "U.S." (standalone, not part of other words)
+    label = re.sub(r'\bU S\b', 'U.S.', label)
     return label.strip()
 
 
