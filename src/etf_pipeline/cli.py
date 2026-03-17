@@ -600,11 +600,12 @@ def run_all(limit):
                     select(ProcessingLog).where(ProcessingLog.cik == cik).limit(1)
                 ).scalar_one_or_none() is not None
 
+            if not has_any_log:
+                click.echo(f"  First-time CIK {cik}, running all parsers")
+                stale_parsers = list(PARSER_ORDER)
+
             if not stale_parsers:
-                if not has_any_log:
-                    click.echo(f"  No known filings for CIK {cik} (never processed), skipping")
-                else:
-                    click.echo(f"  Already up-to-date for CIK {cik}, skipping")
+                click.echo(f"  Already up-to-date for CIK {cik}, skipping")
                 skipped += 1
                 continue
 
