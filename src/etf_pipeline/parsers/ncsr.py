@@ -350,17 +350,49 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                     if benchmark_name is not None:
                         data_kwargs["benchmark_name"] = benchmark_name
                         data_kwargs.update(benchmark_returns)
-                    upsert_record(
-                        session,
-                        Performance,
-                        filter_kwargs={
-                            "etf_id": etf.id,
-                            "fiscal_year_end": fiscal_year_end,
-                            "filing_date": filing_date,
-                        },
-                        data_kwargs=data_kwargs,
-                    )
-                    logger.debug(f"CIK {cik}: Upserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
+                    # Guard: if this filing has no return data, do not overwrite an
+                    # existing row that does have return data.
+                    if not returns_data:
+                        existing_with_returns = session.execute(
+                            select(Performance).where(
+                                Performance.etf_id == etf.id,
+                                Performance.fiscal_year_end == fiscal_year_end,
+                                (Performance.return_1yr != None)
+                                | (Performance.return_5yr != None)
+                                | (Performance.return_10yr != None)
+                                | (Performance.return_since_inception != None),
+                            )
+                        ).scalar_one_or_none()
+                        if existing_with_returns is not None:
+                            if expense_ratio is not None:
+                                existing_with_returns.expense_ratio_actual = expense_ratio
+                            if portfolio_turnover is not None:
+                                existing_with_returns.portfolio_turnover = portfolio_turnover
+                            logger.debug(f"CIK {cik}: Skipped null-return upsert for {etf.ticker} (fiscal_year_end={fiscal_year_end}); patched expense/turnover on existing row")
+                        else:
+                            upsert_record(
+                                session,
+                                Performance,
+                                filter_kwargs={
+                                    "etf_id": etf.id,
+                                    "fiscal_year_end": fiscal_year_end,
+                                    "filing_date": filing_date,
+                                },
+                                data_kwargs=data_kwargs,
+                            )
+                            logger.debug(f"CIK {cik}: Upserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
+                    else:
+                        upsert_record(
+                            session,
+                            Performance,
+                            filter_kwargs={
+                                "etf_id": etf.id,
+                                "fiscal_year_end": fiscal_year_end,
+                                "filing_date": filing_date,
+                            },
+                            data_kwargs=data_kwargs,
+                        )
+                        logger.debug(f"CIK {cik}: Upserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
 
                     satisfied.add(key)
                     processed_etfs += 1
@@ -414,17 +446,49 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                             if benchmark_name is not None:
                                 data_kwargs["benchmark_name"] = benchmark_name
                                 data_kwargs.update(benchmark_returns)
-                            upsert_record(
-                                session,
-                                Performance,
-                                filter_kwargs={
-                                    "etf_id": etf.id,
-                                    "fiscal_year_end": fiscal_year_end,
-                                    "filing_date": filing_date,
-                                },
-                                data_kwargs=data_kwargs,
-                            )
-                            logger.info(f"CIK {cik}: Upserted UIT performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
+                            # Guard: if this filing has no return data, do not overwrite an
+                            # existing row that does have return data.
+                            if not returns_data:
+                                existing_with_returns = session.execute(
+                                    select(Performance).where(
+                                        Performance.etf_id == etf.id,
+                                        Performance.fiscal_year_end == fiscal_year_end,
+                                        (Performance.return_1yr != None)
+                                        | (Performance.return_5yr != None)
+                                        | (Performance.return_10yr != None)
+                                        | (Performance.return_since_inception != None),
+                                    )
+                                ).scalar_one_or_none()
+                                if existing_with_returns is not None:
+                                    if expense_ratio is not None:
+                                        existing_with_returns.expense_ratio_actual = expense_ratio
+                                    if portfolio_turnover is not None:
+                                        existing_with_returns.portfolio_turnover = portfolio_turnover
+                                    logger.info(f"CIK {cik}: Skipped null-return UIT upsert for {etf.ticker} (fiscal_year_end={fiscal_year_end}); patched expense/turnover on existing row")
+                                else:
+                                    upsert_record(
+                                        session,
+                                        Performance,
+                                        filter_kwargs={
+                                            "etf_id": etf.id,
+                                            "fiscal_year_end": fiscal_year_end,
+                                            "filing_date": filing_date,
+                                        },
+                                        data_kwargs=data_kwargs,
+                                    )
+                                    logger.info(f"CIK {cik}: Upserted UIT performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
+                            else:
+                                upsert_record(
+                                    session,
+                                    Performance,
+                                    filter_kwargs={
+                                        "etf_id": etf.id,
+                                        "fiscal_year_end": fiscal_year_end,
+                                        "filing_date": filing_date,
+                                    },
+                                    data_kwargs=data_kwargs,
+                                )
+                                logger.info(f"CIK {cik}: Upserted UIT performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
 
                             satisfied.add(key)
                             processed_etfs += 1

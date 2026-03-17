@@ -109,7 +109,11 @@ def get_performance(db: Session, etf_id: int) -> Performance | None:
     return (
         db.query(Performance)
         .filter(Performance.etf_id == etf_id)
-        .order_by(desc(Performance.fiscal_year_end))
+        .order_by(
+            desc(Performance.fiscal_year_end),
+            case((Performance.return_1yr.isnot(None), 0), else_=1),
+            desc(Performance.filing_date),
+        )
         .first()
     )
 

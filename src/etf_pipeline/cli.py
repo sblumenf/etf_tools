@@ -380,7 +380,10 @@ def resolve_benchmarks_cmd(limit, dry_run):
     with Session() as session:
         mapped_subq = (
             session.query(BenchmarkMapping.member_id)
-            .filter(BenchmarkMapping.readable_name.isnot(None))
+            .filter(
+                BenchmarkMapping.readable_name.isnot(None),
+                BenchmarkMapping.readable_name != BenchmarkMapping.member_id,
+            )
             .scalar_subquery()
         )
 
