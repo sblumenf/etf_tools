@@ -1003,7 +1003,7 @@ def _extract_performance_data(
                     logger.debug(f"OEF prospectus: oef:AvgAnnlRtrPct in context {ctx_id} has no period info, skipping")
             else:
                 # Benchmark return — only use the first benchmark
-                if benchmark_name is None:
+                if benchmark_name is None and pm not in _NON_BENCHMARK_MEMBERS:
                     benchmark_name = pm
                 if pm == benchmark_name:
                     if period_start_str and period_end_str:
