@@ -198,8 +198,8 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             ("10 Year", perf.return_10yr, perf.benchmark_return_10yr),
             ("Since Inception", perf.return_since_inception, None),
         ]:
-            fund_r_f = float(fund_r) if fund_r is not None else None
-            bench_r_f = float(bench_r) if bench_r is not None else None
+            fund_r_f = float(fund_r) * 100 if fund_r is not None else None
+            bench_r_f = float(bench_r) * 100 if bench_r is not None else None
             if fund_r_f is not None or bench_r_f is not None:
                 alpha = (fund_r_f - bench_r_f) if (fund_r_f is not None and bench_r_f is not None) else None
                 intervals.append(
@@ -220,7 +220,7 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
 
         perf_data = PerformanceData(
             benchmark_name=benchmark_display,
-            turnover_rate=float(perf.portfolio_turnover) if perf.portfolio_turnover is not None else None,
+            turnover_rate=float(perf.portfolio_turnover) * 100 if perf.portfolio_turnover is not None else None,
             intervals=intervals,
         )
 
