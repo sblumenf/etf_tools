@@ -22,6 +22,17 @@ logger = logging.getLogger(__name__)
 
 LOOKBACK_DAYS = 547  # 18-month window for prospectus filings
 
+# SEC tax-treatment axis members that are NOT benchmark indexes —
+# these appear on the PerformanceMeasureAxis but describe return types, not benchmarks.
+_NON_BENCHMARK_MEMBERS = {
+    "AfterTaxesOnDistributionsMember",
+    "AfterTaxesOnDistributionsAndSalesMember",
+    "AftertaxondistributionsMember",
+    "ReturnBeforeTaxesMember",
+    "ReturnAfterTaxesonDistributionsMember",
+    "BasedonNAVMember",
+}
+
 
 
 def parse_contexts(soup: BeautifulSoup) -> dict[str, dict[str, Optional[str]]]:
@@ -920,7 +931,7 @@ def _extract_performance_data(
             if not pm:
                 continue
 
-            if benchmark_name is None:
+            if benchmark_name is None and pm not in _NON_BENCHMARK_MEMBERS:
                 benchmark_name = pm
 
             # Only collect returns for the first benchmark encountered

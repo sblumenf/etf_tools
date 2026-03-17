@@ -174,13 +174,13 @@ def get_xray(ticker: str, db: Session = Depends(get_db)):
             except Exception:
                 pass
         fees_data = FeeData(
-            management_fee=float(fees.management_fee) if fees.management_fee is not None else None,
-            distribution_12b1=float(fees.distribution_12b1) if fees.distribution_12b1 is not None else None,
-            other_expenses=float(fees.other_expenses) if fees.other_expenses is not None else None,
-            acquired_fund_fees=float(fees.acquired_fund_fees) if fees.acquired_fund_fees is not None else None,
-            gross_expense_ratio=float(fees.total_expense_gross) if fees.total_expense_gross is not None else None,
-            net_expense_ratio=float(fees.total_expense_net) if fees.total_expense_net is not None else None,
-            fee_waiver=float(fees.fee_waiver) if fees.fee_waiver is not None else None,
+            management_fee=float(fees.management_fee) * 100 if fees.management_fee is not None else None,
+            distribution_12b1=float(fees.distribution_12b1) * 100 if fees.distribution_12b1 is not None else None,
+            other_expenses=float(fees.other_expenses) * 100 if fees.other_expenses is not None else None,
+            acquired_fund_fees=float(fees.acquired_fund_fees) * 100 if fees.acquired_fund_fees is not None else None,
+            gross_expense_ratio=float(fees.total_expense_gross) * 100 if fees.total_expense_gross is not None else None,
+            net_expense_ratio=float(fees.total_expense_net) * 100 if fees.total_expense_net is not None else None,
+            fee_waiver=float(fees.fee_waiver) * 100 if fees.fee_waiver is not None else None,
             waiver_expiration=waiver_exp_str,
             waiver_expiring_soon=waiver_expiring_soon,
         )
