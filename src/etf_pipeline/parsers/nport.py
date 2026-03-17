@@ -363,7 +363,10 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                         for f in filings:
                             try:
                                 fr = FundReport.from_filing(f)
-                                uit_report_date = ensure_date(fr.reporting_period)
+                                rp = fr.reporting_period
+                                if isinstance(rp, str):
+                                    rp = date.fromisoformat(rp)
+                                uit_report_date = ensure_date(rp)
                                 uit_filing_date_val = f.filing_date
                                 uit_filing = f
                                 uit_fund_report = fr
