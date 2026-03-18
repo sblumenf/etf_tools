@@ -328,7 +328,7 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
 
             if not series_map and needed_series_ids:
                 logger.warning(f"CIK {cik}: No valid series found in filings")
-                return True  # Nothing to process but not a failure
+                return
 
             logger.info(f"CIK {cik}: Parsed {len(series_map)} series from filings")
 
@@ -416,7 +416,7 @@ def _make_process_cik(from_date: Optional[str] = None, to_date: Optional[str] = 
                                 continue
                         if uit_filing is None:
                             logger.warning("CIK %s: no valid NPORT-P filings found for UIT ETFs", cik)
-                            return True  # Nothing to process but not a failure
+                            return
 
                         for etf in uit_etfs:
                             if not _check_amendment_and_clear(session, etf, uit_report_date, uit_filing_date_val):
@@ -1014,11 +1014,12 @@ def _process_etf(
                 holding.security_lending = sec_lending
 
             holdings_count += 1
-            if holdings_count % 200 == 0:
-                session.flush()
         except Exception as e:
             logger.warning("%s: skipping holding due to error: %s", etf.ticker, e, exc_info=True)
             continue
+
+        if holdings_count % 500 == 0:
+            session.flush()
 
     derivatives_count = 0
     seen_derivative_keys = set()
