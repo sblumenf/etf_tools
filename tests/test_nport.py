@@ -1318,7 +1318,7 @@ def test_parse_nport_creates_forward_and_swaption_derivatives(session, engine, s
     swaption_derivs = [d for d in derivatives if d.derivative_type == "SWAPTION"]
     assert len(swaption_derivs) == 2
     swo = swaption_derivs[0]
-    assert swo.underlying_name == ""
+    assert swo.underlying_name == "UNKNOWN"
     assert swo.underlying_cusip is None
     assert swo.notional_value is None
     assert swo.counterparty == "Bank of America"
@@ -5132,8 +5132,8 @@ def test_map_investment_to_derivative_sentinel_values_when_fields_missing(sessio
     )
 
     assert result is not None
-    assert result.underlying_name == ""
-    assert result.counterparty == ""
+    assert result.underlying_name == "UNKNOWN"
+    assert result.counterparty == "UNKNOWN"
     assert result.expiration_date == date(9999, 12, 31)
 
 
