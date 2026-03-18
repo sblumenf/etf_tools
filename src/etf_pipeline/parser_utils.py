@@ -103,7 +103,7 @@ def build_filing_date_filter(from_date: Optional[str], to_date: Optional[str]) -
 
 def resolve_cik_list(session, cik=None, ciks=None, limit=None):
     if ciks is not None:
-        cik_list = ciks
+        cik_list = [f"{int(c):010d}" for c in ciks]
     elif cik is not None:
         cik_padded = f"{int(cik):010d}"
         cik_list = [cik_padded]

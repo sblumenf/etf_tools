@@ -274,7 +274,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.13" },
     { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "click", specifier = ">=8.1" },
-    { name = "edgartools", specifier = ">=5.0" },
+    { name = "edgartools", specifier = ">=5.0,<6.0" },
     { name = "fastapi", specifier = ">=0.135.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "lxml", specifier = ">=5.0" },

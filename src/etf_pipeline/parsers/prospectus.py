@@ -1130,7 +1130,7 @@ def _make_process_cik_prospectus(from_date: Optional[str] = None, to_date: Optio
                     continue
 
                 # Parse iXBRL
-                soup = BeautifulSoup(html, 'lxml')
+                soup = BeautifulSoup(html, 'lxml-xml')
 
                 # Extract contexts
                 context_map = parse_contexts(soup)

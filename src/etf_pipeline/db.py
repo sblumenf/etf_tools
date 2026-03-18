@@ -6,7 +6,15 @@ from etf_pipeline.config import DATABASE_URL
 
 def get_engine(url: str | None = None) -> Engine:
     resolved = url or DATABASE_URL
-    kwargs = {"connect_args": {"timeout": 30}} if resolved.startswith("sqlite") else {}
+    if resolved.startswith("sqlite"):
+        kwargs = {"connect_args": {"timeout": 60}}
+    else:
+        kwargs = {
+            "pool_size": 20,
+            "max_overflow": 10,
+            "pool_pre_ping": True,
+            "pool_recycle": 1800,
+        }
     engine = create_engine(resolved, **kwargs)
     enable_sqlite_fks(engine)
     return engine
@@ -22,5 +30,5 @@ def enable_sqlite_fks(engine: Engine) -> None:
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA busy_timeout=30000")
+        cursor.execute("PRAGMA busy_timeout=60000")
         cursor.close()

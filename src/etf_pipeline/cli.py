@@ -626,7 +626,7 @@ def run_all(limit):
                     args=(result_queue, log_queue, cik, parser_type),
                 )
                 proc.start()
-                timeout = max(600, etf_count * 10)
+                timeout = max(600, etf_count * 30)
                 proc.join(timeout=timeout)
 
                 duration = time.time() - start_time
@@ -672,6 +672,8 @@ def run_all(limit):
                 failed += 1
             else:
                 processed += 1
+
+            engine.dispose()
 
     finally:
         listener.stop()
