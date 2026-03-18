@@ -610,6 +610,7 @@ def run_all(limit):
             if not stale_parsers:
                 click.echo(f"  Already up-to-date for CIK {cik}, skipping")
                 skipped += 1
+                engine.dispose()
                 continue
 
             cik_process_failed = False
