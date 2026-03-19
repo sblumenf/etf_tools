@@ -11,6 +11,7 @@ from sqlalchemy import select
 from etf_pipeline.models import ETF, Performance
 from etf_pipeline.parser_utils import map_return_period
 from etf_pipeline.parsers.ncsr import (
+    _detect_taxonomy,
     _extract_class_id,
     _parse_decimal,
     parse_ncsr,
@@ -1274,3 +1275,445 @@ class TestNCSRUITFallback:
         stmt = select(Performance)
         results = session.execute(stmt).scalars().all()
         assert len(results) == 0
+
+
+class TestDetectTaxonomy:
+    """Test _detect_taxonomy returns the correct taxonomy string."""
+
+    def test_detect_oef_taxonomy(self):
+        """Returns 'oef' when concepts start with 'oef:'."""
+        df = pd.DataFrame({
+            'concept': ['oef:AvgAnnlRtrPct', 'oef:ExpenseRatioPct'],
+        })
+        assert _detect_taxonomy(df) == 'oef'
+
+    def test_detect_rr_taxonomy(self):
+        """Returns 'rr' when concepts start with 'rr:'."""
+        df = pd.DataFrame({
+            'concept': ['rr:AverageAnnualReturnYear01', 'rr:ExpensesOverAssets'],
+        })
+        assert _detect_taxonomy(df) == 'rr'
+
+    def test_detect_returns_none_for_empty_df(self):
+        """Returns None when the DataFrame has no concepts."""
+        df = pd.DataFrame({'concept': pd.Series([], dtype=str)})
+        assert _detect_taxonomy(df) is None
+
+    def test_detect_returns_none_for_unknown_concepts(self):
+        """Returns None when no oef: or rr: prefixed concepts are present."""
+        df = pd.DataFrame({
+            'concept': ['us-gaap:SomeOtherConcept', 'dei:EntityName'],
+        })
+        assert _detect_taxonomy(df) is None
+
+    def test_detect_returns_none_for_all_null_concepts(self):
+        """Returns None when all concept values are NaN/None."""
+        df = pd.DataFrame({'concept': [None, None]})
+        assert _detect_taxonomy(df) is None
+
+    def test_detect_oef_takes_priority_when_oef_appears_first(self):
+        """Returns 'oef' when an oef: concept appears before any rr: concept."""
+        df = pd.DataFrame({
+            'concept': ['oef:AvgAnnlRtrPct', 'rr:AverageAnnualReturnYear01'],
+        })
+        assert _detect_taxonomy(df) == 'oef'
+
+
+class TestRRTaxonomyReturns:
+    """Test that RR taxonomy return concepts are mapped to the correct field names."""
+
+    def _make_mock_filing(self, df, filing_date=date(2024, 12, 1)):
+        mock_filing = Mock()
+        mock_filing.filing_date = filing_date
+        mock_filing.is_inline_xbrl = True
+        mock_xbrl = Mock()
+        mock_facts = Mock()
+        mock_facts.to_dataframe.return_value = df
+        mock_xbrl.facts = mock_facts
+        mock_filing.xbrl.return_value = mock_xbrl
+        return mock_filing
+
+    def _mock_filings(self, filings_list):
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(side_effect=lambda i: filings_list[i])
+        mock_filings.__len__ = Mock(return_value=len(filings_list))
+        mock_filings.__bool__ = Mock(return_value=True)
+        mock_filings.empty = False
+        return mock_filings
+
+    def test_rr_returns_map_to_correct_fields(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """rr:AverageAnnualReturnYear01/05/10/SinceInception map to return_1yr/5yr/10yr/since_inception."""
+        data = {
+            'concept': [
+                'rr:AverageAnnualReturnYear01',
+                'rr:AverageAnnualReturnYear05',
+                'rr:AverageAnnualReturnYear10',
+                'rr:AverageAnnualReturnSinceInception',
+            ],
+            'numeric_value': [
+                Decimal('0.1234'),
+                Decimal('0.0850'),
+                Decimal('0.0920'),
+                Decimal('0.0750'),
+            ],
+            'period_start': [None, None, None, None],
+            'period_end': [
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+            ],
+            'dim_rr_ProspectusShareClassAxis': [
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+            ],
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        assert perf.return_1yr == Decimal('0.1234')
+        assert perf.return_5yr == Decimal('0.0850')
+        assert perf.return_10yr == Decimal('0.0920')
+        assert perf.return_since_inception == Decimal('0.0750')
+
+    def test_rr_expense_ratio_maps_correctly(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """rr:ExpensesOverAssets maps to expense_ratio_actual."""
+        data = {
+            'concept': [
+                'rr:AverageAnnualReturnYear01',
+                'rr:ExpensesOverAssets',
+            ],
+            'numeric_value': [
+                Decimal('0.1234'),
+                Decimal('0.0004'),
+            ],
+            'period_start': [None, None],
+            'period_end': [date(2024, 10, 31), date(2024, 10, 31)],
+            'dim_rr_ProspectusShareClassAxis': [
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+            ],
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        assert perf.expense_ratio_actual == Decimal('0.0004')
+
+
+class TestRRClassAxis:
+    """Test that dim_rr_ProspectusShareClassAxis is accepted as the class axis."""
+
+    def _make_mock_filing(self, df, filing_date=date(2024, 12, 1)):
+        mock_filing = Mock()
+        mock_filing.filing_date = filing_date
+        mock_filing.is_inline_xbrl = True
+        mock_xbrl = Mock()
+        mock_facts = Mock()
+        mock_facts.to_dataframe.return_value = df
+        mock_xbrl.facts = mock_facts
+        mock_filing.xbrl.return_value = mock_xbrl
+        return mock_filing
+
+    def _mock_filings(self, filings_list):
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(side_effect=lambda i: filings_list[i])
+        mock_filings.__len__ = Mock(return_value=len(filings_list))
+        mock_filings.__bool__ = Mock(return_value=True)
+        mock_filings.empty = False
+        return mock_filings
+
+    def test_rr_prospectus_share_class_axis_routes_to_etf(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """dim_rr_ProspectusShareClassAxis is used to match class_id when oef axis is absent."""
+        data = {
+            'concept': ['rr:AverageAnnualReturnYear01'],
+            'numeric_value': [Decimal('0.0999')],
+            'period_start': [None],
+            'period_end': [date(2024, 10, 31)],
+            'dim_rr_ProspectusShareClassAxis': ['ist:C000131291Member'],
+            # No dim_oef_ClassAxis column present
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        assert perf.return_1yr == Decimal('0.0999')
+
+    def test_oef_class_axis_takes_priority_over_rr(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """dim_oef_ClassAxis is used when both oef and rr class axis columns are present."""
+        data = {
+            'concept': ['rr:AverageAnnualReturnYear01'],
+            'numeric_value': [Decimal('0.1111')],
+            'period_start': [None],
+            'period_end': [date(2024, 10, 31)],
+            'dim_oef_ClassAxis': ['ist:C000131291Member'],
+            'dim_rr_ProspectusShareClassAxis': ['ist:C000999999Member'],  # Different, lower priority
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        # C000131291 (IVV) was matched via oef axis — record exists
+        assert perf is not None
+        assert perf.return_1yr == Decimal('0.1111')
+
+
+class TestRRBenchmark:
+    """Test that dim_rr_PerformanceMeasureAxis is used for benchmark data."""
+
+    def _make_mock_filing(self, df, filing_date=date(2024, 12, 1)):
+        mock_filing = Mock()
+        mock_filing.filing_date = filing_date
+        mock_filing.is_inline_xbrl = True
+        mock_xbrl = Mock()
+        mock_facts = Mock()
+        mock_facts.to_dataframe.return_value = df
+        mock_xbrl.facts = mock_facts
+        mock_filing.xbrl.return_value = mock_xbrl
+        return mock_filing
+
+    def _mock_filings(self, filings_list):
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(side_effect=lambda i: filings_list[i])
+        mock_filings.__len__ = Mock(return_value=len(filings_list))
+        mock_filings.__bool__ = Mock(return_value=True)
+        mock_filings.empty = False
+        return mock_filings
+
+    def test_rr_performance_measure_axis_extracts_benchmark(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """dim_rr_PerformanceMeasureAxis rows are extracted as benchmark returns."""
+        data = {
+            'concept': [
+                'rr:AverageAnnualReturnYear01',   # fund return
+                'rr:AverageAnnualReturnYear05',   # fund return
+                'rr:AverageAnnualReturnYear01',   # benchmark return
+                'rr:AverageAnnualReturnYear05',   # benchmark return
+            ],
+            'numeric_value': [
+                Decimal('0.1234'),
+                Decimal('0.0850'),
+                Decimal('0.1100'),
+                Decimal('0.0800'),
+            ],
+            'period_start': [None, None, None, None],
+            'period_end': [
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+            ],
+            'dim_rr_ProspectusShareClassAxis': [
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+                'ist:C000131291Member',  # Benchmark rows carry a class axis in RR filings
+                'ist:C000131291Member',
+            ],
+            'dim_rr_PerformanceMeasureAxis': [
+                None,  # Fund rows have no performance measure axis
+                None,
+                'ist:SP500IndexMember',
+                'ist:SP500IndexMember',
+            ],
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        assert perf.return_1yr == Decimal('0.1234')
+        assert perf.return_5yr == Decimal('0.0850')
+        assert perf.benchmark_name == "SP500IndexMember"
+        assert perf.benchmark_return_1yr == Decimal('0.1100')
+        assert perf.benchmark_return_5yr == Decimal('0.0800')
+
+    def test_broad_based_axis_takes_priority_over_rr_performance_measure(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """dim_oef_BroadBasedIndexAxis benchmark wins over dim_rr_PerformanceMeasureAxis."""
+        data = {
+            'concept': [
+                'oef:AvgAnnlRtrPct',              # fund return (oef)
+                'oef:AvgAnnlRtrPct',              # broad-based benchmark return
+                'rr:AverageAnnualReturnYear01',   # rr performance-measure benchmark (lower priority)
+            ],
+            'numeric_value': [
+                Decimal('0.1200'),
+                Decimal('0.1100'),  # broad-based: wins
+                Decimal('0.0500'),  # rr perf measure: ignored
+            ],
+            'period_start': [
+                date(2023, 10, 31),
+                date(2023, 10, 31),
+                None,
+            ],
+            'period_end': [
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+                date(2024, 10, 31),
+            ],
+            'dim_oef_ClassAxis': [
+                'ist:C000131291Member',
+                None,
+                None,
+            ],
+            'dim_oef_BroadBasedIndexAxis': [
+                None,
+                'ist:SP500IndexMember',
+                None,
+            ],
+            'dim_rr_PerformanceMeasureAxis': [
+                None,
+                None,
+                'ist:NasdaqCompositeIndexMember',
+            ],
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        assert perf.benchmark_name == "SP500IndexMember"
+        assert perf.benchmark_return_1yr == Decimal('0.1100')
+
+
+class TestRRPortfolioTurnover:
+    """Test that rr:PortfolioTurnoverRate is recognized."""
+
+    def _make_mock_filing(self, df, filing_date=date(2024, 12, 1)):
+        mock_filing = Mock()
+        mock_filing.filing_date = filing_date
+        mock_filing.is_inline_xbrl = True
+        mock_xbrl = Mock()
+        mock_facts = Mock()
+        mock_facts.to_dataframe.return_value = df
+        mock_xbrl.facts = mock_facts
+        mock_filing.xbrl.return_value = mock_xbrl
+        return mock_filing
+
+    def _mock_filings(self, filings_list):
+        mock_filings = Mock()
+        mock_filings.__getitem__ = Mock(side_effect=lambda i: filings_list[i])
+        mock_filings.__len__ = Mock(return_value=len(filings_list))
+        mock_filings.__bool__ = Mock(return_value=True)
+        mock_filings.empty = False
+        return mock_filings
+
+    def test_rr_portfolio_turnover_rate_stored(
+        self, session, sample_etfs_with_class_id, mock_ncsr_db
+    ):
+        """rr:PortfolioTurnoverRate is stored in the portfolio_turnover field."""
+        data = {
+            'concept': [
+                'rr:AverageAnnualReturnYear01',
+                'rr:PortfolioTurnoverRate',
+            ],
+            'numeric_value': [
+                Decimal('0.1234'),
+                Decimal('0.23'),
+            ],
+            'period_start': [None, None],
+            'period_end': [date(2024, 10, 31), date(2024, 10, 31)],
+            'dim_rr_ProspectusShareClassAxis': [
+                'ist:C000131291Member',
+                'ist:C000131291Member',
+            ],
+        }
+        mock_df = pd.DataFrame(data)
+        mock_filing = self._make_mock_filing(mock_df)
+
+        with patch("etf_pipeline.parsers.ncsr.Company") as mock_class:
+            mock_instance = Mock()
+            mock_class.return_value = mock_instance
+            mock_instance.get_filings.return_value = self._mock_filings([mock_filing])
+
+            parse_ncsr(cik="0001100663", clear_cache=False)
+
+        stmt = select(Performance).where(
+            Performance.etf_id == sample_etfs_with_class_id[0].id
+        )
+        perf = session.execute(stmt).scalar_one_or_none()
+
+        assert perf is not None
+        assert perf.portfolio_turnover == Decimal('0.23')

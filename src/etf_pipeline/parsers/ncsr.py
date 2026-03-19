@@ -4,6 +4,7 @@ import logging
 from datetime import date
 from typing import Optional
 
+import pandas as pd
 from edgar import Company
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -27,6 +28,16 @@ from etf_pipeline.parser_utils import (
 logger = logging.getLogger(__name__)
 
 _parse_decimal = parse_decimal
+
+
+def _detect_taxonomy(df: pd.DataFrame) -> Optional[str]:
+    """Detect whether filing uses 'oef' or 'rr' XBRL taxonomy."""
+    for concept in df['concept'].dropna().unique():
+        if concept.startswith('oef:'):
+            return 'oef'
+        if concept.startswith('rr:'):
+            return 'rr'
+    return None
 
 
 def _extract_class_id(member_value: str) -> Optional[str]:
@@ -88,7 +99,7 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
     backfill_mode = date_filter is not None
 
     def _process_cik_ncsr(session: Session, cik: str) -> bool:
-        MAX_FILINGS = 500  # Limit scan to 50 most recent filings per CIK
+        MAX_FILINGS = 500  # Limit scan to 500 most recent filings per CIK
 
         try:
             # Build class_id -> ETF mapping from database first
@@ -167,79 +178,123 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                     logger.debug(f"CIK {cik}: Filing {filing_idx} XBRL DataFrame is empty")
                     continue
 
-                # Filter for OEF concepts we care about
-                target_concepts = [
+                # Detect taxonomy and build appropriate concept filter
+                taxonomy = _detect_taxonomy(df)
+
+                oef_concepts = [
                     "oef:AvgAnnlRtrPct",
                     "oef:ExpenseRatioPct",
-                    "us-gaap:InvestmentCompanyPortfolioTurnover"
+                    "oef:PortfolioTurnoverRate",
+                    "us-gaap:InvestmentCompanyPortfolioTurnover",
                 ]
+                rr_concepts = [
+                    "rr:AverageAnnualReturnYear01",
+                    "rr:AverageAnnualReturnYear05",
+                    "rr:AverageAnnualReturnYear10",
+                    "rr:AverageAnnualReturnSinceInception",
+                    "rr:ExpensesOverAssets",
+                    "rr:PortfolioTurnoverRate",
+                ]
+
+                if taxonomy == 'oef':
+                    target_concepts = oef_concepts
+                elif taxonomy == 'rr':
+                    target_concepts = rr_concepts
+                    logger.info(f"CIK {cik}: Filing {filing_idx} uses RR taxonomy")
+                else:
+                    target_concepts = oef_concepts + rr_concepts
 
                 df_filtered = df[df['concept'].isin(target_concepts)].copy()
 
                 if df_filtered.empty:
-                    logger.debug(f"CIK {cik}: Filing {filing_idx} has no OEF performance concepts")
+                    logger.debug(f"CIK {cik}: Filing {filing_idx} has no performance concepts (taxonomy={taxonomy})")
                     continue
 
-                if 'dim_oef_ClassAxis' not in df_filtered.columns:
+                # Determine which ClassAxis column to use
+                if 'dim_oef_ClassAxis' in df_filtered.columns:
+                    class_axis_col = 'dim_oef_ClassAxis'
+                elif 'dim_rr_ProspectusShareClassAxis' in df_filtered.columns:
+                    class_axis_col = 'dim_rr_ProspectusShareClassAxis'
+                else:
                     if uit_fallback_etf is None:
                         logger.warning(f"CIK {cik}: Filing {filing_idx} has no ClassAxis dimension")
                         continue
                     # UIT fallback: no ClassAxis means single-fund filing — add synthetic NULL column
-                    df_filtered['dim_oef_ClassAxis'] = None
+                    class_axis_col = 'dim_oef_ClassAxis'
+                    df_filtered[class_axis_col] = None
 
                 # Extract benchmark data BEFORE per-class loop (benchmarks never have ClassAxis)
                 benchmark_name = None
                 benchmark_returns = {}
 
-                has_benchmark_axis = 'dim_oef_BroadBasedIndexAxis' in df_filtered.columns
-                if has_benchmark_axis:
-                    # Filter for benchmark facts: BroadBasedIndexAxis is not null AND ClassAxis is null
+                # Determine benchmark axis column: BroadBased (OEF) > PerformanceMeasure (RR) > Additional (OEF)
+                has_broad_based_axis = 'dim_oef_BroadBasedIndexAxis' in df_filtered.columns
+                has_rr_perf_axis = 'dim_rr_PerformanceMeasureAxis' in df_filtered.columns
+
+                def _extract_benchmark_returns_from_facts(facts_df):
+                    extracted = {}
+                    for _, row in facts_df.iterrows():
+                        concept = row['concept']
+                        numeric_value = row.get('numeric_value')
+                        if concept == 'oef:AvgAnnlRtrPct':
+                            period_start = row.get('period_start')
+                            period_end = row.get('period_end')
+                            if period_start and period_end:
+                                ps = parse_date(period_start)
+                                pe = parse_date(period_end)
+                                field_name = map_return_period(ps, pe)
+                                if field_name:
+                                    bfield = field_name.replace('return_', 'benchmark_return_')
+                                    if bfield in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
+                                        extracted[bfield] = parse_decimal(numeric_value)
+                        elif concept == 'rr:AverageAnnualReturnYear01':
+                            extracted['benchmark_return_1yr'] = parse_decimal(numeric_value)
+                        elif concept == 'rr:AverageAnnualReturnYear05':
+                            extracted['benchmark_return_5yr'] = parse_decimal(numeric_value)
+                        elif concept == 'rr:AverageAnnualReturnYear10':
+                            extracted['benchmark_return_10yr'] = parse_decimal(numeric_value)
+                    return extracted
+
+                if has_broad_based_axis:
                     benchmark_facts = df_filtered[
                         (df_filtered['dim_oef_BroadBasedIndexAxis'].notna()) &
-                        (df_filtered['dim_oef_ClassAxis'].isna())
+                        (df_filtered[class_axis_col].isna())
                     ].copy()
 
                     if not benchmark_facts.empty:
-                        # Deduplicate benchmark facts by (concept, period_start, period_end, numeric_value)
-                        # Keep first occurrence when multiple benchmark member IDs have identical values
                         benchmark_facts_deduped = benchmark_facts.drop_duplicates(
                             subset=['concept', 'period_start', 'period_end', 'numeric_value'],
                             keep='first'
                         )
-
-                        # Extract benchmark name from the first benchmark
                         benchmark_axis_values = benchmark_facts_deduped['dim_oef_BroadBasedIndexAxis'].dropna().unique()
                         if len(benchmark_axis_values) > 0:
                             benchmark_name = _extract_benchmark_name(benchmark_axis_values[0])
                             resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
-
-                        # Extract benchmark returns
-                        for _, row in benchmark_facts_deduped.iterrows():
-                            concept = row['concept']
-                            numeric_value = row.get('numeric_value')
-
-                            if concept == 'oef:AvgAnnlRtrPct':
-                                period_start = row.get('period_start')
-                                period_end = row.get('period_end')
-
-                                if period_start and period_end:
-                                    period_start = parse_date(period_start)
-                                    period_end = parse_date(period_end)
-
-                                    field_name = map_return_period(period_start, period_end)
-                                    if field_name:
-                                        # Map to benchmark field name
-                                        benchmark_field = field_name.replace('return_', 'benchmark_return_')
-                                        if benchmark_field in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
-                                            benchmark_returns[benchmark_field] = parse_decimal(numeric_value)
-
+                        benchmark_returns = _extract_benchmark_returns_from_facts(benchmark_facts_deduped)
                         logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark: {benchmark_name}, returns: {benchmark_returns}")
 
-                # Fallback to AdditionalIndexAxis if no benchmark found from BroadBasedIndexAxis
+                if benchmark_name is None and has_rr_perf_axis:
+                    benchmark_facts = df_filtered[
+                        df_filtered['dim_rr_PerformanceMeasureAxis'].notna()
+                    ].copy()
+
+                    if not benchmark_facts.empty:
+                        benchmark_facts_deduped = benchmark_facts.drop_duplicates(
+                            subset=['concept', 'period_start', 'period_end', 'numeric_value'],
+                            keep='first'
+                        )
+                        benchmark_axis_values = benchmark_facts_deduped['dim_rr_PerformanceMeasureAxis'].dropna().unique()
+                        if len(benchmark_axis_values) > 0:
+                            benchmark_name = _extract_benchmark_name(benchmark_axis_values[0])
+                            resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                        benchmark_returns = _extract_benchmark_returns_from_facts(benchmark_facts_deduped)
+                        logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark (RR PerformanceMeasure): {benchmark_name}, returns: {benchmark_returns}")
+
+                # Fallback to AdditionalIndexAxis if no benchmark found from BroadBasedIndexAxis or RR axis
                 if benchmark_name is None and 'dim_oef_AdditionalIndexAxis' in df_filtered.columns:
                     additional_facts = df_filtered[
                         (df_filtered['dim_oef_AdditionalIndexAxis'].notna()) &
-                        (df_filtered['dim_oef_ClassAxis'].isna())
+                        (df_filtered[class_axis_col].isna())
                     ].copy()
 
                     if not additional_facts.empty:
@@ -247,34 +302,15 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                             subset=['concept', 'period_start', 'period_end', 'numeric_value'],
                             keep='first'
                         )
-
                         additional_axis_values = additional_facts_deduped['dim_oef_AdditionalIndexAxis'].dropna().unique()
                         if len(additional_axis_values) > 0:
                             benchmark_name = _extract_benchmark_name(additional_axis_values[0])
                             resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
-
-                        for _, row in additional_facts_deduped.iterrows():
-                            concept = row['concept']
-                            numeric_value = row.get('numeric_value')
-
-                            if concept == 'oef:AvgAnnlRtrPct':
-                                period_start = row.get('period_start')
-                                period_end = row.get('period_end')
-
-                                if period_start and period_end:
-                                    period_start = parse_date(period_start)
-                                    period_end = parse_date(period_end)
-
-                                    field_name = map_return_period(period_start, period_end)
-                                    if field_name:
-                                        benchmark_field = field_name.replace('return_', 'benchmark_return_')
-                                        if benchmark_field in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
-                                            benchmark_returns[benchmark_field] = parse_decimal(numeric_value)
-
+                        benchmark_returns = _extract_benchmark_returns_from_facts(additional_facts_deduped)
                         logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark (AdditionalIndex fallback): {benchmark_name}, returns: {benchmark_returns}")
 
                 # Process each unique class_id in this filing's XBRL data
-                for class_axis_value in df_filtered['dim_oef_ClassAxis'].dropna().unique():
+                for class_axis_value in df_filtered[class_axis_col].dropna().unique():
                     class_id = _extract_class_id(class_axis_value)
                     if not class_id:
                         continue
@@ -291,8 +327,13 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                             continue
 
                     # Get all facts for this class (fund facts only - no benchmark axis)
-                    class_facts = df_filtered[df_filtered['dim_oef_ClassAxis'] == class_axis_value].copy()
-                    fund_facts = class_facts[class_facts['dim_oef_BroadBasedIndexAxis'].isna()].copy() if has_benchmark_axis else class_facts
+                    class_facts = df_filtered[df_filtered[class_axis_col] == class_axis_value].copy()
+                    if has_broad_based_axis:
+                        fund_facts = class_facts[class_facts['dim_oef_BroadBasedIndexAxis'].isna()].copy()
+                    elif has_rr_perf_axis:
+                        fund_facts = class_facts[class_facts['dim_rr_PerformanceMeasureAxis'].isna()].copy()
+                    else:
+                        fund_facts = class_facts
 
                     # Extract fiscal_year_end from period_end (use the first one we find)
                     fiscal_year_end = None
@@ -322,22 +363,30 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                         numeric_value = row.get('numeric_value')
 
                         if concept == 'oef:AvgAnnlRtrPct':
-                            # Map period to field name
                             period_start = row.get('period_start')
                             period_end = row.get('period_end')
-
                             if period_start and period_end:
                                 period_start = parse_date(period_start)
                                 period_end = parse_date(period_end)
-
                                 field_name = map_return_period(period_start, period_end)
                                 if field_name:
                                     returns_data[field_name] = parse_decimal(numeric_value)
 
+                        elif concept == 'rr:AverageAnnualReturnYear01':
+                            returns_data['return_1yr'] = parse_decimal(numeric_value)
+                        elif concept == 'rr:AverageAnnualReturnYear05':
+                            returns_data['return_5yr'] = parse_decimal(numeric_value)
+                        elif concept == 'rr:AverageAnnualReturnYear10':
+                            returns_data['return_10yr'] = parse_decimal(numeric_value)
+                        elif concept == 'rr:AverageAnnualReturnSinceInception':
+                            returns_data['return_since_inception'] = parse_decimal(numeric_value)
+
                         elif concept == 'oef:ExpenseRatioPct':
                             expense_ratio = parse_decimal(numeric_value)
+                        elif concept == 'rr:ExpensesOverAssets':
+                            expense_ratio = parse_decimal(numeric_value)
 
-                        elif concept == 'us-gaap:InvestmentCompanyPortfolioTurnover':
+                        elif concept in ('us-gaap:InvestmentCompanyPortfolioTurnover', 'oef:PortfolioTurnoverRate', 'rr:PortfolioTurnoverRate'):
                             portfolio_turnover = parse_decimal(numeric_value)
 
                     # Upsert Performance record
@@ -399,9 +448,14 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
 
                 # UIT fallback: if no ClassAxis rows were found but we have a fallback ETF,
                 # treat all non-benchmark facts as belonging to that ETF
-                if uit_fallback_etf is not None and df_filtered['dim_oef_ClassAxis'].isna().all():
+                if uit_fallback_etf is not None and df_filtered[class_axis_col].isna().all():
                     etf = uit_fallback_etf
-                    fund_facts = df_filtered[df_filtered['dim_oef_BroadBasedIndexAxis'].isna()].copy() if has_benchmark_axis else df_filtered.copy()
+                    if has_broad_based_axis:
+                        fund_facts = df_filtered[df_filtered['dim_oef_BroadBasedIndexAxis'].isna()].copy()
+                    elif has_rr_perf_axis:
+                        fund_facts = df_filtered[df_filtered['dim_rr_PerformanceMeasureAxis'].isna()].copy()
+                    else:
+                        fund_facts = df_filtered.copy()
 
                     fiscal_year_end = None
                     if 'period_end' in fund_facts.columns:
@@ -423,19 +477,28 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                                 if concept == 'oef:AvgAnnlRtrPct':
                                     period_start = row.get('period_start')
                                     period_end = row.get('period_end')
-
                                     if period_start and period_end:
                                         period_start = parse_date(period_start)
                                         period_end = parse_date(period_end)
-
                                         field_name = map_return_period(period_start, period_end)
                                         if field_name:
                                             returns_data[field_name] = parse_decimal(numeric_value)
 
+                                elif concept == 'rr:AverageAnnualReturnYear01':
+                                    returns_data['return_1yr'] = parse_decimal(numeric_value)
+                                elif concept == 'rr:AverageAnnualReturnYear05':
+                                    returns_data['return_5yr'] = parse_decimal(numeric_value)
+                                elif concept == 'rr:AverageAnnualReturnYear10':
+                                    returns_data['return_10yr'] = parse_decimal(numeric_value)
+                                elif concept == 'rr:AverageAnnualReturnSinceInception':
+                                    returns_data['return_since_inception'] = parse_decimal(numeric_value)
+
                                 elif concept == 'oef:ExpenseRatioPct':
                                     expense_ratio = parse_decimal(numeric_value)
+                                elif concept == 'rr:ExpensesOverAssets':
+                                    expense_ratio = parse_decimal(numeric_value)
 
-                                elif concept == 'us-gaap:InvestmentCompanyPortfolioTurnover':
+                                elif concept in ('us-gaap:InvestmentCompanyPortfolioTurnover', 'oef:PortfolioTurnoverRate', 'rr:PortfolioTurnoverRate'):
                                     portfolio_turnover = parse_decimal(numeric_value)
 
                             data_kwargs = {
