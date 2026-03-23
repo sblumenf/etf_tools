@@ -28,6 +28,11 @@ from etf_pipeline.parser_utils import (
 
 logger = logging.getLogger(__name__)
 
+_NON_BENCHMARK_MEMBERS = {
+    "AfterTaxesOnDistributionsMember",
+    "AfterTaxesOnDistributionsAndSalesMember",
+}
+
 _OEF_CONCEPTS = [
     "oef:AvgAnnlRtrPct",
     "oef:ExpenseRatioPct",
@@ -243,6 +248,54 @@ def _build_class_benchmark_map(df_filtered, class_axis_col):
     return class_to_benchmark
 
 
+def _extract_benchmark_from_axis(df, axis_col):
+    """Extract benchmark name and facts from a DataFrame filtered by an axis column."""
+    bm_facts = df[df[axis_col].notna()]
+    if bm_facts.empty:
+        return None, pd.DataFrame()
+    bm_facts_deduped = bm_facts.drop_duplicates(
+        subset=['concept', 'period_start', 'period_end', 'numeric_value'],
+        keep='first'
+    )
+    axis_vals = bm_facts_deduped[axis_col].dropna().unique()
+    bm_name = _extract_benchmark_name(axis_vals[0]) if len(axis_vals) > 0 else None
+    return bm_name, bm_facts_deduped
+
+
+def _upsert_performance_record(session, etf, fiscal_year_end, filing_date, returns_data, data_kwargs, cik, label=""):
+    """Upsert a Performance record, guarding against overwriting existing returns with nulls."""
+    if not returns_data:
+        existing_with_returns = session.execute(
+            select(Performance).where(
+                Performance.etf_id == etf.id,
+                Performance.fiscal_year_end == fiscal_year_end,
+                (Performance.return_1yr.isnot(None))
+                | (Performance.return_5yr.isnot(None))
+                | (Performance.return_10yr.isnot(None))
+                | (Performance.return_since_inception.isnot(None)),
+            )
+        ).scalar_one_or_none()
+        if existing_with_returns is not None:
+            if data_kwargs.get("expense_ratio_actual") is not None:
+                existing_with_returns.expense_ratio_actual = data_kwargs["expense_ratio_actual"]
+            if data_kwargs.get("portfolio_turnover") is not None:
+                existing_with_returns.portfolio_turnover = data_kwargs["portfolio_turnover"]
+            logger.debug(f"CIK {cik}: Skipped null-return upsert for {etf.ticker} {label}(fiscal_year_end={fiscal_year_end}); patched expense/turnover on existing row")
+            return
+
+    upsert_record(
+        session,
+        Performance,
+        filter_kwargs={
+            "etf_id": etf.id,
+            "fiscal_year_end": fiscal_year_end,
+            "filing_date": filing_date,
+        },
+        data_kwargs=data_kwargs,
+    )
+    logger.debug(f"CIK {cik}: Upserted {label}performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
+
+
 def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[str] = None):
     """Return a per-CIK processor for the parser loop."""
     date_filter = build_filing_date_filter(from_date, to_date)
@@ -361,23 +414,23 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                 # Build per-class benchmark map using document ordering
                 class_benchmark_map = _build_class_benchmark_map(df_filtered, class_axis_col)
 
+                # Per-filing caches to avoid redundant resolve/extract calls
+                resolved_benchmarks = set()
+                benchmark_returns_cache = {}
+
                 # Also check for RR PerformanceMeasure axis as fallback
                 has_broad_based_axis = 'dim_oef_BroadBasedIndexAxis' in df_filtered.columns
                 has_rr_perf_axis = 'dim_rr_PerformanceMeasureAxis' in df_filtered.columns
                 rr_benchmark_name = None
                 rr_benchmark_returns = {}
                 if has_rr_perf_axis:
-                    rr_benchmark_facts = df_filtered[
-                        df_filtered['dim_rr_PerformanceMeasureAxis'].notna()
-                    ]
-                    if not rr_benchmark_facts.empty:
-                        rr_benchmark_facts_deduped = rr_benchmark_facts.drop_duplicates(
-                            subset=['concept', 'period_start', 'period_end', 'numeric_value'],
-                            keep='first'
-                        )
-                        rr_axis_values = rr_benchmark_facts_deduped['dim_rr_PerformanceMeasureAxis'].dropna().unique()
-                        if len(rr_axis_values) > 0:
-                            rr_benchmark_name = _extract_benchmark_name(rr_axis_values[0])
+                    rr_benchmark_name, rr_benchmark_facts_deduped = _extract_benchmark_from_axis(
+                        df_filtered, 'dim_rr_PerformanceMeasureAxis'
+                    )
+                    if rr_benchmark_name in _NON_BENCHMARK_MEMBERS:
+                        rr_benchmark_name = None
+                        rr_benchmark_facts_deduped = pd.DataFrame()
+                    if rr_benchmark_name is not None:
                         rr_benchmark_returns = _extract_benchmark_returns_from_facts(rr_benchmark_facts_deduped)
 
                 # Process each unique class_id in this filing's XBRL data
@@ -432,11 +485,17 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                     benchmark_returns = {}
                     if class_id in class_benchmark_map:
                         benchmark_name, bm_facts_df = class_benchmark_map[class_id]
-                        resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
-                        benchmark_returns = _extract_benchmark_returns_from_facts(bm_facts_df)
+                        if benchmark_name not in resolved_benchmarks:
+                            resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                            resolved_benchmarks.add(benchmark_name)
+                        if benchmark_name not in benchmark_returns_cache:
+                            benchmark_returns_cache[benchmark_name] = _extract_benchmark_returns_from_facts(bm_facts_df)
+                        benchmark_returns = benchmark_returns_cache[benchmark_name]
                     elif rr_benchmark_name:
                         benchmark_name = rr_benchmark_name
-                        resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                        if benchmark_name not in resolved_benchmarks:
+                            resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                            resolved_benchmarks.add(benchmark_name)
                         benchmark_returns = rr_benchmark_returns
 
                     # Upsert Performance record
@@ -449,49 +508,10 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                     if benchmark_name is not None:
                         data_kwargs["benchmark_name"] = benchmark_name
                         data_kwargs.update(benchmark_returns)
-                    # Guard: if this filing has no return data, do not overwrite an
-                    # existing row that does have return data.
-                    if not returns_data:
-                        existing_with_returns = session.execute(
-                            select(Performance).where(
-                                Performance.etf_id == etf.id,
-                                Performance.fiscal_year_end == fiscal_year_end,
-                                (Performance.return_1yr.isnot(None))
-                                | (Performance.return_5yr.isnot(None))
-                                | (Performance.return_10yr.isnot(None))
-                                | (Performance.return_since_inception.isnot(None)),
-                            )
-                        ).scalar_one_or_none()
-                        if existing_with_returns is not None:
-                            if expense_ratio is not None:
-                                existing_with_returns.expense_ratio_actual = expense_ratio
-                            if portfolio_turnover is not None:
-                                existing_with_returns.portfolio_turnover = portfolio_turnover
-                            logger.debug(f"CIK {cik}: Skipped null-return upsert for {etf.ticker} (fiscal_year_end={fiscal_year_end}); patched expense/turnover on existing row")
-                        else:
-                            upsert_record(
-                                session,
-                                Performance,
-                                filter_kwargs={
-                                    "etf_id": etf.id,
-                                    "fiscal_year_end": fiscal_year_end,
-                                    "filing_date": filing_date,
-                                },
-                                data_kwargs=data_kwargs,
-                            )
-                            logger.debug(f"CIK {cik}: Upserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
-                    else:
-                        upsert_record(
-                            session,
-                            Performance,
-                            filter_kwargs={
-                                "etf_id": etf.id,
-                                "fiscal_year_end": fiscal_year_end,
-                                "filing_date": filing_date,
-                            },
-                            data_kwargs=data_kwargs,
-                        )
-                        logger.debug(f"CIK {cik}: Upserted performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
+
+                    _upsert_performance_record(
+                        session, etf, fiscal_year_end, filing_date, returns_data, data_kwargs, cik
+                    )
 
                     satisfied.add(key)
                     processed_etfs += 1
@@ -525,35 +545,39 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                             if class_benchmark_map:
                                 first_class_id = next(iter(class_benchmark_map))
                                 uit_benchmark_name, bm_facts_df = class_benchmark_map[first_class_id]
-                                resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
-                                uit_benchmark_returns = _extract_benchmark_returns_from_facts(bm_facts_df)
+                                if uit_benchmark_name not in resolved_benchmarks:
+                                    resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                                    resolved_benchmarks.add(uit_benchmark_name)
+                                if uit_benchmark_name not in benchmark_returns_cache:
+                                    benchmark_returns_cache[uit_benchmark_name] = _extract_benchmark_returns_from_facts(bm_facts_df)
+                                uit_benchmark_returns = benchmark_returns_cache[uit_benchmark_name]
                             elif has_broad_based_axis:
-                                bm_facts = df_filtered[df_filtered['dim_oef_BroadBasedIndexAxis'].notna()]
-                                if not bm_facts.empty:
-                                    bm_facts_deduped = bm_facts.drop_duplicates(
-                                        subset=['concept', 'period_start', 'period_end', 'numeric_value'],
-                                        keep='first'
-                                    )
-                                    bm_axis_vals = bm_facts_deduped['dim_oef_BroadBasedIndexAxis'].dropna().unique()
-                                    if len(bm_axis_vals) > 0:
-                                        uit_benchmark_name = _extract_benchmark_name(bm_axis_vals[0])
+                                uit_benchmark_name, bm_facts_deduped = _extract_benchmark_from_axis(
+                                    df_filtered, 'dim_oef_BroadBasedIndexAxis'
+                                )
+                                if uit_benchmark_name is not None:
+                                    if uit_benchmark_name not in resolved_benchmarks:
                                         resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
-                                    uit_benchmark_returns = _extract_benchmark_returns_from_facts(bm_facts_deduped)
+                                        resolved_benchmarks.add(uit_benchmark_name)
+                                    if uit_benchmark_name not in benchmark_returns_cache:
+                                        benchmark_returns_cache[uit_benchmark_name] = _extract_benchmark_returns_from_facts(bm_facts_deduped)
+                                    uit_benchmark_returns = benchmark_returns_cache[uit_benchmark_name]
                             elif 'dim_oef_AdditionalIndexAxis' in df_filtered.columns:
-                                bm_facts = df_filtered[df_filtered['dim_oef_AdditionalIndexAxis'].notna()]
-                                if not bm_facts.empty:
-                                    bm_facts_deduped = bm_facts.drop_duplicates(
-                                        subset=['concept', 'period_start', 'period_end', 'numeric_value'],
-                                        keep='first'
-                                    )
-                                    bm_axis_vals = bm_facts_deduped['dim_oef_AdditionalIndexAxis'].dropna().unique()
-                                    if len(bm_axis_vals) > 0:
-                                        uit_benchmark_name = _extract_benchmark_name(bm_axis_vals[0])
+                                uit_benchmark_name, bm_facts_deduped = _extract_benchmark_from_axis(
+                                    df_filtered, 'dim_oef_AdditionalIndexAxis'
+                                )
+                                if uit_benchmark_name is not None:
+                                    if uit_benchmark_name not in resolved_benchmarks:
                                         resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
-                                    uit_benchmark_returns = _extract_benchmark_returns_from_facts(bm_facts_deduped)
+                                        resolved_benchmarks.add(uit_benchmark_name)
+                                    if uit_benchmark_name not in benchmark_returns_cache:
+                                        benchmark_returns_cache[uit_benchmark_name] = _extract_benchmark_returns_from_facts(bm_facts_deduped)
+                                    uit_benchmark_returns = benchmark_returns_cache[uit_benchmark_name]
                             elif rr_benchmark_name:
                                 uit_benchmark_name = rr_benchmark_name
-                                resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                                if uit_benchmark_name not in resolved_benchmarks:
+                                    resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                                    resolved_benchmarks.add(uit_benchmark_name)
                                 uit_benchmark_returns = rr_benchmark_returns
 
                             data_kwargs = {
@@ -564,49 +588,10 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                             if uit_benchmark_name is not None:
                                 data_kwargs["benchmark_name"] = uit_benchmark_name
                                 data_kwargs.update(uit_benchmark_returns)
-                            # Guard: if this filing has no return data, do not overwrite an
-                            # existing row that does have return data.
-                            if not returns_data:
-                                existing_with_returns = session.execute(
-                                    select(Performance).where(
-                                        Performance.etf_id == etf.id,
-                                        Performance.fiscal_year_end == fiscal_year_end,
-                                        (Performance.return_1yr.isnot(None))
-                                        | (Performance.return_5yr.isnot(None))
-                                        | (Performance.return_10yr.isnot(None))
-                                        | (Performance.return_since_inception.isnot(None)),
-                                    )
-                                ).scalar_one_or_none()
-                                if existing_with_returns is not None:
-                                    if expense_ratio is not None:
-                                        existing_with_returns.expense_ratio_actual = expense_ratio
-                                    if portfolio_turnover is not None:
-                                        existing_with_returns.portfolio_turnover = portfolio_turnover
-                                    logger.info(f"CIK {cik}: Skipped null-return UIT upsert for {etf.ticker} (fiscal_year_end={fiscal_year_end}); patched expense/turnover on existing row")
-                                else:
-                                    upsert_record(
-                                        session,
-                                        Performance,
-                                        filter_kwargs={
-                                            "etf_id": etf.id,
-                                            "fiscal_year_end": fiscal_year_end,
-                                            "filing_date": filing_date,
-                                        },
-                                        data_kwargs=data_kwargs,
-                                    )
-                                    logger.info(f"CIK {cik}: Upserted UIT performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
-                            else:
-                                upsert_record(
-                                    session,
-                                    Performance,
-                                    filter_kwargs={
-                                        "etf_id": etf.id,
-                                        "fiscal_year_end": fiscal_year_end,
-                                        "filing_date": filing_date,
-                                    },
-                                    data_kwargs=data_kwargs,
-                                )
-                                logger.info(f"CIK {cik}: Upserted UIT performance for {etf.ticker} (fiscal_year_end={fiscal_year_end}, filing_date={filing_date})")
+
+                            _upsert_performance_record(
+                                session, etf, fiscal_year_end, filing_date, returns_data, data_kwargs, cik, label="UIT "
+                            )
 
                             satisfied.add(key)
                             processed_etfs += 1
