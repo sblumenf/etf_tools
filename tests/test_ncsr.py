@@ -1717,3 +1717,66 @@ class TestRRPortfolioTurnover:
 
         assert perf is not None
         assert perf.portfolio_turnover == Decimal('0.23')
+
+
+class TestNormalizeReturnValue:
+    """Test normalize_return_value from parser_utils."""
+
+    def test_normalize_none(self):
+        """None input returns None."""
+        assert normalize_return_value(None) is None
+
+    def test_normalize_small_value_unchanged(self):
+        """Values with abs <= 1 pass through unchanged."""
+        value = Decimal("0.0512")
+        assert normalize_return_value(value) == Decimal("0.0512")
+
+    def test_normalize_negative_small_unchanged(self):
+        """Negative values with abs <= 1 pass through unchanged."""
+        value = Decimal("-0.03")
+        assert normalize_return_value(value) == Decimal("-0.03")
+
+    def test_normalize_percentage_value(self):
+        """Values with abs > 1 are divided by 100."""
+        result = normalize_return_value(Decimal("12.5"))
+        assert result == Decimal("0.125")
+
+    def test_normalize_large_percentage(self):
+        """Large percentage values are divided by 100."""
+        result = normalize_return_value(Decimal("90.19"))
+        assert result == Decimal("0.9019")
+
+    def test_normalize_negative_percentage(self):
+        """Negative percentage values are divided by 100."""
+        result = normalize_return_value(Decimal("-5.2"))
+        assert result == Decimal("-0.052")
+
+    def test_normalize_boundary_one(self):
+        """Decimal('1') passes through unchanged (abs == 1, not > 1)."""
+        result = normalize_return_value(Decimal("1"))
+        assert result == Decimal("1")
+
+    def test_normalize_boundary_negative_one(self):
+        """Decimal('-1') passes through unchanged (abs == 1, not > 1)."""
+        result = normalize_return_value(Decimal("-1"))
+        assert result == Decimal("-1")
+
+    def test_normalize_just_over_one(self):
+        """Decimal('1.01') is divided by 100."""
+        result = normalize_return_value(Decimal("1.01"))
+        assert result == Decimal("1.01") / 100
+
+
+class TestExtractFundDataNormalization:
+    """Test that _extract_fund_data applies normalize_return_value to return fields."""
+
+    def test_extract_fund_data_normalizes_percentage_returns(self):
+        """oef:AvgAnnlRtrPct value of 12.5 is normalized to 0.125."""
+        fund_facts = pd.DataFrame({
+            'concept': ['oef:AvgAnnlRtrPct'],
+            'numeric_value': [Decimal("12.5")],
+            'period_start': [date(2023, 10, 31)],
+            'period_end': [date(2024, 10, 31)],
+        })
+        returns_data, expense_ratio, portfolio_turnover = _extract_fund_data(fund_facts)
+        assert returns_data.get('return_1yr') == Decimal("0.125")
