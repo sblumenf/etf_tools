@@ -1911,17 +1911,17 @@ class TestNormalizeReturnValue:
         assert normalize_return_value(None) is None
 
     def test_normalize_small_value_unchanged(self):
-        """Values with abs <= 1 pass through unchanged."""
+        """Values with abs <= 2 pass through unchanged."""
         value = Decimal("0.0512")
         assert normalize_return_value(value) == Decimal("0.0512")
 
     def test_normalize_negative_small_unchanged(self):
-        """Negative values with abs <= 1 pass through unchanged."""
+        """Negative values with abs <= 2 pass through unchanged."""
         value = Decimal("-0.03")
         assert normalize_return_value(value) == Decimal("-0.03")
 
     def test_normalize_percentage_value(self):
-        """Values with abs > 1 are divided by 100."""
+        """Values with abs > 2 are divided by 100."""
         result = normalize_return_value(Decimal("12.5"))
         assert result == Decimal("0.125")
 
@@ -1936,19 +1936,34 @@ class TestNormalizeReturnValue:
         assert result == Decimal("-0.052")
 
     def test_normalize_boundary_one(self):
-        """Decimal('1') passes through unchanged (abs == 1, not > 1)."""
+        """Decimal('1') passes through unchanged (abs == 1, not > 2)."""
         result = normalize_return_value(Decimal("1"))
         assert result == Decimal("1")
 
     def test_normalize_boundary_negative_one(self):
-        """Decimal('-1') passes through unchanged (abs == 1, not > 1)."""
+        """Decimal('-1') passes through unchanged (abs == 1, not > 2)."""
         result = normalize_return_value(Decimal("-1"))
         assert result == Decimal("-1")
 
     def test_normalize_just_over_one(self):
-        """Decimal('1.01') is divided by 100."""
+        """Decimal('1.01') passes through unchanged (abs <= 2)."""
         result = normalize_return_value(Decimal("1.01"))
-        assert result == Decimal("1.01") / 100
+        assert result == Decimal("1.01")
+
+    def test_normalize_boundary_two(self):
+        """Decimal('2') passes through unchanged (abs == 2, not > 2)."""
+        result = normalize_return_value(Decimal("2"))
+        assert result == Decimal("2")
+
+    def test_normalize_just_over_two(self):
+        """Decimal('2.01') is divided by 100 (abs > 2)."""
+        result = normalize_return_value(Decimal("2.01"))
+        assert result == Decimal("0.0201")
+
+    def test_normalize_legitimate_high_return_unchanged(self):
+        """Decimal('1.5') (150% return) passes through unchanged since abs(1.5) <= 2."""
+        result = normalize_return_value(Decimal("1.5"))
+        assert result == Decimal("1.5")
 
 
 class TestExtractFundDataNormalization:

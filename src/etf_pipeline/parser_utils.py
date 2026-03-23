@@ -65,7 +65,7 @@ def parse_decimal(val, pct=False):
 def normalize_return_value(value):
     if value is None:
         return None
-    if abs(value) > 1:
+    if abs(value) > 2:
         return value / 100
     return value
 

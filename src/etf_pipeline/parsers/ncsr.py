@@ -236,6 +236,10 @@ def _build_class_benchmark_map(df_filtered, class_axis_col):
     # Flush last class
     _flush_benchmark()
 
+    # Warn about orphaned benchmark rows (benchmark facts before any class facts)
+    if benchmark_rows and current_class_id is None:
+        logger.warning("Benchmark rows found before any class rows in document order — no class to assign them to")
+
     return class_to_benchmark
 
 
