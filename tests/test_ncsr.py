@@ -11,6 +11,7 @@ from sqlalchemy import select
 from etf_pipeline.models import ETF, Performance
 from etf_pipeline.parser_utils import map_return_period, normalize_return_value, parse_decimal as _parse_decimal
 from etf_pipeline.parsers.ncsr import (
+    _build_class_benchmark_map,
     _detect_taxonomy,
     _extract_class_id,
     _extract_fund_data,
@@ -1717,6 +1718,189 @@ class TestRRPortfolioTurnover:
 
         assert perf is not None
         assert perf.portfolio_turnover == Decimal('0.23')
+
+
+class TestBuildClassBenchmarkMap:
+    """Test _build_class_benchmark_map using document-order XBRL fact scanning."""
+
+    def _make_df(self, rows):
+        """Build a DataFrame from a list of row dicts, filling required columns with NaN."""
+        required_cols = [
+            'concept',
+            'numeric_value',
+            'period_start',
+            'period_end',
+            'dim_oef_ClassAxis',
+            'dim_oef_BroadBasedIndexAxis',
+        ]
+        df = pd.DataFrame(rows)
+        for col in required_cols:
+            if col not in df.columns:
+                df[col] = float('nan')
+        return df
+
+    def test_single_class_single_benchmark(self):
+        rows = [
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': 'ist:C000001Member',
+                'dim_oef_BroadBasedIndexAxis': float('nan'),
+                'numeric_value': 0.05,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': float('nan'),
+                'dim_oef_BroadBasedIndexAxis': 'ist:SP500Member',
+                'numeric_value': 0.10,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+        ]
+        df = self._make_df(rows)
+        result = _build_class_benchmark_map(df, 'dim_oef_ClassAxis')
+
+        assert 'C000001' in result
+        bm_name, bm_df = result['C000001']
+        assert bm_name == 'SP500Member'
+        assert len(bm_df) == 1
+
+    def test_two_classes_different_benchmarks(self):
+        rows = [
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': 'ist:C000001Member',
+                'dim_oef_BroadBasedIndexAxis': float('nan'),
+                'numeric_value': 0.05,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': float('nan'),
+                'dim_oef_BroadBasedIndexAxis': 'ist:SP500Member',
+                'numeric_value': 0.10,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': 'ist:C000002Member',
+                'dim_oef_BroadBasedIndexAxis': float('nan'),
+                'numeric_value': 0.03,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': float('nan'),
+                'dim_oef_BroadBasedIndexAxis': 'ist:RussellMember',
+                'numeric_value': 0.08,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+        ]
+        df = self._make_df(rows)
+        result = _build_class_benchmark_map(df, 'dim_oef_ClassAxis')
+
+        assert len(result) == 2
+        assert result['C000001'][0] == 'SP500Member'
+        assert result['C000002'][0] == 'RussellMember'
+
+    def test_class_with_no_benchmark(self):
+        rows = [
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': 'ist:C000001Member',
+                'dim_oef_BroadBasedIndexAxis': float('nan'),
+                'numeric_value': 0.05,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+        ]
+        df = self._make_df(rows)
+        result = _build_class_benchmark_map(df, 'dim_oef_ClassAxis')
+
+        assert result == {}
+
+    def test_first_class_gets_priority(self):
+        """If the same class_id appears twice, only the first benchmark assignment is kept."""
+        rows = [
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': 'ist:C000001Member',
+                'dim_oef_BroadBasedIndexAxis': float('nan'),
+                'numeric_value': 0.05,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': float('nan'),
+                'dim_oef_BroadBasedIndexAxis': 'ist:SP500Member',
+                'numeric_value': 0.10,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+            # Same class_id appears again with a different benchmark
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': 'ist:C000001Member',
+                'dim_oef_BroadBasedIndexAxis': float('nan'),
+                'numeric_value': 0.04,
+                'period_start': date(2019, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': float('nan'),
+                'dim_oef_BroadBasedIndexAxis': 'ist:RussellMember',
+                'numeric_value': 0.09,
+                'period_start': date(2019, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+        ]
+        df = self._make_df(rows)
+        result = _build_class_benchmark_map(df, 'dim_oef_ClassAxis')
+
+        assert len(result) == 1
+        assert result['C000001'][0] == 'SP500Member'
+
+    def test_additional_index_fallback(self):
+        """When BroadBasedIndexAxis is absent, fall back to AdditionalIndexAxis."""
+        rows = [
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': 'ist:C000001Member',
+                'dim_oef_BroadBasedIndexAxis': float('nan'),
+                'dim_oef_AdditionalIndexAxis': float('nan'),
+                'numeric_value': 0.05,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+            {
+                'concept': 'oef:AvgAnnlRtrPct',
+                'dim_oef_ClassAxis': float('nan'),
+                'dim_oef_BroadBasedIndexAxis': float('nan'),
+                'dim_oef_AdditionalIndexAxis': 'ist:AGGMember',
+                'numeric_value': 0.04,
+                'period_start': date(2023, 10, 31),
+                'period_end': date(2024, 10, 31),
+            },
+        ]
+        df = self._make_df(rows)
+        result = _build_class_benchmark_map(df, 'dim_oef_ClassAxis')
+
+        assert 'C000001' in result
+        assert result['C000001'][0] == 'AGGMember'
+
+    def test_empty_dataframe(self):
+        """Empty DataFrame returns an empty map."""
+        df = self._make_df([])
+        result = _build_class_benchmark_map(df, 'dim_oef_ClassAxis')
+
+        assert result == {}
 
 
 class TestNormalizeReturnValue:
