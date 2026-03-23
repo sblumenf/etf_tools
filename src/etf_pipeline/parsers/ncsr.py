@@ -17,6 +17,7 @@ from etf_pipeline.parser_utils import (
     clear_and_log_cache,
     ensure_date,
     map_return_period,
+    normalize_return_value,
     parse_date,
     parse_decimal,
     resolve_cik_list,
@@ -120,13 +121,13 @@ def _extract_benchmark_returns_from_facts(facts_df):
                 if field_name:
                     bfield = field_name.replace('return_', 'benchmark_return_')
                     if bfield in ['benchmark_return_1yr', 'benchmark_return_5yr', 'benchmark_return_10yr']:
-                        extracted[bfield] = parse_decimal(numeric_value)
+                        extracted[bfield] = normalize_return_value(parse_decimal(numeric_value))
         elif concept == 'rr:AverageAnnualReturnYear01':
-            extracted['benchmark_return_1yr'] = parse_decimal(numeric_value)
+            extracted['benchmark_return_1yr'] = normalize_return_value(parse_decimal(numeric_value))
         elif concept == 'rr:AverageAnnualReturnYear05':
-            extracted['benchmark_return_5yr'] = parse_decimal(numeric_value)
+            extracted['benchmark_return_5yr'] = normalize_return_value(parse_decimal(numeric_value))
         elif concept == 'rr:AverageAnnualReturnYear10':
-            extracted['benchmark_return_10yr'] = parse_decimal(numeric_value)
+            extracted['benchmark_return_10yr'] = normalize_return_value(parse_decimal(numeric_value))
     return extracted
 
 
@@ -147,16 +148,16 @@ def _extract_fund_data(fund_facts):
                 period_end = parse_date(period_end)
                 field_name = map_return_period(period_start, period_end)
                 if field_name:
-                    returns_data[field_name] = parse_decimal(numeric_value)
+                    returns_data[field_name] = normalize_return_value(parse_decimal(numeric_value))
 
         elif concept == 'rr:AverageAnnualReturnYear01':
-            returns_data['return_1yr'] = parse_decimal(numeric_value)
+            returns_data['return_1yr'] = normalize_return_value(parse_decimal(numeric_value))
         elif concept == 'rr:AverageAnnualReturnYear05':
-            returns_data['return_5yr'] = parse_decimal(numeric_value)
+            returns_data['return_5yr'] = normalize_return_value(parse_decimal(numeric_value))
         elif concept == 'rr:AverageAnnualReturnYear10':
-            returns_data['return_10yr'] = parse_decimal(numeric_value)
+            returns_data['return_10yr'] = normalize_return_value(parse_decimal(numeric_value))
         elif concept == 'rr:AverageAnnualReturnSinceInception':
-            returns_data['return_since_inception'] = parse_decimal(numeric_value)
+            returns_data['return_since_inception'] = normalize_return_value(parse_decimal(numeric_value))
 
         elif concept == 'oef:ExpenseRatioPct':
             expense_ratio = parse_decimal(numeric_value)

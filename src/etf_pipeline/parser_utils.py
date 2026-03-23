@@ -62,6 +62,14 @@ def parse_decimal(val, pct=False):
         return None
 
 
+def normalize_return_value(value):
+    if value is None:
+        return None
+    if abs(value) > 1:
+        return value / 100
+    return value
+
+
 def parse_date(val):
     if val is None:
         return None
