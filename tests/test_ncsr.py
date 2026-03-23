@@ -9,10 +9,11 @@ import pytest
 from sqlalchemy import select
 
 from etf_pipeline.models import ETF, Performance
-from etf_pipeline.parser_utils import map_return_period, parse_decimal as _parse_decimal
+from etf_pipeline.parser_utils import map_return_period, normalize_return_value, parse_decimal as _parse_decimal
 from etf_pipeline.parsers.ncsr import (
     _detect_taxonomy,
     _extract_class_id,
+    _extract_fund_data,
     parse_ncsr,
 )
 

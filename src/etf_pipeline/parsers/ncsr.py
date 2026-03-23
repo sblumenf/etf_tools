@@ -170,6 +170,75 @@ def _extract_fund_data(fund_facts):
     return returns_data, expense_ratio, portfolio_turnover
 
 
+def _build_class_benchmark_map(df_filtered, class_axis_col):
+    """Build a mapping from class_id to (benchmark_name, benchmark_facts_df).
+
+    Uses document ordering: in XBRL facts, a class's fund rows are immediately
+    followed by that class's benchmark rows. We scan rows in order, tracking the
+    current class_id from ClassAxis. When we hit a BroadBasedIndexAxis row
+    (which has no ClassAxis), we assign it to the most recently seen class.
+    """
+    class_to_benchmark = {}
+    current_class_id = None
+    current_benchmark_name = None
+    current_benchmark_source = None  # 'broad' or 'additional'
+    benchmark_rows = []
+
+    broad_col = 'dim_oef_BroadBasedIndexAxis'
+    additional_col = 'dim_oef_AdditionalIndexAxis'
+    has_broad = broad_col in df_filtered.columns
+    has_additional = additional_col in df_filtered.columns
+
+    def _flush_benchmark():
+        nonlocal current_class_id, current_benchmark_name, current_benchmark_source, benchmark_rows
+        if current_class_id and current_benchmark_name and benchmark_rows:
+            if current_class_id not in class_to_benchmark:
+                bm_df = pd.DataFrame(benchmark_rows)
+                class_to_benchmark[current_class_id] = (current_benchmark_name, bm_df)
+        current_benchmark_name = None
+        current_benchmark_source = None
+        benchmark_rows = []
+
+    for idx, row in df_filtered.iterrows():
+        class_val = row.get(class_axis_col)
+        broad_val = row.get(broad_col) if has_broad else None
+        additional_val = row.get(additional_col) if has_additional else None
+
+        # Row has a ClassAxis value -> it's a fund fact
+        if pd.notna(class_val):
+            # If we were collecting benchmark rows for a previous class, flush them
+            if current_benchmark_name:
+                _flush_benchmark()
+            current_class_id = _extract_class_id(class_val)
+
+        # Row has a BroadBasedIndexAxis value -> it's a broad-based benchmark fact (highest priority)
+        elif pd.notna(broad_val) if has_broad else False:
+            bm_name = _extract_benchmark_name(broad_val)
+            if bm_name:
+                if current_benchmark_name is None:
+                    current_benchmark_name = bm_name
+                    current_benchmark_source = 'broad'
+                # Only append if this row matches the chosen source axis
+                if current_benchmark_source == 'broad':
+                    benchmark_rows.append(row.to_dict())
+
+        # Row has an AdditionalIndexAxis value -> fallback benchmark (only if no broad-based found)
+        elif pd.notna(additional_val) if has_additional else False:
+            bm_name = _extract_benchmark_name(additional_val)
+            if bm_name:
+                if current_benchmark_name is None:
+                    current_benchmark_name = bm_name
+                    current_benchmark_source = 'additional'
+                # Only append if this row matches the chosen source axis
+                if current_benchmark_source == 'additional':
+                    benchmark_rows.append(row.to_dict())
+
+    # Flush last class
+    _flush_benchmark()
+
+    return class_to_benchmark
+
+
 def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[str] = None):
     """Return a per-CIK processor for the parser loop."""
     date_filter = build_filing_date_filter(from_date, to_date)
@@ -285,67 +354,27 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                     class_axis_col = 'dim_oef_ClassAxis'
                     df_filtered[class_axis_col] = None
 
-                # Extract benchmark data BEFORE per-class loop (benchmarks never have ClassAxis)
-                benchmark_name = None
-                benchmark_returns = {}
+                # Build per-class benchmark map using document ordering
+                class_benchmark_map = _build_class_benchmark_map(df_filtered, class_axis_col)
 
-                # Determine benchmark axis column: BroadBased (OEF) > PerformanceMeasure (RR) > Additional (OEF)
+                # Also check for RR PerformanceMeasure axis as fallback
                 has_broad_based_axis = 'dim_oef_BroadBasedIndexAxis' in df_filtered.columns
                 has_rr_perf_axis = 'dim_rr_PerformanceMeasureAxis' in df_filtered.columns
-
-                if has_broad_based_axis:
-                    benchmark_facts = df_filtered[
-                        (df_filtered['dim_oef_BroadBasedIndexAxis'].notna()) &
-                        (df_filtered[class_axis_col].isna())
-                    ]
-
-                    if not benchmark_facts.empty:
-                        benchmark_facts_deduped = benchmark_facts.drop_duplicates(
-                            subset=['concept', 'period_start', 'period_end', 'numeric_value'],
-                            keep='first'
-                        )
-                        benchmark_axis_values = benchmark_facts_deduped['dim_oef_BroadBasedIndexAxis'].dropna().unique()
-                        if len(benchmark_axis_values) > 0:
-                            benchmark_name = _extract_benchmark_name(benchmark_axis_values[0])
-                            resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
-                        benchmark_returns = _extract_benchmark_returns_from_facts(benchmark_facts_deduped)
-                        logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark: {benchmark_name}, returns: {benchmark_returns}")
-
-                if benchmark_name is None and has_rr_perf_axis:
-                    benchmark_facts = df_filtered[
+                rr_benchmark_name = None
+                rr_benchmark_returns = {}
+                if has_rr_perf_axis:
+                    rr_benchmark_facts = df_filtered[
                         df_filtered['dim_rr_PerformanceMeasureAxis'].notna()
                     ]
-
-                    if not benchmark_facts.empty:
-                        benchmark_facts_deduped = benchmark_facts.drop_duplicates(
+                    if not rr_benchmark_facts.empty:
+                        rr_benchmark_facts_deduped = rr_benchmark_facts.drop_duplicates(
                             subset=['concept', 'period_start', 'period_end', 'numeric_value'],
                             keep='first'
                         )
-                        benchmark_axis_values = benchmark_facts_deduped['dim_rr_PerformanceMeasureAxis'].dropna().unique()
-                        if len(benchmark_axis_values) > 0:
-                            benchmark_name = _extract_benchmark_name(benchmark_axis_values[0])
-                            resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
-                        benchmark_returns = _extract_benchmark_returns_from_facts(benchmark_facts_deduped)
-                        logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark (RR PerformanceMeasure): {benchmark_name}, returns: {benchmark_returns}")
-
-                # Fallback to AdditionalIndexAxis if no benchmark found from BroadBasedIndexAxis or RR axis
-                if benchmark_name is None and 'dim_oef_AdditionalIndexAxis' in df_filtered.columns:
-                    additional_facts = df_filtered[
-                        (df_filtered['dim_oef_AdditionalIndexAxis'].notna()) &
-                        (df_filtered[class_axis_col].isna())
-                    ]
-
-                    if not additional_facts.empty:
-                        additional_facts_deduped = additional_facts.drop_duplicates(
-                            subset=['concept', 'period_start', 'period_end', 'numeric_value'],
-                            keep='first'
-                        )
-                        additional_axis_values = additional_facts_deduped['dim_oef_AdditionalIndexAxis'].dropna().unique()
-                        if len(additional_axis_values) > 0:
-                            benchmark_name = _extract_benchmark_name(additional_axis_values[0])
-                            resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
-                        benchmark_returns = _extract_benchmark_returns_from_facts(additional_facts_deduped)
-                        logger.debug(f"CIK {cik}: Filing {filing_idx} extracted benchmark (AdditionalIndex fallback): {benchmark_name}, returns: {benchmark_returns}")
+                        rr_axis_values = rr_benchmark_facts_deduped['dim_rr_PerformanceMeasureAxis'].dropna().unique()
+                        if len(rr_axis_values) > 0:
+                            rr_benchmark_name = _extract_benchmark_name(rr_axis_values[0])
+                        rr_benchmark_returns = _extract_benchmark_returns_from_facts(rr_benchmark_facts_deduped)
 
                 # Process each unique class_id in this filing's XBRL data
                 for class_axis_value in df_filtered[class_axis_col].dropna().unique():
@@ -393,6 +422,18 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
 
                     # Extract fund returns by period
                     returns_data, expense_ratio, portfolio_turnover = _extract_fund_data(fund_facts)
+
+                    # Use per-class benchmark from document ordering, fall back to RR
+                    benchmark_name = None
+                    benchmark_returns = {}
+                    if class_id in class_benchmark_map:
+                        benchmark_name, bm_facts_df = class_benchmark_map[class_id]
+                        resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                        benchmark_returns = _extract_benchmark_returns_from_facts(bm_facts_df)
+                    elif rr_benchmark_name:
+                        benchmark_name = rr_benchmark_name
+                        resolve_benchmark_label(session, benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                        benchmark_returns = rr_benchmark_returns
 
                     # Upsert Performance record
                     data_kwargs = {
@@ -473,14 +514,52 @@ def _make_process_cik_ncsr(from_date: Optional[str] = None, to_date: Optional[st
                         if key not in satisfied:
                             returns_data, expense_ratio, portfolio_turnover = _extract_fund_data(fund_facts)
 
+                            # Use first available benchmark from class map, fall back to direct
+                            # BroadBased/Additional extraction, then RR
+                            uit_benchmark_name = None
+                            uit_benchmark_returns = {}
+                            if class_benchmark_map:
+                                first_class_id = next(iter(class_benchmark_map))
+                                uit_benchmark_name, bm_facts_df = class_benchmark_map[first_class_id]
+                                resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                                uit_benchmark_returns = _extract_benchmark_returns_from_facts(bm_facts_df)
+                            elif has_broad_based_axis:
+                                bm_facts = df_filtered[df_filtered['dim_oef_BroadBasedIndexAxis'].notna()]
+                                if not bm_facts.empty:
+                                    bm_facts_deduped = bm_facts.drop_duplicates(
+                                        subset=['concept', 'period_start', 'period_end', 'numeric_value'],
+                                        keep='first'
+                                    )
+                                    bm_axis_vals = bm_facts_deduped['dim_oef_BroadBasedIndexAxis'].dropna().unique()
+                                    if len(bm_axis_vals) > 0:
+                                        uit_benchmark_name = _extract_benchmark_name(bm_axis_vals[0])
+                                        resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                                    uit_benchmark_returns = _extract_benchmark_returns_from_facts(bm_facts_deduped)
+                            elif 'dim_oef_AdditionalIndexAxis' in df_filtered.columns:
+                                bm_facts = df_filtered[df_filtered['dim_oef_AdditionalIndexAxis'].notna()]
+                                if not bm_facts.empty:
+                                    bm_facts_deduped = bm_facts.drop_duplicates(
+                                        subset=['concept', 'period_start', 'period_end', 'numeric_value'],
+                                        keep='first'
+                                    )
+                                    bm_axis_vals = bm_facts_deduped['dim_oef_AdditionalIndexAxis'].dropna().unique()
+                                    if len(bm_axis_vals) > 0:
+                                        uit_benchmark_name = _extract_benchmark_name(bm_axis_vals[0])
+                                        resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                                    uit_benchmark_returns = _extract_benchmark_returns_from_facts(bm_facts_deduped)
+                            elif rr_benchmark_name:
+                                uit_benchmark_name = rr_benchmark_name
+                                resolve_benchmark_label(session, uit_benchmark_name, xbrl_obj=xbrl_obj, cik=cik, filing_date=filing_date)
+                                uit_benchmark_returns = rr_benchmark_returns
+
                             data_kwargs = {
                                 **returns_data,
                                 "expense_ratio_actual": expense_ratio,
                                 "portfolio_turnover": portfolio_turnover,
                             }
-                            if benchmark_name is not None:
-                                data_kwargs["benchmark_name"] = benchmark_name
-                                data_kwargs.update(benchmark_returns)
+                            if uit_benchmark_name is not None:
+                                data_kwargs["benchmark_name"] = uit_benchmark_name
+                                data_kwargs.update(uit_benchmark_returns)
                             # Guard: if this filing has no return data, do not overwrite an
                             # existing row that does have return data.
                             if not returns_data:
